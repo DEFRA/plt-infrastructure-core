@@ -1,0 +1,242 @@
+parameters:
+  - name: projectName
+    displayName: Project name
+    type: string
+  - name: deployFromFeature
+    displayName: Deploy to Development Environment from feature branch
+    type: boolean
+    default: false
+  - name: privateAgentName
+    displayName: Private agent pool name. It is used to set a self-hosted private agent pool, while `agentImage` is used to run the pipeline on Microsoft-hosted agents
+    type: string
+    default: ''
+  - name: agentImage
+    displayName: Microsoft-hosted agent pool name. if both `agentImage` and `privateAgentName` is not supplied then it uses 'windows-latest' pool
+    type: string
+    default: ''
+  - name: keyVaultName
+    displayName: Name of the Azure Key Vault to load the secrets from
+    type: string
+    default: ''
+  - name: keyVaultSecretsFilter
+    displayName: A comma-separated list of secret names to be downloaded or * to download all secrets from the selected key vault
+    type: string
+    default: ''
+  - name: groupedDeployments
+    displayName: List of GroupedDeployments(ARM/Bicep deployments)
+    type: object
+  - name: environments
+    displayName: List of environments
+    type: object
+    default: []
+  - name: filePathsForTransform
+    displayName: Additional files location to replace tokens
+    type: string
+    default: ''
+  - name: variableFiles
+    displayName: List of variable files
+    type: object
+    default: 
+      - /pipelines/vars/common.yaml@_self
+      - /pipelines/vars/env/{environment}.yaml@_self
+      - /pipelines/vars/tenant/azure-ip-ranges.yaml@_self
+  - name: regionalVariableFiles
+    displayName: List of regional variable files
+    type: object
+    default: 
+      - /pipelines/vars/env/regional/{environment}-{region}.yaml@_self
+  - name: additionalRepositories
+    displayName: Additional repositories that needs reference in the process
+    type: object
+    default: []
+  - name: includePlatformEnvs
+    displayName: Include Platform Environments (SND1 and SND2)
+    type: boolean
+    default: true    
+
+resources:
+  repositories:
+    - repository: PipelineCommonScripts
+      name: DEFRA/adp-common-scripts
+      endpoint: DEFRA
+      type: github
+      ref: main
+    - repository: PipelineCommon
+      name: DEFRA/ado-pipeline-common
+      endpoint: DEFRA-ADP
+      type: github
+      ref: refs/tags/1.0.0-latest      
+    - repository: _self
+      name: DEFRA/adp-pipeline-common
+      endpoint: DEFRA-ADP
+      type: github
+      ref: refs/tags/1.0.0-latest
+
+extends:
+  template: /templates/pipelines/common-infrastructure-deploy.yaml@PipelineCommon
+  parameters:
+    deployFromFeature: ${{ parameters.deployFromFeature }}
+    privateAgentName: ${{ parameters.privateAgentName }}
+    agentImage: ${{ parameters.agentImage }}
+    filePathsForTransform: ${{ parameters.filePathsForTransform }}
+    additionalRepositories: 
+      - PipelineCommonScripts
+      - ${{ each repo in parameters.additionalRepositories }}:
+        - ${{ repo }}
+    variableFiles: ${{ parameters.variableFiles }}
+    regionalVariableFiles: ${{ parameters.regionalVariableFiles }}
+    groupedDeployments:
+      - ${{ each groupTemplate in parameters.groupedDeployments }}:
+        - name: ${{ groupTemplate.name }}
+          dependsOnGroupedDeployments: ${{ groupTemplate.dependsOnGroupedDeployments }}
+          deployments:
+            - ${{ each deployment in groupTemplate.deployments }}:
+              - name: ${{ deployment.name }}
+                path: ${{ deployment.path }}
+                scope: ${{ coalesce(deployment.scope,'Resource Group')}}
+                type: ${{ coalesce(deployment.type,'bicep')}}
+                scriptType: ${{ deployment.scriptType }}       
+                azurePowershellUseCore: ${{ deployment.azurePowershellUseCore }}                  
+                azureCLIScriptType: ${{ deployment.azureCLIScriptType }}   
+                useSystemAccessTokeninScript: ${{ coalesce(deployment.useSystemAccessTokeninScript, False)}}           
+                scriptArguments: ${{ deployment.scriptArguments }}
+                parameterFilePath: ${{ deployment.parameterFilePath }} 
+                scriptRepo: ${{ deployment.scriptRepo }}
+                resourceName: ${{ deployment.resourceName }}
+                resourceGroupName: ${{ deployment.resourceGroupName }}
+                preDeployScriptsList: ${{ deployment.preDeployScriptsList }}
+                serviceConnectionVariableName: ${{ deployment.serviceConnectionVariableName }}
+                postDeployServiceConnectionVariableName: ${{ deployment.postDeployServiceConnectionVariableName }}
+                postDeployScriptsList:
+                  - ? ${{ each resource in deployment.privateEndpointDnsRecordsForResources }}
+                    : - displayName: Resolve Private Endpoint IP for '${{ resource.resourceName }}'
+                        scriptPath: "PowerShellLibrary/Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1"
+                        scriptRepo: PipelineCommonScripts
+                        ScriptArguments: >
+                          -ResourceGroupName '${{ resource.resourceGroupName }}'
+                          -ResourceName '${{ resource.resourceName }}'
+
+                      - displayName: Set DNS record for '${{ resource.resourceName }}'
+                        scriptPath: "PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
+                        scriptRepo: PipelineCommonScripts
+                        serviceConnectionVariableName: "mstAzureResourceManagerConnection"
+                        ScriptArguments: >
+                          -Ttl 120
+                  - ${{ each script in deployment.postDeployScriptsList }}:
+                      - ${{ script }}
+    ${{ if gt(length(parameters.environments), 0) }}:
+      environments:
+        - ${{ parameters.environments }}
+    ${{ else }}:
+      environments:
+        # deploy to all environments except snd1 & snd2 for service pipelines
+        - ${{ if eq(parameters.includePlatformEnvs, True) }}:
+          - name: snd1
+            serviceConnection: AZD-ADP-SND1
+            deploymentBranches:
+              - 'refs/heads/main'
+            developmentEnvironment: true
+            privateAgentName: 'DEFRA-ADP-SND1-ubuntu2204'
+            ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
+              keyVaultList:
+                - Name: ${{ parameters.keyVaultName }}
+                  SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
+                  runAsPreJob: true
+            azureRegions:
+              primary: 'UKSouth'
+        - ${{ if eq(parameters.includePlatformEnvs, True) }}:
+          - name: snd2
+            serviceConnection: AZD-ADP-SND2
+            dependsOn: Validate
+            deploymentBranches:
+              - 'refs/heads/main'
+              - 'refs/pull/*/merge'
+            privateAgentName: 'DEFRA-ADP-SND2-ubuntu2204'
+            ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
+              keyVaultList:
+                - Name: ${{ parameters.keyVaultName }}
+                  SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
+                  runAsPreJob: true
+            azureRegions:
+              primary: 'UKSouth'
+        - ${{ if eq(parameters.includePlatformEnvs, True) }}:
+          - name: snd3
+            serviceConnection: AZD-ADP-SND3
+            dependsOn: Validate
+            deploymentBranches:
+              - 'refs/heads/main'
+            privateAgentName: 'DEFRA-ADP-SND3-ubuntu2204'
+            ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
+              keyVaultList:
+                - Name: ${{ parameters.keyVaultName }}
+                  SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
+                  runAsPreJob: true
+            azureRegions:
+              primary: 'UKSouth'
+        - name: snd4
+          dependsOn: Validate
+          serviceConnection: AZR-ADP-SND4
+          ${{ if eq(parameters.includePlatformEnvs, False) }}:
+              developmentEnvironment: true
+          deploymentBranches:
+            - 'refs/heads/main'
+          privateAgentName: 'DEFRA-ADP-SND4-ubuntu2204'
+          ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
+            keyVaultList:
+              - Name: ${{ parameters.keyVaultName }}
+                SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
+                runAsPreJob: true
+          azureRegions:
+            primary: 'UKSouth'
+        - name: dev1
+          dependsOn: Validate
+          serviceConnection: AZR-ADP-DEV1
+          deploymentBranches:
+            - 'refs/heads/main'
+          privateAgentName: 'DEFRA-ADP-DEV1-ubuntu2204'
+          ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
+            keyVaultList:
+              - Name: ${{ parameters.keyVaultName }}
+                SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
+                runAsPreJob: true
+          azureRegions:
+            primary: 'UKSouth'
+        - name: tst1
+          dependsOn: dev1
+          serviceConnection: AZR-ADP-TST1
+          deploymentBranches:
+            - 'refs/heads/main'
+          privateAgentName: 'DEFRA-ADP-TST1-ubuntu2204'
+          ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
+            keyVaultList:
+              - Name: ${{ parameters.keyVaultName }}
+                SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
+                runAsPreJob: true
+          azureRegions:
+            primary: 'UKSouth'
+        - name: pre1
+          dependsOn: tst1
+          serviceConnection: AZR-ADP-PRE1
+          deploymentBranches:
+            - 'refs/heads/main'
+          privateAgentName: 'DEFRA-ADP-PRE1-ubuntu2204'
+          ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
+            keyVaultList:
+              - Name: ${{ parameters.keyVaultName }}
+                SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
+                runAsPreJob: true
+          azureRegions:
+            primary: 'UKSouth'
+        - name: prd1
+          dependsOn: pre1
+          serviceConnection: AZR-ADP-PRD1
+          deploymentBranches:
+            - 'refs/heads/main'
+          privateAgentName: 'DEFRA-ADP-PRD1-ubuntu2204'
+          ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
+            keyVaultList:
+              - Name: ${{ parameters.keyVaultName }}
+                SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
+                runAsPreJob: true
+          azureRegions:
+            primary: 'UKSouth'

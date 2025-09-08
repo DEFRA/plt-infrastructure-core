@@ -1,0 +1,80 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "#{{ location }}"
+        },
+        "environment": {
+            "value": "#{{ environment }}"
+        },
+        "nsgList": {
+            "value": [
+                {
+                    "name": "AZR-#{{ applicationID }}-#{{ environmentFull }}-NSG-01",
+                    "purpose": "PEP NSG",
+                    "securityRules": [
+                        
+                        {
+                            "name": "AllowVNetAnyInbound",
+                            "properties": {
+                                "protocol": "*",
+                                "sourcePortRange": "*",
+                                "destinationPortRange": "*",
+                                "sourceAddressPrefix": "VirtualNetwork",
+                                "destinationAddressPrefix": "VirtualNetwork",
+                                "access": "Allow",
+                                "priority": 2000,
+                                "direction": "Inbound",
+                                "sourcePortRanges": [],
+                                "destinationPortRanges": [],
+                                "sourceAddressPrefixes": [],
+                                "destinationAddressPrefixes": [],
+                                "description": "Allow Any Inbound From VNet to VNet"
+                            }
+                        },
+                        {
+                            "name": "DenyAnyOtherInbound",
+                            "properties": {
+                                "protocol": "*",
+                                "sourcePortRange": "*",
+                                "destinationPortRange": "*",
+                                "sourceAddressPrefix": "*",
+                                "destinationAddressPrefix": "*",
+                                "access": "Deny",
+                                "priority": 4000,
+                                "direction": "Inbound",
+                                "sourcePortRanges": [],
+                                "destinationPortRanges": [],
+                                "sourceAddressPrefixes": [],
+                                "destinationAddressPrefixes": [],
+                                "description": "Deny All Other Inbound"
+                            }
+                        },
+                        {
+                            "name": "DenyAllOtherOutbound",
+                            "properties": {
+                                "protocol": "*",
+                                "sourcePortRange": "*",
+                                "destinationPortRange": "*",
+                                "sourceAddressPrefix": "*",
+                                "destinationAddressPrefix": "*",
+                                "access": "Deny",
+                                "priority": 4000,
+                                "direction": "Outbound",
+                                "sourcePortRanges": [],
+                                "destinationPortRanges": [],
+                                "sourceAddressPrefixes": [],
+                                "destinationAddressPrefixes": [],
+                                "description": "Deny All Other Outbound"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "resourceLockEnabled": {
+            "value": "#{{ resourceLockEnabled }}"
+        }
+    }
+}
