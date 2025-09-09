@@ -49,15 +49,7 @@ trigger:
     include:
       - infra/core/env/*
       - infra/common/*
-
-resources:
-  repositories:
-    - repository: PltConfig
-      name: DEFRA/plt-config
-      endpoint: DEFRA-DEFRA-AIE
-      type: github
-      ref: main
-      
+     
 variables:
   - name: IsAll
     value: ${{ eq(parameters.deployResources,'All') }}
