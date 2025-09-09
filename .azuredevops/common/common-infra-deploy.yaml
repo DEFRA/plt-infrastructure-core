@@ -64,7 +64,7 @@ resources:
       name: DEFRA/plt-infrastructure-core
       endpoint: DEFRA
       type: github
-      ref: refs/heads/ml/initial-structure
+      ref: refs/heads/ml/foundational-components
 
 extends:
   template: /templates/pipelines/common-infrastructure-deploy.yaml@PipelineCommon
