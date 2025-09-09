@@ -61,10 +61,10 @@ resources:
       type: github
       ref: refs/heads/ml/add-applicationID-support      
     - repository: PltConfig
-      name: DEFRA/plt-infrastructure-core
+      name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      ref: refs/heads/ml/foundational-components
+      ref: refs/heads/ml/initial-structure
 
 extends:
   template: /templates/pipelines/common-infrastructure-deploy.yaml@PipelineCommon
