@@ -62,7 +62,7 @@ resources:
       ref: refs/heads/ml/add-applicationID-support      
     - repository: PltConfig
       name: DEFRA/plt-config
-      endpoint: DEFRA
+      endpoint: DEFRA-DEFRA-AIE
       type: github
       ref: refs/heads/ml/initial-structure
 
