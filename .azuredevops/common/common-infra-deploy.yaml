@@ -29,6 +29,14 @@ parameters:
     displayName: List of environments
     type: object
     default: []
+  - name: applicationID
+    displayName: Application ID
+    type: string
+    default: 'aie'
+  - name: instance
+    displayName: Instance
+    type: string
+    default: '01'
   - name: filePathsForTransform
     displayName: Additional files location to replace tokens
     type: string
@@ -78,6 +86,8 @@ extends:
         - ${{ repo }}
     variableFiles: ${{ parameters.variableFiles }}
     regionalVariableFiles: ${{ parameters.regionalVariableFiles }}
+    applicationID: ${{ parameters.applicationID }}
+    instance: ${{ parameters.instance }}
     groupedDeployments:
       - ${{ each groupTemplate in parameters.groupedDeployments }}:
         - name: ${{ groupTemplate.name }}
