@@ -42,6 +42,7 @@ stages:
               steps:
                 - checkout: self
                 - checkout: PltConfig
+                  path: PltConfig
                 - task: AzurePowerShell@5
                   displayName: Run Create-AADGroups script
                   inputs:
