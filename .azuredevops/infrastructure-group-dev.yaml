@@ -1,6 +1,6 @@
 ---
 pool:
-  name: DEFRA-COMMON-ubuntu2204-SSV5
+  name: DEFRA-COMMON-ubuntu2004-SSV5
 
 variables:
   - group: entra
