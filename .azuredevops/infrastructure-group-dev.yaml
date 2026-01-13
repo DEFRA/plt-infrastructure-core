@@ -47,7 +47,7 @@ stages:
                   inputs:
                     azureSubscription: 'AZR-ADP-SSV5-DEFRA-AIE'
                     ScriptType: 'FilePath'
-                    ScriptPath: 'scripts/pipeline/Create-AADGroups.ps1'
+                    ScriptPath: '$(Pipeline.Workspace)/s/scripts/pipeline/Create-AADGroups.ps1'
                     ScriptArguments: >
                       -AADGroupsJsonManifestPath '$(Pipeline.Workspace)/PltConfig/vars/entra/aad-group.json'
                       -ClientId $(entraSPClientId)
@@ -55,4 +55,5 @@ stages:
                       -ClientSecret $(entraSPToken)
                     azurePowerShellVersion: 'LatestVersion'
                     pwsh: true
-                    addSpnToEnvironment: false 
+                    addSpnToEnvironment: false
+                    workingDirectory: '$(Pipeline.Workspace)/s' 
