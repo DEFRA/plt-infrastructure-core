@@ -4,16 +4,14 @@ pool:
 
 variables:
   - group: entra
-  - template: "vars/common.yaml"
-  - template: "vars/${{ lower(parameters.environmentName) }}.yaml"
  
 parameters:
   - name: environmentName
     displayName: Environment
     type: string
-    default: POC
+    default: entra
     values:
-      - POC
+      - entra
 
 resources:
   repositories:
