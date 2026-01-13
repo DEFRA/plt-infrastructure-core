@@ -45,7 +45,7 @@ stages:
                 - task: AzurePowerShell@5
                   displayName: Run Create-AADGroups script
                   inputs:
-                    azureSubscription: 'AZR-AIE-SND1'
+                    azureSubscription: 'DEFRA'
                     ScriptType: 'FilePath'
                     ScriptPath: 'scripts/pipeline/Create-AADGroups.ps1'
                     ScriptArguments: >
