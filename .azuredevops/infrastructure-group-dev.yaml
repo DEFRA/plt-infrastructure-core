@@ -41,6 +41,7 @@ stages:
             deploy:
               steps:
                 - checkout: self
+                  path: s
                 - checkout: PltConfig
                   path: PltConfig
                 - task: AzurePowerShell@5
@@ -48,7 +49,7 @@ stages:
                   inputs:
                     azureSubscription: 'AZR-ADP-SSV5-DEFRA-AIE'
                     ScriptType: 'FilePath'
-                    ScriptPath: 'scripts/pipeline/Create-AADGroups.ps1'
+                    ScriptPath: '$(Pipeline.Workspace)/s/scripts/pipeline/Create-AADGroups.ps1'
                     ScriptArguments: >
                       -AADGroupsJsonManifestPath '$(Pipeline.Workspace)/PltConfig/vars/entra/aad-group.json'
                       -ClientId $(entraSPClientId)
