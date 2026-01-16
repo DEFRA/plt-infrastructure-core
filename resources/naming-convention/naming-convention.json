@@ -1,0 +1,192 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "8607072801163480300"
+    }
+  },
+  "parameters": {
+    "subType": {
+      "type": "string",
+      "allowedValues": [
+        "AIP",
+        "APS",
+        "CAT",
+        "DEV",
+        "LOG",
+        "MST",
+        "OPS",
+        "POC",
+        "PRD",
+        "PRE",
+        "SEC",
+        "SND",
+        "SSV1",
+        "SSV2",
+        "SSV3",
+        "SSV4",
+        "SSV5",
+        "TST"
+      ],
+      "metadata": {
+        "description": "Required. Sub Type (3-4 characters)."
+      }
+    },
+    "svc": {
+      "type": "string",
+      "allowedValues": [
+        "AAD",
+        "AIE",
+        "AIM",
+        "BOO",
+        "CHM",
+        "CSC",
+        "CUS",
+        "EMZ",
+        "EOB",
+        "EXP",
+        "FFC",
+        "FFF",
+        "IDM",
+        "IMD",
+        "IMF",
+        "IMP"
+      ],
+      "metadata": {
+        "description": "Required. Service code (3 characters)."
+      }
+    },
+    "role": {
+      "type": "string",
+      "allowedValues": [
+        "AAC",
+        "AAS",
+        "ADF",
+        "ADG",
+        "ADL",
+        "AFW",
+        "ASE",
+        "ASP",
+        "AXW",
+        "BAS",
+        "BES",
+        "BLB",
+        "CER",
+        "DBS",
+        "DGW",
+        "DHC",
+        "DNS",
+        "ETL",
+        "FES",
+        "FLB",
+        "FTP",
+        "GIT",
+        "INF",
+        "JEN",
+        "NET",
+        "PLB"
+      ],
+      "metadata": {
+        "description": "Required. Role code (3 characters)."
+      }
+    },
+    "resType": {
+      "type": "string",
+      "allowedValues": [
+        "AAA",
+        "ACA",
+        "ACE",
+        "ACI",
+        "ADF",
+        "AFD",
+        "AFA",
+        "AGW",
+        "AIS",
+        "AKS",
+        "ALA",
+        "ALB",
+        "API",
+        "ASG",
+        "ASP",
+        "ASE",
+        "AAS",
+        "AVS",
+        "AWA",
+        "BEP",
+        "CR",
+        "FLB",
+        "KVT",
+        "LW",
+        "NSG",
+        "RGP",
+        "STO",
+        "SUB",
+        "WAF"
+      ],
+      "metadata": {
+        "description": "Required. Resource Type code (2-3 characters)."
+      }
+    },
+    "deploymentEnvInstance": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1,
+      "metadata": {
+        "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+      }
+    },
+    "regionCode": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1,
+      "metadata": {
+        "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+      }
+    },
+    "instanceNumber": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 2,
+      "metadata": {
+        "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+      }
+    },
+    "toLower": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+      }
+    }
+  },
+  "variables": {
+    "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+    "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+    "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+    "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+  },
+  "resources": [],
+  "outputs": {
+    "name": {
+      "type": "string",
+      "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+    },
+    "components": {
+      "type": "object",
+      "value": {
+        "subType": "[parameters('subType')]",
+        "svc": "[parameters('svc')]",
+        "role": "[parameters('role')]",
+        "resType": "[parameters('resType')]",
+        "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+        "regionCode": "[parameters('regionCode')]",
+        "instanceNumber": "[variables('instanceNumberValidated')]",
+        "regionAndInstance": "[variables('regionAndInstance')]",
+        "fullName": "[variables('resourceName')]"
+      }
+    }
+  }
+}

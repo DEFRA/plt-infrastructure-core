@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "subType": {
+      "value": "PRD"
+    },
+    "svc": {
+      "value": "CHM"
+    },
+    "role": {
+      "value": "INF"
+    },
+    "deploymentEnvInstance": {
+      "value": "1"
+    },
+    "regionCode": {
+      "value": "4"
+    },
+    "instanceNumber": {
+      "value": "01"
+    },
+    "location": {
+      "value": "UK South"
+    },
+    "tags": {
+      "value": {}
+    }
+  }
+}

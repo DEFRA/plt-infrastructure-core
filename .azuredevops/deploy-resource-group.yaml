@@ -1,0 +1,135 @@
+---
+pool:
+  name: DEFRA-COMMON-ubuntu2004-SSV5
+
+variables:
+  - group: entra
+
+parameters:
+  - name: environmentName
+    displayName: Environment
+    type: string
+    default: entra
+    values:
+      - entra
+  - name: subType
+    displayName: Sub Type (3-4 characters, e.g., SSV5, PRD, DEV)
+    type: string
+  - name: svc
+    displayName: Service code (3 characters, e.g., AIE, AAD)
+    type: string
+  - name: role
+    displayName: Role code (3 characters, use INF for heterogeneous resource groups)
+    type: string
+  - name: deploymentEnvInstance
+    displayName: Deployment Environment instance number (1 digit, 0-9)
+    type: string
+  - name: regionCode
+    displayName: Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)
+    type: string
+  - name: instanceNumber
+    displayName: Instance number within the region (2 digits, 00-99)
+    type: string
+  - name: location
+    displayName: Azure region where the resource group will be created (e.g., UK South)
+    type: string
+    default: 'UK South'
+  - name: subscriptionName
+    displayName: Azure Subscription Service Connection Name
+    type: string
+    default: 'AZR-ADP-SSV5-DEFRA-AIE'
+
+resources:
+  repositories:
+    - repository: PipelineCommon
+      name: DEFRA-DEVOPS-COMMON/Defra.Pipeline.Common
+      type: git
+      ref: refs/tags/Release-v6-latest
+
+stages:
+  - stage: create_resource_group
+    displayName: Create Resource Group
+    jobs:
+      - deployment: CreateResourceGroup
+        displayName: Create Resource Group
+        environment:
+          name: "${{ parameters.environmentName }}"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                  path: s
+
+                # Step 1: Get the resource group name using the naming convention module
+                - task: AzurePowerShell@5
+                  displayName: Get Resource Group Name from Naming Module
+                  inputs:
+                    azureSubscription: '${{ parameters.subscriptionName }}'
+                    ScriptType: 'InlineScript'
+                    Inline: |
+                      $bicepFile = "$(Pipeline.Workspace)/s/resources/naming-convention/naming-convention.bicep"
+                      $deploymentName = "rg-naming-$(Build.BuildId)-$(Build.BuildNumber)"
+                      
+                      Write-Host "Deploying naming convention module to get resource group name..."
+                      
+                      $output = az deployment sub create `
+                        --name $deploymentName `
+                        --location "${{ parameters.location }}" `
+                        --template-file $bicepFile `
+                        --parameters `
+                          subType="${{ parameters.subType }}" `
+                          svc="${{ parameters.svc }}" `
+                          role="${{ parameters.role }}" `
+                          resType="RGP" `
+                          deploymentEnvInstance="${{ parameters.deploymentEnvInstance }}" `
+                          regionCode="${{ parameters.regionCode }}" `
+                          instanceNumber="${{ parameters.instanceNumber }}" `
+                        --query "properties.outputs.name.value" `
+                        --output tsv
+                      
+                      if ($LASTEXITCODE -ne 0) {
+                        Write-Error "Failed to get resource group name from naming convention module"
+                        exit 1
+                      }
+                      
+                      Write-Host "Resource group name: $output"
+                      Write-Host "##vso[task.setvariable variable=resourceGroupName;]$output"
+                    azurePowerShellVersion: 'LatestVersion'
+                    pwsh: true
+                    addSpnToEnvironment: false
+                    workingDirectory: '$(Pipeline.Workspace)/s'
+
+                # Step 2: Create the resource group using the name from step 1
+                - task: AzurePowerShell@5
+                  displayName: Create Resource Group
+                  inputs:
+                    azureSubscription: '${{ parameters.subscriptionName }}'
+                    ScriptType: 'InlineScript'
+                    Inline: |
+                      $bicepFile = "$(Pipeline.Workspace)/s/resources/resource-group/resource-group.bicep"
+                      $deploymentName = "rg-create-$(Build.BuildId)-$(Build.BuildNumber)"
+                      
+                      Write-Host "Creating resource group: $(resourceGroupName)"
+                      
+                      az deployment sub create `
+                        --name $deploymentName `
+                        --location "${{ parameters.location }}" `
+                        --template-file $bicepFile `
+                        --parameters `
+                          name="$(resourceGroupName)" `
+                          location="${{ parameters.location }}" `
+                          subType="${{ parameters.subType }}" `
+                        --query "properties.outputs" `
+                        --output json
+                      
+                      if ($LASTEXITCODE -ne 0) {
+                        Write-Error "Failed to create resource group"
+                        exit 1
+                      }
+                      
+                      Write-Host "Resource group created successfully: $(resourceGroupName)"
+                    azurePowerShellVersion: 'LatestVersion'
+                    pwsh: true
+                    addSpnToEnvironment: false
+                    workingDirectory: '$(Pipeline.Workspace)/s'
