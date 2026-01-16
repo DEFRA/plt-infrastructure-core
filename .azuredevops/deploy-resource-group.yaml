@@ -64,6 +64,10 @@ stages:
                       
                       Write-Host "Deploying naming convention module to get resource group name..."
                       
+                      # Get the current subscription context
+                      $context = Get-AzContext
+                      Write-Host "Deploying to subscription: $($context.Subscription.Name) (ID: $($context.Subscription.Id))"
+                      
                       $deploymentParams = @{
                         subType = "${{ parameters.subType }}"
                         svc = "${{ parameters.svc }}"
@@ -93,38 +97,38 @@ stages:
                     addSpnToEnvironment: false
                     workingDirectory: '$(Pipeline.Workspace)/s'
 
-                # Step 2: Create the resource group using the name from step 1
-                - task: AzurePowerShell@5
-                  displayName: Create Resource Group
-                  inputs:
-                    azureSubscription: '${{ parameters.subscriptionName }}'
-                    ScriptType: 'InlineScript'
-                    Inline: |
-                      $bicepFile = "$(Pipeline.Workspace)/s/resources/resource-group/resource-group.bicep"
-                      $deploymentName = "rg-create-$(Build.BuildId)-$(Build.BuildNumber)"
+                # # Step 2: Create the resource group using the name from step 1
+                # - task: AzurePowerShell@5
+                #   displayName: Create Resource Group
+                #   inputs:
+                #     azureSubscription: '${{ parameters.subscriptionName }}'
+                #     ScriptType: 'InlineScript'
+                #     Inline: |
+                #       $bicepFile = "$(Pipeline.Workspace)/s/resources/resource-group/resource-group.bicep"
+                #       $deploymentName = "rg-create-$(Build.BuildId)-$(Build.BuildNumber)"
                       
-                      Write-Host "Creating resource group: $(resourceGroupName)"
+                #       Write-Host "Creating resource group: $(resourceGroupName)"
                       
-                      $deploymentParams = @{
-                        name = "$(resourceGroupName)"
-                        location = "${{ parameters.location }}"
-                        subType = "${{ parameters.subType }}"
-                      }
+                #       $deploymentParams = @{
+                #         name = "$(resourceGroupName)"
+                #         location = "${{ parameters.location }}"
+                #         subType = "${{ parameters.subType }}"
+                #       }
                       
-                      $deployment = New-AzSubscriptionDeployment `
-                        -Name $deploymentName `
-                        -Location "${{ parameters.location }}" `
-                        -TemplateFile $bicepFile `
-                        -TemplateParameterObject $deploymentParams
+                #       $deployment = New-AzSubscriptionDeployment `
+                #         -Name $deploymentName `
+                #         -Location "${{ parameters.location }}" `
+                #         -TemplateFile $bicepFile `
+                #         -TemplateParameterObject $deploymentParams
                       
-                      if ($deployment.ProvisioningState -ne "Succeeded") {
-                        Write-Error "Failed to create resource group. ProvisioningState: $($deployment.ProvisioningState)"
-                        exit 1
-                      }
+                #       if ($deployment.ProvisioningState -ne "Succeeded") {
+                #         Write-Error "Failed to create resource group. ProvisioningState: $($deployment.ProvisioningState)"
+                #         exit 1
+                #       }
                       
-                      Write-Host "Resource group created successfully: $(resourceGroupName)"
-                      Write-Host "Resource Group ID: $($deployment.Outputs.resourceId.Value)"
-                    azurePowerShellVersion: 'LatestVersion'
-                    pwsh: true
-                    addSpnToEnvironment: false
-                    workingDirectory: '$(Pipeline.Workspace)/s'
+                #       Write-Host "Resource group created successfully: $(resourceGroupName)"
+                #       Write-Host "Resource Group ID: $($deployment.Outputs.resourceId.Value)"
+                #     azurePowerShellVersion: 'LatestVersion'
+                #     pwsh: true
+                #     addSpnToEnvironment: false
+                #     workingDirectory: '$(Pipeline.Workspace)/s'
