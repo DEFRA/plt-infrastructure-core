@@ -30,12 +30,7 @@ parameters:
     type: string
     default: 'AZR-ADP-SSV5-DEFRA-AIE'
 
-resources:
-  repositories:
-    - repository: PipelineCommon
-      name: DEFRA-DEVOPS-COMMON/Defra.Pipeline.Common
-      type: git
-      ref: refs/tags/Release-v6-latest
+trigger: none
 
 stages:
   - stage: create_resource_group
