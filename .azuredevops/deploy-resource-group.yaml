@@ -2,16 +2,7 @@
 pool:
   name: DEFRA-COMMON-ubuntu2004-SSV5
 
-variables:
-  - group: entra
-
 parameters:
-  - name: environmentName
-    displayName: Environment
-    type: string
-    default: entra
-    values:
-      - entra
   - name: subType
     displayName: Sub Type (3-4 characters, e.g., SSV5, PRD, DEV)
     type: string
@@ -53,7 +44,7 @@ stages:
       - deployment: CreateResourceGroup
         displayName: Create Resource Group
         environment:
-          name: "${{ parameters.environmentName }}"
+          name: "${{ parameters.subType }}"
         strategy:
           runOnce:
             deploy:
@@ -73,26 +64,28 @@ stages:
                       
                       Write-Host "Deploying naming convention module to get resource group name..."
                       
-                      $output = az deployment sub create `
-                        --name $deploymentName `
-                        --location "${{ parameters.location }}" `
-                        --template-file $bicepFile `
-                        --parameters `
-                          subType="${{ parameters.subType }}" `
-                          svc="${{ parameters.svc }}" `
-                          role="${{ parameters.role }}" `
-                          resType="RGP" `
-                          deploymentEnvInstance="${{ parameters.deploymentEnvInstance }}" `
-                          regionCode="${{ parameters.regionCode }}" `
-                          instanceNumber="${{ parameters.instanceNumber }}" `
-                        --query "properties.outputs.name.value" `
-                        --output tsv
+                      $deploymentParams = @{
+                        subType = "${{ parameters.subType }}"
+                        svc = "${{ parameters.svc }}"
+                        role = "${{ parameters.role }}"
+                        resType = "RGP"
+                        deploymentEnvInstance = "${{ parameters.deploymentEnvInstance }}"
+                        regionCode = "${{ parameters.regionCode }}"
+                        instanceNumber = "${{ parameters.instanceNumber }}"
+                      }
                       
-                      if ($LASTEXITCODE -ne 0) {
-                        Write-Error "Failed to get resource group name from naming convention module"
+                      $deployment = New-AzSubscriptionDeployment `
+                        -Name $deploymentName `
+                        -Location "${{ parameters.location }}" `
+                        -TemplateFile $bicepFile `
+                        -TemplateParameterObject $deploymentParams
+                      
+                      if ($deployment.ProvisioningState -ne "Succeeded") {
+                        Write-Error "Failed to get resource group name from naming convention module. ProvisioningState: $($deployment.ProvisioningState)"
                         exit 1
                       }
                       
+                      $output = $deployment.Outputs.name.Value
                       Write-Host "Resource group name: $output"
                       Write-Host "##vso[task.setvariable variable=resourceGroupName;]$output"
                     azurePowerShellVersion: 'LatestVersion'
@@ -112,23 +105,25 @@ stages:
                       
                       Write-Host "Creating resource group: $(resourceGroupName)"
                       
-                      az deployment sub create `
-                        --name $deploymentName `
-                        --location "${{ parameters.location }}" `
-                        --template-file $bicepFile `
-                        --parameters `
-                          name="$(resourceGroupName)" `
-                          location="${{ parameters.location }}" `
-                          subType="${{ parameters.subType }}" `
-                        --query "properties.outputs" `
-                        --output json
+                      $deploymentParams = @{
+                        name = "$(resourceGroupName)"
+                        location = "${{ parameters.location }}"
+                        subType = "${{ parameters.subType }}"
+                      }
                       
-                      if ($LASTEXITCODE -ne 0) {
-                        Write-Error "Failed to create resource group"
+                      $deployment = New-AzSubscriptionDeployment `
+                        -Name $deploymentName `
+                        -Location "${{ parameters.location }}" `
+                        -TemplateFile $bicepFile `
+                        -TemplateParameterObject $deploymentParams
+                      
+                      if ($deployment.ProvisioningState -ne "Succeeded") {
+                        Write-Error "Failed to create resource group. ProvisioningState: $($deployment.ProvisioningState)"
                         exit 1
                       }
                       
                       Write-Host "Resource group created successfully: $(resourceGroupName)"
+                      Write-Host "Resource Group ID: $($deployment.Outputs.resourceId.Value)"
                     azurePowerShellVersion: 'LatestVersion'
                     pwsh: true
                     addSpnToEnvironment: false
