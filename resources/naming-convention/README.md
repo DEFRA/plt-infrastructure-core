@@ -139,6 +139,7 @@ Breaking down the example:
 | `DHC` | DHCP Server |
 | `DNS` | DNS Zones |
 | `ETL` | Extract Transform Load Server |
+| `EXP` | Exploratory |
 | `FES` | Front-End |
 | `FLB` | Front-End Load Balancer |
 | `FTP` | File Transfer Server |
