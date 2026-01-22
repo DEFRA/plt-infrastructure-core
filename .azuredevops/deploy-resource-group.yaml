@@ -123,6 +123,52 @@ stages:
                       
                       Write-Host "Resource group created successfully: $(resourceGroupName)"
                       Write-Host "Resource Group ID: $($deployment.Outputs.resourceId.Value)"
+                      Write-Host "##vso[task.setvariable variable=resourceGroupId;]$($deployment.Outputs.resourceId.Value)"
+                    azurePowerShellVersion: 'LatestVersion'
+                    pwsh: true
+                    addSpnToEnvironment: false
+                    workingDirectory: '$(Pipeline.Workspace)/s'
+
+                # Step 3: Assign Contributor role to AD Group
+                - task: AzurePowerShell@5
+                  displayName: Assign Contributor Role to AD Group
+                  inputs:
+                    azureSubscription: '${{ parameters.subscriptionName }}'
+                    ScriptType: 'InlineScript'
+                    Inline: |
+                      $resourceGroupId = "$(resourceGroupId)"
+                      $groupId = "11dc7728-d98c-481f-8020-65b067a36b8a"
+                      $groupName = "AG-Users-Azure-AI-Enablement-Team"
+                      $roleDefinitionName = "Contributor"
+                      
+                      Write-Host "Assigning $roleDefinitionName role to AD Group: $groupName (ID: $groupId)"
+                      Write-Host "Resource Group ID: $resourceGroupId"
+                      
+                      # Check if role assignment already exists
+                      $existingAssignment = Get-AzRoleAssignment `
+                        -ObjectId $groupId `
+                        -Scope $resourceGroupId `
+                        -RoleDefinitionName $roleDefinitionName `
+                        -ErrorAction SilentlyContinue
+                      
+                      if ($existingAssignment) {
+                        Write-Host "Role assignment already exists. Skipping creation."
+                        Write-Host "Role Assignment ID: $($existingAssignment.Id)"
+                      } else {
+                        Write-Host "Creating new role assignment..."
+                        $roleAssignment = New-AzRoleAssignment `
+                          -ObjectId $groupId `
+                          -Scope $resourceGroupId `
+                          -RoleDefinitionName $roleDefinitionName
+                        
+                        if ($roleAssignment) {
+                          Write-Host "Successfully assigned $roleDefinitionName role to $groupName"
+                          Write-Host "Role Assignment ID: $($roleAssignment.Id)"
+                        } else {
+                          Write-Error "Failed to assign role to AD group"
+                          exit 1
+                        }
+                      }
                     azurePowerShellVersion: 'LatestVersion'
                     pwsh: true
                     addSpnToEnvironment: false
