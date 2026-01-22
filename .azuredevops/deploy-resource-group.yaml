@@ -47,129 +47,53 @@ stages:
                 - checkout: self
                   path: s
 
-                # Step 1: Get the resource group name using the naming convention module
-                - task: AzurePowerShell@5
-                  displayName: Get Resource Group Name from Naming Module
+                # Deploy resource group with RBAC using Bicep
+                - task: AzureCLI@2
+                  displayName: Deploy Resource Group with RBAC
                   inputs:
                     azureSubscription: '${{ parameters.subscriptionName }}'
-                    ScriptType: 'InlineScript'
-                    Inline: |
-                      $bicepFile = "$(Pipeline.Workspace)/s/resources/naming-convention/naming-convention.bicep"
-                      $deploymentName = "rg-naming-$(Build.BuildId)-$(Build.BuildNumber)"
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -e
                       
-                      Write-Host "Deploying naming convention module to get resource group name..."
+                      bicepFile="$(Pipeline.Workspace)/s/resources/resource-group/resource-group-with-rbac.bicep"
+                      deploymentName="rg-deploy-$(Build.BuildId)-$(Build.BuildNumber)"
+                      adGroupObjectId="11dc7728-d98c-481f-8020-65b067a36b8a"
                       
-                      # Get the current subscription context
-                      $context = Get-AzContext
-                      Write-Host "Deploying to subscription: $($context.Subscription.Name) (ID: $($context.Subscription.Id))"
+                      echo "Deploying resource group with RBAC using Bicep..."
+                      echo "Template: $bicepFile"
+                      echo "Deployment name: $deploymentName"
                       
-                      $deploymentParams = @{
-                        subType = "${{ parameters.subType }}"
-                        svc = "${{ parameters.svc }}"
-                        role = "${{ parameters.role }}"
-                        resType = "RGP"
-                        deploymentEnvInstance = "${{ parameters.deploymentEnvInstance }}"
-                        regionCode = "${{ parameters.regionCode }}"
-                        instanceNumber = "${{ parameters.instanceNumber }}"
-                      }
+                      # Deploy the Bicep template
+                      az deployment sub create \
+                        --name "$deploymentName" \
+                        --location "${{ parameters.location }}" \
+                        --template-file "$bicepFile" \
+                        --parameters \
+                          subType="${{ parameters.subType }}" \
+                          svc="${{ parameters.svc }}" \
+                          role="${{ parameters.role }}" \
+                          deploymentEnvInstance="${{ parameters.deploymentEnvInstance }}" \
+                          regionCode="${{ parameters.regionCode }}" \
+                          instanceNumber="${{ parameters.instanceNumber }}" \
+                          location="${{ parameters.location }}" \
+                          adGroupObjectId="$adGroupObjectId"
                       
-                      $deployment = New-AzSubscriptionDeployment `
-                        -Name $deploymentName `
-                        -Location "${{ parameters.location }}" `
-                        -TemplateFile $bicepFile `
-                        -TemplateParameterObject $deploymentParams
+                      # Get deployment outputs
+                      resourceGroupName=$(az deployment sub show \
+                        --name "$deploymentName" \
+                        --query "properties.outputs.resourceGroupName.value" \
+                        --output tsv)
                       
-                      if ($deployment.ProvisioningState -ne "Succeeded") {
-                        Write-Error "Failed to get resource group name from naming convention module. ProvisioningState: $($deployment.ProvisioningState)"
-                        exit 1
-                      }
+                      resourceGroupId=$(az deployment sub show \
+                        --name "$deploymentName" \
+                        --query "properties.outputs.resourceGroupId.value" \
+                        --output tsv)
                       
-                      $output = $deployment.Outputs.name.Value
-                      Write-Host "Resource group name: $output"
-                      Write-Host "##vso[task.setvariable variable=resourceGroupName;]$output"
-                    azurePowerShellVersion: 'LatestVersion'
-                    pwsh: true
-                    addSpnToEnvironment: false
-                    workingDirectory: '$(Pipeline.Workspace)/s'
-
-                # Step 2: Create the resource group using the name from step 1
-                - task: AzurePowerShell@5
-                  displayName: Create Resource Group
-                  inputs:
-                    azureSubscription: '${{ parameters.subscriptionName }}'
-                    ScriptType: 'InlineScript'
-                    Inline: |
-                      $bicepFile = "$(Pipeline.Workspace)/s/resources/resource-group/resource-group.bicep"
-                      $deploymentName = "rg-create-$(Build.BuildId)-$(Build.BuildNumber)"
+                      echo "Resource group created successfully: $resourceGroupName"
+                      echo "Resource Group ID: $resourceGroupId"
                       
-                      Write-Host "Creating resource group: $(resourceGroupName)"
-                      
-                      $deploymentParams = @{
-                        name = "$(resourceGroupName)"
-                        location = "${{ parameters.location }}"
-                        subType = "${{ parameters.subType }}"
-                      }
-                      
-                      $deployment = New-AzSubscriptionDeployment `
-                        -Name $deploymentName `
-                        -Location "${{ parameters.location }}" `
-                        -TemplateFile $bicepFile `
-                        -TemplateParameterObject $deploymentParams
-                      
-                      if ($deployment.ProvisioningState -ne "Succeeded") {
-                        Write-Error "Failed to create resource group. ProvisioningState: $($deployment.ProvisioningState)"
-                        exit 1
-                      }
-                      
-                      Write-Host "Resource group created successfully: $(resourceGroupName)"
-                      Write-Host "Resource Group ID: $($deployment.Outputs.resourceId.Value)"
-                      Write-Host "##vso[task.setvariable variable=resourceGroupId;]$($deployment.Outputs.resourceId.Value)"
-                    azurePowerShellVersion: 'LatestVersion'
-                    pwsh: true
-                    addSpnToEnvironment: false
-                    workingDirectory: '$(Pipeline.Workspace)/s'
-
-                # Step 3: Assign Contributor role to AD Group
-                - task: AzurePowerShell@5
-                  displayName: Assign Contributor Role to AD Group
-                  inputs:
-                    azureSubscription: '${{ parameters.subscriptionName }}'
-                    ScriptType: 'InlineScript'
-                    Inline: |
-                      $resourceGroupId = "$(resourceGroupId)"
-                      $groupId = "11dc7728-d98c-481f-8020-65b067a36b8a"
-                      $groupName = "AG-Users-Azure-AI-Enablement-Team"
-                      $roleDefinitionName = "Contributor"
-                      
-                      Write-Host "Assigning $roleDefinitionName role to AD Group: $groupName (ID: $groupId)"
-                      Write-Host "Resource Group ID: $resourceGroupId"
-                      
-                      # Check if role assignment already exists
-                      $existingAssignment = Get-AzRoleAssignment `
-                        -ObjectId $groupId `
-                        -Scope $resourceGroupId `
-                        -RoleDefinitionName $roleDefinitionName `
-                        -ErrorAction SilentlyContinue
-                      
-                      if ($existingAssignment) {
-                        Write-Host "Role assignment already exists. Skipping creation."
-                        Write-Host "Role Assignment ID: $($existingAssignment.Id)"
-                      } else {
-                        Write-Host "Creating new role assignment..."
-                        $roleAssignment = New-AzRoleAssignment `
-                          -ObjectId $groupId `
-                          -Scope $resourceGroupId `
-                          -RoleDefinitionName $roleDefinitionName
-                        
-                        if ($roleAssignment) {
-                          Write-Host "Successfully assigned $roleDefinitionName role to $groupName"
-                          Write-Host "Role Assignment ID: $($roleAssignment.Id)"
-                        } else {
-                          Write-Error "Failed to assign role to AD group"
-                          exit 1
-                        }
-                      }
-                    azurePowerShellVersion: 'LatestVersion'
-                    pwsh: true
-                    addSpnToEnvironment: false
-                    workingDirectory: '$(Pipeline.Workspace)/s'
+                      # Set pipeline variables
+                      echo "##vso[task.setvariable variable=resourceGroupName]$resourceGroupName"
+                      echo "##vso[task.setvariable variable=resourceGroupId]$resourceGroupId"
