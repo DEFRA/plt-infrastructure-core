@@ -66,8 +66,7 @@ stages:
                       echo "Deployment name: $deploymentName"
                       
                       # Deploy the Bicep template
-                      set +e
-                      output=$(az deployment sub create \
+                      az deployment sub create \
                         --name "$deploymentName" \
                         --location "${{ parameters.location }}" \
                         --template-file "$bicepFile" \
@@ -79,19 +78,7 @@ stages:
                           regionCode="${{ parameters.regionCode }}" \
                           instanceNumber="${{ parameters.instanceNumber }}" \
                           location="${{ parameters.location }}" \
-                          adGroupObjectId="$adGroupObjectId" 2>&1)
-                      exitCode=$?
-                      set -e
-                      
-                      # Allow RoleAssignmentExists errors (idempotent - role already exists)
-                      if [ $exitCode -ne 0 ]; then
-                        if echo "$output" | grep -q "RoleAssignmentExists\|The role assignment already exists"; then
-                          echo "Role assignment already exists - continuing (idempotent)"
-                        else
-                          echo "$output"
-                          exit $exitCode
-                        fi
-                      fi
+                          adGroupObjectId="$adGroupObjectId"
                       
                       # Get deployment outputs
                       resourceGroupName=$(az deployment sub show \
