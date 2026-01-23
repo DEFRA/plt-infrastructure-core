@@ -9,6 +9,9 @@ param roleDefinitionId string
 @description('Optional. Principal type. Default is Group.')
 param principalType string = 'Group'
 
+// Use deterministic GUID based on scope, principal, and role definition
+// This ensures idempotency - if the role assignment already exists with the same name,
+// Bicep will update it rather than trying to create a new one
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(resourceGroup().id, adGroupObjectId, roleDefinitionId)
   properties: {

@@ -70,6 +70,7 @@ stages:
                         --name "$deploymentName" \
                         --location "${{ parameters.location }}" \
                         --template-file "$bicepFile" \
+                        --mode Incremental \
                         --parameters \
                           subType="${{ parameters.subType }}" \
                           svc="${{ parameters.svc }}" \
