@@ -33,6 +33,12 @@ param adGroupObjectId string = ''
 @description('Optional. Contributor role definition ID. Default is the built-in Contributor role.')
 param contributorRoleDefinitionId string = '${subscription().id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c'
 
+// Calculate resource group name inline (needed for module scope at compile time)
+var instanceNumberInt = int(instanceNumber)
+var instanceNumberValidated = instanceNumberInt >= 0 && instanceNumberInt <= 99 ? (instanceNumberInt < 10 ? '0${instanceNumberInt}' : string(instanceNumberInt)) : instanceNumber
+var regionAndInstance = '${regionCode}${instanceNumberValidated}'
+var resourceGroupName = '${subType}${svc}${role}RGP${deploymentEnvInstance}${regionAndInstance}'
+
 // Step 1: Get the resource group name using the naming convention module
 module namingConvention '../naming-convention/naming-convention.bicep' = {
   name: 'naming-convention-${uniqueString(deployment().name)}'
@@ -60,13 +66,13 @@ module resourceGroupModule './resource-group.bicep' = {
 }
 
 // Step 3: Assign Contributor role to AD Group (if provided)
-// This needs to be deployed at resource group scope
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(adGroupObjectId)) {
-  name: guid(resourceGroupModule.outputs.resourceId, adGroupObjectId, contributorRoleDefinitionId)
-  scope: resourceGroupModule.outputs.resourceId
-  properties: {
+// Deploy role assignment module scoped to the resource group
+module roleAssignmentModule './rg-role-assignment.bicep' = if (!empty(adGroupObjectId)) {
+  name: 'role-assignment-${uniqueString(deployment().name, adGroupObjectId)}'
+  scope: resourceGroup(subscription().subscriptionId, resourceGroupName)
+  params: {
+    adGroupObjectId: adGroupObjectId
     roleDefinitionId: contributorRoleDefinitionId
-    principalId: adGroupObjectId
     principalType: 'Group'
   }
   dependsOn: [
@@ -79,4 +85,5 @@ output resourceGroupName string = resourceGroupModule.outputs.name
 output resourceGroupLocation string = resourceGroupModule.outputs.location
 output resourceGroupId string = resourceGroupModule.outputs.resourceId
 output resourceGroupTags object = resourceGroupModule.outputs.tags
-output roleAssignmentId string = !empty(adGroupObjectId) ? roleAssignment.id : ''
+@description('Role assignment ID if created')
+output roleAssignmentId string = !empty(adGroupObjectId) ? (roleAssignmentModule != null ? roleAssignmentModule.outputs.roleAssignmentId : '') : ''
