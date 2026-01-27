@@ -276,7 +276,20 @@ extends:
                   parameterFilePath: resources/network/vnet
                   resourceGroupName: $(virtualNetworkResourceGroup)
                   preDeployScriptsList:
-                    - displayName: "Debug - Output transformed parameter file"
+                    - displayName: "Debug - Check variables before token replacement"
+                      type: PowerShell
+                      inlineScript: |
+                        Write-Host "=== Variable Check ==="
+                        Write-Host "addressPrefixes: '$(addressPrefixes)'"
+                        Write-Host "dnsServers: '$(dnsServers)'"
+                        Write-Host "subnets: '$(subnets)'"
+                        Write-Host "virtualNetworkName: '$(virtualNetworkName)'"
+                        Write-Host "location: '$(location)'"
+                        Write-Host "environment: '$(environment)'"
+                        Write-Host "resourceLockEnabled: '$(resourceLockEnabled)'"
+                        Write-Host "======================"
+                  postDeployScriptsList:
+                    - displayName: "Debug - Output transformed parameter file (runs on failure)"
                       type: PowerShell
                       inlineScript: |
                         $transformedFile = "$(Build.SourcesDirectory)/self/resources/network/vnet/virtual-network.transformed.parameters.json"
@@ -291,13 +304,10 @@ extends:
                             Write-Host "✓ JSON is valid"
                           } catch {
                             Write-Host "✗ JSON parsing error: $_"
+                            Write-Host "Error details: $($_.Exception.Message)"
                           }
                         } else {
                           Write-Host "Transformed file not found at: $transformedFile"
-                          Write-Host "Looking for parameter files in: $(Build.SourcesDirectory)/self/resources/network/vnet/"
-                          Get-ChildItem "$(Build.SourcesDirectory)/self/resources/network/vnet/" -Filter "*.json" | ForEach-Object {
-                            Write-Host "Found: $($_.FullName)"
-                          }
                         }
               - ${{ if eq(variables.IsNetworkFlowLogs, true) }}:
                 - name: virtual-network-flow-logs
