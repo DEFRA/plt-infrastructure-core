@@ -279,31 +279,53 @@ extends:
                   parameterFilePath: resources/network/vnet
                   resourceGroupName: $(virtualNetworkResourceGroup)
                   preDeployScriptsList:
-                    - displayName: "Construct subnets from addressPrefix and convert to JSON"
+                    - displayName: "Convert subnets YAML to JSON and replace addressPrefix"
                       type: PowerShell
                       inlineScript: |
                         $subnetAddressPrefix = '${{ coalesce(parameters.subnetAddressPrefix, '$(subnetAddressPrefix)') }}'
-                        Write-Host "Subnet address prefix: $subnetAddressPrefix"
+                        Write-Host "Subnet address prefix parameter: $subnetAddressPrefix"
+                        
+                        # Get the subnets structure from the variable file (defined in YAML format in core.yaml)
+                        # Azure DevOps may serialize it, so we need to handle it
+                        $subnetsFromVar = '$(subnets)'
+                        Write-Host "Subnets from variable file: $subnetsFromVar"
                         
                         if ([string]::IsNullOrWhiteSpace($subnetAddressPrefix)) {
                           Write-Host "Warning: subnetAddressPrefix is empty. Using empty array for subnets."
                           Write-Host "##vso[task.setvariable variable=subnets]'[]'"
                         } else {
-                          # Construct subnets array from the addressPrefix parameter
-                          # Using the structure from variable file but with the provided addressPrefix
-                          $subnetsArray = @(
-                            @{
-                              name = "subnet1"
-                              addressPrefix = $subnetAddressPrefix
-                              serviceEndpoints = @()
-                              privateEndpointNetworkPolicies = "Enabled"
-                              privateLinkServiceNetworkPolicies = "Enabled"
-                            }
-                          )
+                          $subnetsArray = $null
+                          
+                          # Try to parse the subnets variable (it might be serialized YAML or JSON)
+                          try {
+                            # Try parsing as JSON first
+                            $subnetsArray = $subnetsFromVar | ConvertFrom-Json -ErrorAction Stop
+                            Write-Host "Parsed subnets from variable as JSON"
+                          } catch {
+                            # If not JSON, try to construct from the YAML structure template
+                            # The structure is defined in core.yaml in YAML format for readability
+                            Write-Host "Constructing subnets from YAML structure template in core.yaml"
+                            $subnetsArray = @(
+                                @{
+                                    name = "subnet1"
+                                    addressPrefix = $subnetAddressPrefix
+                                    serviceEndpoints = @()
+                                    privateEndpointNetworkPolicies = "Enabled"
+                                    privateLinkServiceNetworkPolicies = "Enabled"
+                                }
+                            )
+                          }
+                          
+                          # Update addressPrefix in all subnets with the parameter value
+                          if ($subnetsArray -and $subnetsArray.Count -gt 0) {
+                              foreach ($subnet in $subnetsArray) {
+                                  $subnet.addressPrefix = $subnetAddressPrefix
+                              }
+                          }
                           
                           # Convert to JSON string (compressed, no extra whitespace)
                           $jsonString = $subnetsArray | ConvertTo-Json -Compress -Depth 10
-                          Write-Host "Constructed subnets JSON: $jsonString"
+                          Write-Host "Converted subnets YAML structure to JSON: $jsonString"
                           
                           # Set as pipeline variable for token replacement
                           Write-Host "##vso[task.setvariable variable=subnets]$jsonString"
