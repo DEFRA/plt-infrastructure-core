@@ -125,7 +125,7 @@ extends:
                   resourceGroupName: $(virtualNetworkResourceGroup)
               - ${{ if eq(variables.IsNetworkVnet, true) }}:
                 - name: virtual-network
-                  path: infra/common/network
+                  path: resources/network/vnet
                   resourceGroupName: $(virtualNetworkResourceGroup)
               - ${{ if eq(variables.IsNetworkFlowLogs, true) }}:
                 - name: virtual-network-flow-logs
