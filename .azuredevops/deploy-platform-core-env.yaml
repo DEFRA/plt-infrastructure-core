@@ -61,10 +61,10 @@ parameters:
     displayName: "DNS servers for the virtual network (JSON array of IP addresses)"
     type: string
     default: '[]'
-  - name: subnets
-    displayName: "Subnets for the virtual network (JSON array)"
+  - name: subnetAddressPrefix
+    displayName: "Address prefix for the subnet (CIDR string, e.g., 10.179.128.0/26)"
     type: string
-    default: '[]'
+    default: ''
   - name: environment
     displayName: "Environment name"
     type: string
@@ -154,13 +154,15 @@ variables:
   # Virtual network parameters - can be overridden by pipeline parameters or variable files
   # IMPORTANT: These must be valid JSON arrays (e.g., ["10.179.128.0/24"] or [{"name":"subnet1","addressPrefix":"10.179.128.0/26"}])
   # Parameters default to '[]' to ensure valid JSON when using noescape
-  # CRITICAL: When passing JSON, wrap it in single quotes in variable files to prevent YAML parsing: subnets: '[{"name":"subnet1",...}]'
   - name: addressPrefixes
     value: ${{ coalesce(parameters.addressPrefixes, '$(addressPrefixes)') }}
   - name: dnsServers
     value: ${{ coalesce(parameters.dnsServers, '$(dnsServers)') }}
+  - name: subnetAddressPrefix
+    value: ${{ coalesce(parameters.subnetAddressPrefix, '$(subnetAddressPrefix)') }}
+  # subnets will be constructed from subnetAddressPrefix by preDeployScriptsList
   - name: subnets
-    value: ${{ coalesce(parameters.subnets, '$(subnets)') }}
+    value: '[]'  # Placeholder, will be set by script
   - name: environment
     value: ${{ coalesce(parameters.environment, '$(environment)') }}
   - name: resourceLockEnabled
@@ -277,18 +279,35 @@ extends:
                   parameterFilePath: resources/network/vnet
                   resourceGroupName: $(virtualNetworkResourceGroup)
                   preDeployScriptsList:
-                    - displayName: "Debug - Check variables before token replacement"
+                    - displayName: "Construct subnets from addressPrefix and convert to JSON"
                       type: PowerShell
                       inlineScript: |
-                        Write-Host "=== Variable Check ==="
-                        Write-Host "addressPrefixes: '$(addressPrefixes)'"
-                        Write-Host "dnsServers: '$(dnsServers)'"
-                        Write-Host "subnets: '$(subnets)'"
-                        Write-Host "virtualNetworkName: '$(virtualNetworkName)'"
-                        Write-Host "location: '$(location)'"
-                        Write-Host "environment: '$(environment)'"
-                        Write-Host "resourceLockEnabled: '$(resourceLockEnabled)'"
-                        Write-Host "======================"
+                        $subnetAddressPrefix = '${{ coalesce(parameters.subnetAddressPrefix, '$(subnetAddressPrefix)') }}'
+                        Write-Host "Subnet address prefix: $subnetAddressPrefix"
+                        
+                        if ([string]::IsNullOrWhiteSpace($subnetAddressPrefix)) {
+                          Write-Host "Warning: subnetAddressPrefix is empty. Using empty array for subnets."
+                          Write-Host "##vso[task.setvariable variable=subnets]'[]'"
+                        } else {
+                          # Construct subnets array from the addressPrefix parameter
+                          # Using the structure from variable file but with the provided addressPrefix
+                          $subnetsArray = @(
+                            @{
+                              name = "subnet1"
+                              addressPrefix = $subnetAddressPrefix
+                              serviceEndpoints = @()
+                              privateEndpointNetworkPolicies = "Enabled"
+                              privateLinkServiceNetworkPolicies = "Enabled"
+                            }
+                          )
+                          
+                          # Convert to JSON string (compressed, no extra whitespace)
+                          $jsonString = $subnetsArray | ConvertTo-Json -Compress -Depth 10
+                          Write-Host "Constructed subnets JSON: $jsonString"
+                          
+                          # Set as pipeline variable for token replacement
+                          Write-Host "##vso[task.setvariable variable=subnets]$jsonString"
+                        }
                   postDeployScriptsList:
                     - displayName: "Debug - Output transformed parameter file (runs on failure)"
                       type: PowerShell
