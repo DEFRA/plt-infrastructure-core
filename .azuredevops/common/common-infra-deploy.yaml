@@ -139,7 +139,7 @@ extends:
             deploymentBranches:
               - 'refs/heads/main'
             developmentEnvironment: true
-            privateAgentName: 'AZR-AIE-SND1'
+            privateAgentName: 'DEFRA-COMMON-UBUNTU-SSV3'
             ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
               keyVaultList:
                 - Name: ${{ parameters.keyVaultName }}

@@ -26,6 +26,7 @@ resources:
       type: github
       ref: refs/heads/ml/initial-structure
 
+trigger: none
 
 stages:
 
