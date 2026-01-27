@@ -135,11 +135,11 @@ extends:
         # deploy to all environments except snd1 & snd2 for service pipelines
         - ${{ if eq(parameters.includePlatformEnvs, True) }}:
           - name: snd1
-            serviceConnection: TODO
+            serviceConnection: AZR-AIE-SND1
             deploymentBranches:
               - 'refs/heads/main'
             developmentEnvironment: true
-            privateAgentName: 'TODO'
+            privateAgentName: 'AZR-AIE-SND1'
             ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
               keyVaultList:
                 - Name: ${{ parameters.keyVaultName }}
