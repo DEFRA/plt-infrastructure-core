@@ -29,6 +29,30 @@ parameters:
       - OpenAI - Infra  
       - OpenAI - Search Service
       - Rbac - Global Team Permissions
+  - name: subType
+    displayName: "Sub Type (3-4 characters, e.g., SSV5, PRD, DEV)"
+    type: string
+    default: ''
+  - name: svc
+    displayName: "Service code (3 characters, e.g., AIE, AAD)"
+    type: string
+    default: ''
+  - name: deploymentEnvInstance
+    displayName: "Deployment Environment instance number (1 digit, 0-9)"
+    type: string
+    default: ''
+  - name: regionCode
+    displayName: "Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)"
+    type: string
+    default: ''
+  - name: instanceNumber
+    displayName: "Instance number within the region (2 digits, 00-99)"
+    type: string
+    default: ''
+  - name: location
+    displayName: "Azure region where the resource group will be created (e.g., UK South)"
+    type: string
+    default: 'UK South'
 
 pr:
   branches:
@@ -115,6 +139,87 @@ extends:
         - ${{ if eq(variables.IsNetwork, true) }}:
           - name: network
             deployments:
+              - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true), eq(variables.IsNetworkNsg, true)) }}:
+                - name: create-virtual-network-resource-group
+                  type: 'script'
+                  scriptType: AzureCLI
+                  serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                  azureCLIScriptType: bash
+                  inlineScript: |
+                    set -e
+                    
+                    # Get parameters from pipeline variables or parameters
+                    subType="${{ coalesce(parameters.subType, '$(subType)') }}"
+                    svc="${{ coalesce(parameters.svc, '$(svc)') }}"
+                    role="INF"
+                    deploymentEnvInstance="${{ coalesce(parameters.deploymentEnvInstance, '$(deploymentEnvInstance)') }}"
+                    regionCode="${{ coalesce(parameters.regionCode, '$(regionCode)') }}"
+                    instanceNumber="${{ coalesce(parameters.instanceNumber, '$(instanceNumber)') }}"
+                    location="${{ coalesce(parameters.location, '$(location)') }}"
+                    if [ -z "$location" ]; then
+                      location="UK South"
+                    fi
+                    
+                    # Validate required parameters
+                    if [ -z "$subType" ] || [ -z "$svc" ] || [ -z "$deploymentEnvInstance" ] || [ -z "$regionCode" ] || [ -z "$instanceNumber" ]; then
+                      echo "Error: Missing required naming convention parameters"
+                      echo "subType: $subType"
+                      echo "svc: $svc"
+                      echo "deploymentEnvInstance: $deploymentEnvInstance"
+                      echo "regionCode: $regionCode"
+                      echo "instanceNumber: $instanceNumber"
+                      exit 1
+                    fi
+                    
+                    # Validate and format instance number
+                    instanceNumberInt=$((10#$instanceNumber))
+                    if [ $instanceNumberInt -lt 0 ] || [ $instanceNumberInt -gt 99 ]; then
+                      echo "Error: instanceNumber must be between 00 and 99"
+                      exit 1
+                    fi
+                    instanceNumberValidated=$(printf "%02d" $instanceNumberInt)
+                    
+                    # Build resource group name: <Sub Type><Svc><Role><RGP><Deployment Environment instance number><Region+Instance Number>
+                    regionAndInstance="${regionCode}${instanceNumberValidated}"
+                    resourceGroupName="${subType}${svc}${role}RGP${deploymentEnvInstance}${regionAndInstance}"
+                    
+                    echo "Creating resource group using naming convention: $resourceGroupName"
+                    echo "Parameters: subType=$subType, svc=$svc, role=$role, deploymentEnvInstance=$deploymentEnvInstance, regionCode=$regionCode, instanceNumber=$instanceNumberValidated"
+                    
+                    # Deploy resource group using Bicep template
+                    bicepFile="$(Pipeline.Workspace)/s/resources/resource-group/resource-group-with-rbac.bicep"
+                    deploymentName="rg-deploy-$(Build.BuildId)-$(Build.BuildNumber)"
+                    adGroupObjectId="11dc7728-d98c-481f-8020-65b067a36b8a"
+                    
+                    echo "Deploying resource group with RBAC using Bicep..."
+                    echo "Template: $bicepFile"
+                    echo "Deployment name: $deploymentName"
+                    
+                    # Deploy the Bicep template
+                    az deployment sub create \
+                      --name "$deploymentName" \
+                      --location "$location" \
+                      --template-file "$bicepFile" \
+                      --parameters \
+                        subType="$subType" \
+                        svc="$svc" \
+                        role="$role" \
+                        deploymentEnvInstance="$deploymentEnvInstance" \
+                        regionCode="$regionCode" \
+                        instanceNumber="$instanceNumberValidated" \
+                        location="$location" \
+                        adGroupObjectId="$adGroupObjectId"
+                    
+                    # Get deployment outputs
+                    resourceGroupNameOutput=$(az deployment sub show \
+                      --name "$deploymentName" \
+                      --query "properties.outputs.resourceGroupName.value" \
+                      --output tsv)
+                    
+                    echo "Resource group created successfully: $resourceGroupNameOutput"
+                    
+                    # Set pipeline variable for use in deployment
+                    echo "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput"
               - ${{ if eq(variables.IsNetworkRouteTable, true) }}:
                 - name: route-table
                   path: infra/common/network
