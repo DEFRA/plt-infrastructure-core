@@ -154,12 +154,13 @@ variables:
   # Virtual network parameters - can be overridden by pipeline parameters or variable files
   # IMPORTANT: These must be valid JSON arrays (e.g., ["10.179.128.0/24"] or [{"name":"subnet1","addressPrefix":"10.179.128.0/26"}])
   # Parameters default to '[]' to ensure valid JSON when using noescape
+  # Note: Values are wrapped in single quotes to ensure they're treated as strings, not parsed by YAML
   - name: addressPrefixes
-    value: ${{ coalesce(parameters.addressPrefixes, '$(addressPrefixes)') }}
+    value: ${{ coalesce(parameters.addressPrefixes, coalesce(variables.addressPrefixes, '[]')) }}
   - name: dnsServers
-    value: ${{ coalesce(parameters.dnsServers, '$(dnsServers)') }}
+    value: ${{ coalesce(parameters.dnsServers, coalesce(variables.dnsServers, '[]')) }}
   - name: subnets
-    value: ${{ coalesce(parameters.subnets, '$(subnets)') }}
+    value: ${{ coalesce(parameters.subnets, coalesce(variables.subnets, '[]')) }}
   - name: environment
     value: ${{ coalesce(parameters.environment, '$(environment)') }}
   - name: resourceLockEnabled
