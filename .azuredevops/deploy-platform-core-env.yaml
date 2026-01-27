@@ -147,6 +147,10 @@ variables:
   # For validation, use a placeholder value (will be overridden by script with actual resource group name)
   - name: virtualNetworkResourceGroup
     value: 'ValidationPlaceholderRG'
+  # virtualNetworkName will be set by the create-virtual-network-resource-group script deployment
+  # For token replacement, use a placeholder value (will be overridden by script with actual virtual network name)
+  - name: virtualNetworkName
+    value: 'ValidationPlaceholderVNet'
   # Virtual network parameters - can be overridden by pipeline parameters or variable files
   - name: addressPrefixes
     value: ${{ coalesce(parameters.addressPrefixes, '$(addressPrefixes)') }}
@@ -170,6 +174,7 @@ extends:
       **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    
       **/infra/core/env/open-ai/aad-groups/openaiaccessgroup.json
       **/infra/core/env/search-service/aad-groups/searchserviceaccessgroup.json
+      **/resources/network/vnet/virtual-network.parameters.json
     groupedDeployments:
         - ${{ if eq(variables.IsNetwork, true) }}:
           - name: network

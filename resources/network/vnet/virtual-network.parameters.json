@@ -6,13 +6,13 @@
       "value": "#{{ virtualNetworkName }}"
     },
     "addressPrefixes": {
-      "value": "#{{ addressPrefixes }}"
+      "value": #{{ noescape(addressPrefixes) }}
     },
     "dnsServers": {
-      "value": "#{{ dnsServers }}"
+      "value": #{{ noescape(dnsServers) }}
     },
     "subnets": {
-      "value": "#{{ subnets }}"
+      "value": #{{ noescape(subnets) }}
     },
     "location": {
       "value": "#{{ location }}"
