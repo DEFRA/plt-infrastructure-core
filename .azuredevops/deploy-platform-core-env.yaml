@@ -275,6 +275,30 @@ extends:
                   path: resources/network/vnet
                   parameterFilePath: resources/network/vnet
                   resourceGroupName: $(virtualNetworkResourceGroup)
+                  preDeployScriptsList:
+                    - displayName: "Debug - Output transformed parameter file"
+                      type: PowerShell
+                      inlineScript: |
+                        $transformedFile = "$(Build.SourcesDirectory)/self/resources/network/vnet/virtual-network.transformed.parameters.json"
+                        if (Test-Path $transformedFile) {
+                          Write-Host "=== Transformed Parameter File Contents ==="
+                          Get-Content $transformedFile | Write-Host
+                          Write-Host "=== End of Transformed Parameter File ==="
+                          
+                          # Try to parse as JSON to show any syntax errors
+                          try {
+                            $json = Get-Content $transformedFile -Raw | ConvertFrom-Json
+                            Write-Host "✓ JSON is valid"
+                          } catch {
+                            Write-Host "✗ JSON parsing error: $_"
+                          }
+                        } else {
+                          Write-Host "Transformed file not found at: $transformedFile"
+                          Write-Host "Looking for parameter files in: $(Build.SourcesDirectory)/self/resources/network/vnet/"
+                          Get-ChildItem "$(Build.SourcesDirectory)/self/resources/network/vnet/" -Filter "*.json" | ForEach-Object {
+                            Write-Host "Found: $($_.FullName)"
+                          }
+                        }
               - ${{ if eq(variables.IsNetworkFlowLogs, true) }}:
                 - name: virtual-network-flow-logs
                   path: infra/common/network
