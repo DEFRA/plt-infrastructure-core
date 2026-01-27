@@ -285,47 +285,30 @@ extends:
                         $subnetAddressPrefix = '${{ coalesce(parameters.subnetAddressPrefix, '$(subnetAddressPrefix)') }}'
                         Write-Host "Subnet address prefix parameter: $subnetAddressPrefix"
                         
-                        # Get the subnets structure from the variable file (defined in YAML format in core.yaml)
-                        # Azure DevOps may serialize it, so we need to handle it
-                        $subnetsFromVar = '$(subnets)'
-                        Write-Host "Subnets from variable file: $subnetsFromVar"
-                        
                         if ([string]::IsNullOrWhiteSpace($subnetAddressPrefix)) {
                           Write-Host "Warning: subnetAddressPrefix is empty. Using empty array for subnets."
                           Write-Host "##vso[task.setvariable variable=subnets]'[]'"
                         } else {
-                          $subnetsArray = $null
-                          
-                          # Try to parse the subnets variable (it might be serialized YAML or JSON)
-                          try {
-                            # Try parsing as JSON first
-                            $subnetsArray = $subnetsFromVar | ConvertFrom-Json -ErrorAction Stop
-                            Write-Host "Parsed subnets from variable as JSON"
-                          } catch {
-                            # If not JSON, try to construct from the YAML structure template
-                            # The structure is defined in core.yaml in YAML format for readability
-                            Write-Host "Constructing subnets from YAML structure template in core.yaml"
-                            $subnetsArray = @(
-                                @{
-                                    name = "subnet1"
-                                    addressPrefix = $subnetAddressPrefix
-                                    serviceEndpoints = @()
-                                    privateEndpointNetworkPolicies = "Enabled"
-                                    privateLinkServiceNetworkPolicies = "Enabled"
-                                }
-                            )
-                          }
-                          
-                          # Update addressPrefix in all subnets with the parameter value
-                          if ($subnetsArray -and $subnetsArray.Count -gt 0) {
-                              foreach ($subnet in $subnetsArray) {
-                                  $subnet.addressPrefix = $subnetAddressPrefix
+                          # Construct subnets array based on the YAML structure template in core.yaml
+                          # The structure is documented in core.yaml for readability:
+                          #   - name: subnet1
+                          #     addressPrefix: <from pipeline parameter>
+                          #     serviceEndpoints: []
+                          #     privateEndpointNetworkPolicies: Enabled
+                          #     privateLinkServiceNetworkPolicies: Enabled
+                          $subnetsArray = @(
+                              @{
+                                  name = "subnet1"
+                                  addressPrefix = $subnetAddressPrefix
+                                  serviceEndpoints = @()
+                                  privateEndpointNetworkPolicies = "Enabled"
+                                  privateLinkServiceNetworkPolicies = "Enabled"
                               }
-                          }
+                          )
                           
                           # Convert to JSON string (compressed, no extra whitespace)
                           $jsonString = $subnetsArray | ConvertTo-Json -Compress -Depth 10
-                          Write-Host "Converted subnets YAML structure to JSON: $jsonString"
+                          Write-Host "Constructed subnets from YAML template structure and converted to JSON: $jsonString"
                           
                           # Set as pipeline variable for token replacement
                           Write-Host "##vso[task.setvariable variable=subnets]$jsonString"
