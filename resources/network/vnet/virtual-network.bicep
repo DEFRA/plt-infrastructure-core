@@ -1,6 +1,11 @@
-@description('Required. The VNET Infra object as JSON string.')
-param vnet string
-var vnetObj = json(vnet)
+@description('Required. The name of the virtual network (derived from naming convention).')
+param name string
+
+@description('Required. Address prefixes for the virtual network (array of CIDR strings)')
+param addressPrefixes array
+
+@description('Optional. DNS servers for the virtual network (array of IP addresses)')
+param dnsServers array = []
 
 @description('Required. The subnets object.')
 param subnets array
@@ -10,13 +15,17 @@ param subnets array
 ])
 @description('Required. The Azure region where the resources will be deployed.')
 param location string
+
 @description('Required. Environment name.')
 param environment string
+
 @description('Required. Boolean (as string) to enable or disable resource lock. Accepts true/false/1/0/yes/no.')
 param resourceLockEnabled string
 var lockEnabled = contains(['true', '1', 'yes'], toLower(resourceLockEnabled))
+
 @description('Optional. Date in the format yyyy-MM-dd.')
 param createdDate string = utcNow('yyyy-MM-dd')
+
 @description('Optional. Date in the format yyyyMMdd-HHmmss.')
 param deploymentDate string = utcNow('yyyyMMdd-HHmmss')
 
@@ -31,13 +40,13 @@ var tags = union(loadJsonContent('../../default-tags.json'), commonTags)
 module virtualNetwork 'br/SharedDefraRegistry:network.virtual-network:0.4.2' = {
   name: 'virtual-network-${deploymentDate}'
   params: {
-    name: vnetObj.name
+    name: name
     location: location
     lock: lockEnabled ? 'CanNotDelete' : null
     tags: tags
     enableDefaultTelemetry: true
-    addressPrefixes: vnetObj.addressPrefixes
-    dnsServers: vnetObj.dnsServers
+    addressPrefixes: addressPrefixes
+    dnsServers: dnsServers
     subnets: subnets
   }
 }
