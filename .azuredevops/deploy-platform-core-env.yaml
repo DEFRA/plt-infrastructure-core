@@ -202,7 +202,8 @@ extends:
                     echo "Getting names from naming convention module..."
                     
                     # Get names from naming convention module (source of truth)
-                    namingConventionFile="$(Pipeline.Workspace)/s/resources/naming-convention/get-names.bicep"
+                    # Repo is checked out at .../s/self/ (self = plt-infrastructure-core)
+                    namingConventionFile="$(Pipeline.Workspace)/s/self/resources/naming-convention/get-names.bicep"
                     namingDeploymentName="get-names-$(Build.BuildId)-$(Build.BuildNumber)"
                     
                     # Create the deployment to get outputs (it's just a calculation, no resources created)
@@ -234,7 +235,7 @@ extends:
                     echo "Virtual network name from naming convention module: $virtualNetworkName"
                     
                     # Deploy resource group using Bicep template
-                    bicepFile="$(Pipeline.Workspace)/s/resources/resource-group/resource-group-with-rbac.bicep"
+                    bicepFile="$(Pipeline.Workspace)/s/self/resources/resource-group/resource-group-with-rbac.bicep"
                     deploymentName="rg-deploy-$(Build.BuildId)-$(Build.BuildNumber)"
                     adGroupObjectId="11dc7728-d98c-481f-8020-65b067a36b8a"
                     
