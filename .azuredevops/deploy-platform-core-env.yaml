@@ -172,7 +172,6 @@ extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
   parameters:
     projectName: $(projectName)
-    keyVaultName: $(ssvPlatformKeyVaultName)
     deployFromFeature: ${{ parameters.deployFromFeature }}
     filePathsForTransform: |
       **/core/env/app-configuration/config-data/config-data.json
