@@ -204,7 +204,9 @@ extends:
                     # Get names from naming convention module (source of truth)
                     # Repo is checked out at .../s/self/ (self = plt-infrastructure-core)
                     namingConventionFile="$(Pipeline.Workspace)/s/self/resources/naming-convention/get-names.bicep"
+                    # Azure deployment names allow only letters, digits, '-', '.', '_' (Build.BuildNumber can contain spaces)
                     namingDeploymentName="get-names-$(Build.BuildId)-$(Build.BuildNumber)"
+                    namingDeploymentName=$(echo "$namingDeploymentName" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]//g')
                     
                     # Create the deployment to get outputs (it's just a calculation, no resources created)
                     echo "Calling naming convention module to get resource names..."
@@ -237,6 +239,7 @@ extends:
                     # Deploy resource group using Bicep template
                     bicepFile="$(Pipeline.Workspace)/s/self/resources/resource-group/resource-group-with-rbac.bicep"
                     deploymentName="rg-deploy-$(Build.BuildId)-$(Build.BuildNumber)"
+                    deploymentName=$(echo "$deploymentName" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]//g')
                     adGroupObjectId="11dc7728-d98c-481f-8020-65b067a36b8a"
                     
                     echo "Deploying resource group with RBAC using Bicep..."
