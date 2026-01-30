@@ -105,6 +105,7 @@ extends:
                 scriptArguments: ${{ deployment.scriptArguments }}
                 parameterFilePath: ${{ deployment.parameterFilePath }} 
                 scriptRepo: ${{ deployment.scriptRepo }}
+                inlineScript: ${{ deployment.inlineScript }}
                 resourceName: ${{ deployment.resourceName }}
                 resourceGroupName: ${{ deployment.resourceGroupName }}
                 preDeployScriptsList: ${{ deployment.preDeployScriptsList }}
