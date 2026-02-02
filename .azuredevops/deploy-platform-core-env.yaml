@@ -270,7 +270,8 @@ extends:
                     echo "##vso[task.setvariable variable=virtualNetworkName]$virtualNetworkName"
               - ${{ if eq(variables.IsNetworkRouteTable, true) }}:
                 - name: route-table
-                  path: infra/common/network
+                  path: resources/network/route-table
+                  parameterFilePath: resources/network/route-table
                   resourceGroupName: $(virtualNetworkResourceGroup)
               - ${{ if eq(variables.IsNetworkNsg, true) }}:
                 - name: network-security-group
@@ -318,6 +319,15 @@ extends:
                           Write-Host "##vso[task.setvariable variable=subnets]$jsonString"
                         }
                   postDeployScriptsList:
+                    - displayName: "Link the VNet to Hub"
+                      scriptPath: scripts/pipeline/Trigger-VNetPeering.ps1
+                      type: PowerShell
+                      useSystemAccessToken: true
+                      scriptArguments: >
+                        -VirtualNetworkName $(virtualNetworkName)
+                        -SubscriptionName $(subscriptionName)
+                        -TenantId $(tenantId)
+                        -PeerToSec $false
                     - displayName: "Debug - Output transformed parameter file (runs on failure)"
                       type: PowerShell
                       inlineScript: |

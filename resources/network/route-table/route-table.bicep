@@ -10,8 +10,6 @@ param environment string
 @description('Required. Boolean (as string) to enable or disable resource lock. Accepts true/false/1/0/yes/no.')
 param resourceLockEnabled string
 var lockEnabled = contains(['true', '1', 'yes'], toLower(resourceLockEnabled))
-@description('Required. The Azure virtual network subnet IP range for Postgres DB')
-param postgresSubnetRange string
 @description('Optional. Date in the format yyyy-MM-dd.')
 param createdDate string = utcNow('yyyy-MM-dd')
 @description('Optional. Date in the format yyyyMMdd-HHmmss.')
