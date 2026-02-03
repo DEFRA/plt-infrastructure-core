@@ -247,12 +247,8 @@ extends:
                     echo "Virtual network name from naming convention module: $virtualNetworkName"
                     echo "Route table name from naming convention module: $routeTableName"
                     
-                    # Set routeTableName only when route table is selected (deployed with VNet in same template)
-                    if [ "$(IsNetworkRouteTable)" = "true" ]; then
-                      echo "##vso[task.setvariable variable=routeTableName]$routeTableName"
-                    else
-                      echo "##vso[task.setvariable variable=routeTableName]"
-                    fi
+                    # Set routeTableName for virtual-network deployment (RT deployed with VNet when both routeTableName and firewallVirtualApplianceIp are set)
+                    echo "##vso[task.setvariable variable=routeTableName]$routeTableName"
                     
                     # Deploy resource group using Bicep template
                     bicepFile="$(Pipeline.Workspace)/s/self/resources/resource-group/resource-group-with-rbac.bicep"
@@ -294,6 +290,24 @@ extends:
                   parameterFilePath: resources/network/vnet
                   resourceGroupName: $(virtualNetworkResourceGroup)
                   preDeployScriptsList:
+                    - displayName: "Inject route table params into parameter file for token replacement"
+                      type: PowerShell
+                      inlineScript: |
+                        # Pipeline variables may not be in variable files; inject route table params so RT deploys and links to subnet1
+                        $paramFile = "$(Build.SourcesDirectory)/self/resources/network/vnet/virtual-network.parameters.json"
+                        if (-not (Test-Path $paramFile)) {
+                          Write-Host "Parameter file not found: $paramFile"
+                          exit 0
+                        }
+                        $routeTableName = $env:ROUTETABLENAME
+                        $firewallIp = $env:FIREWALLVIRTUALAPPLIANCEIP
+                        if ([string]::IsNullOrWhiteSpace($routeTableName)) { $routeTableName = '$(routeTableName)' }
+                        if ([string]::IsNullOrWhiteSpace($firewallIp)) { $firewallIp = '$(firewallVirtualApplianceIp)' }
+                        $content = Get-Content $paramFile -Raw -Encoding UTF8
+                        $content = $content.Replace('#{{ routeTableName }}', $routeTableName)
+                        $content = $content.Replace('#{{ firewallVirtualApplianceIp }}', $firewallIp)
+                        Set-Content $paramFile -Value $content -Encoding UTF8 -NoNewline
+                        Write-Host "Injected routeTableName and firewallVirtualApplianceIp into parameter file"
                     - displayName: "Resolve network join group object ID"
                       type: AzurePowerShell
                       serviceConnectionVariableName: 'ssvServiceConnection'
