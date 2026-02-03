@@ -247,6 +247,13 @@ extends:
                     echo "Virtual network name from naming convention module: $virtualNetworkName"
                     echo "Route table name from naming convention module: $routeTableName"
                     
+                    # Set routeTableName only when route table is selected (deployed with VNet in same template)
+                    if [ "$(IsNetworkRouteTable)" = "true" ]; then
+                      echo "##vso[task.setvariable variable=routeTableName]$routeTableName"
+                    else
+                      echo "##vso[task.setvariable variable=routeTableName]"
+                    fi
+                    
                     # Deploy resource group using Bicep template
                     bicepFile="$(Pipeline.Workspace)/s/self/resources/resource-group/resource-group-with-rbac.bicep"
                     deploymentName="rg-deploy-$(Build.BuildId)-$(Build.BuildNumber)"
@@ -277,17 +284,11 @@ extends:
                     # Set pipeline variables for use in deployments
                     echo "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput"
                     echo "##vso[task.setvariable variable=virtualNetworkName]$virtualNetworkName"
-                    echo "##vso[task.setvariable variable=routeTableName]$routeTableName"
-              - ${{ if eq(variables.IsNetworkRouteTable, true) }}:
-                - name: route-table
-                  path: resources/network/route-table
-                  parameterFilePath: resources/network/route-table
-                  resourceGroupName: $(virtualNetworkResourceGroup)
               - ${{ if eq(variables.IsNetworkNsg, true) }}:
                 - name: network-security-group
                   path: infra/common/network
                   resourceGroupName: $(virtualNetworkResourceGroup)
-              - ${{ if eq(variables.IsNetworkVnet, true) }}:
+              - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true)) }}:
                 - name: virtual-network
                   path: resources/network/vnet
                   parameterFilePath: resources/network/vnet
@@ -329,22 +330,16 @@ extends:
                           #     serviceEndpoints: []
                           #     privateEndpointNetworkPolicies: Enabled
                           #     privateLinkServiceNetworkPolicies: Enabled
-                          #     routeTable: { id } when route table is deployed (assign to subnet1)
-                          $subnet1 = @{
-                              name = "subnet1"
-                              addressPrefix = $subnetAddressPrefix
-                              serviceEndpoints = @()
-                              privateEndpointNetworkPolicies = "Enabled"
-                              privateLinkServiceNetworkPolicies = "Enabled"
-                          }
-                          # Assign route table to subnet1 when route table was deployed (same RG; name has 01 suffix from route-table.bicep)
-                          $assignRouteTable = ('$(IsNetworkRouteTable)' -eq 'true') -and -not [string]::IsNullOrWhiteSpace('$(routeTableName)')
-                          if ($assignRouteTable) {
-                              $routeTableId = "/subscriptions/$(subscriptionId)/resourceGroups/$(virtualNetworkResourceGroup)/providers/Microsoft.Network/routeTables/$(routeTableName)01"
-                              $subnet1['routeTable'] = @{ id = $routeTableId }
-                              Write-Host "Assigning route table to subnet1: $routeTableId"
-                          }
-                          $subnetsArray = @($subnet1)
+                          # Route table is deployed with VNet and attached to subnet1 in virtual-network.bicep when routeTableName/firewallVirtualApplianceIp are set
+                          $subnetsArray = @(
+                              @{
+                                  name = "subnet1"
+                                  addressPrefix = $subnetAddressPrefix
+                                  serviceEndpoints = @()
+                                  privateEndpointNetworkPolicies = "Enabled"
+                                  privateLinkServiceNetworkPolicies = "Enabled"
+                              }
+                          )
                           
                           # Convert to JSON string (compressed). Use -InputObject so single-element array stays [ {...} ] not {...}
                           $jsonString = ConvertTo-Json -InputObject $subnetsArray -Compress -Depth 10

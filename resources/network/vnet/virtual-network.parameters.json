@@ -25,6 +25,12 @@
     },
     "networkJoinGroupObjectId": {
       "value": "#{{ networkJoinGroupObjectId }}"
+    },
+    "routeTableName": {
+      "value": "#{{ routeTableName }}"
+    },
+    "routeTableVirtualApplianceIp": {
+      "value": "#{{ firewallVirtualApplianceIp }}"
     }
   }
 }
