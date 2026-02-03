@@ -163,6 +163,9 @@ variables:
   # subnets will be constructed from subnetAddressPrefix by preDeployScriptsList
   - name: subnets
     value: '[]'  # Placeholder, will be set by script
+  # networkJoinGroupObjectId set by preDeployScript (Resolve network join group); empty = skip role assignment
+  - name: networkJoinGroupObjectId
+    value: ''
   - name: environment
     value: ${{ coalesce(parameters.environment, '$(environment)') }}
   - name: resourceLockEnabled
@@ -283,6 +286,24 @@ extends:
                   parameterFilePath: resources/network/vnet
                   resourceGroupName: $(virtualNetworkResourceGroup)
                   preDeployScriptsList:
+                    - displayName: "Resolve network join group object ID"
+                      type: AzurePowerShell
+                      serviceConnectionVariableName: 'ssvServiceConnection'
+                      inlineScript: |
+                        $groupName = '${{ coalesce(parameters.networkJoinGroupName, '$(networkJoinGroupName)') }}'
+                        if ([string]::IsNullOrWhiteSpace($groupName)) {
+                          Write-Host "networkJoinGroupName not set; skipping network join role assignment."
+                          Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]"
+                        } else {
+                          try {
+                            $group = Get-AzADGroup -DisplayName $groupName
+                            Write-Host "Resolved group '$groupName' to object ID: $($group.Id)"
+                            Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]$($group.Id)"
+                          } catch {
+                            Write-Host "##vso[task.logissue type=warning]Could not resolve AD group '$groupName': $_"
+                            Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]"
+                          }
+                        }
                     - displayName: "Convert subnets YAML to JSON and replace addressPrefix"
                       type: PowerShell
                       inlineScript: |

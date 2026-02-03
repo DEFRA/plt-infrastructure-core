@@ -22,6 +22,9 @@
     },
     "resourceLockEnabled": {
       "value": "#{{ resourceLockEnabled }}"
+    },
+    "networkJoinGroupObjectId": {
+      "value": "#{{ networkJoinGroupObjectId }}"
     }
   }
 }

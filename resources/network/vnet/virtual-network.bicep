@@ -29,6 +29,9 @@ param createdDate string = utcNow('yyyy-MM-dd')
 @description('Optional. Date in the format yyyyMMdd-HHmmss.')
 param deploymentDate string = utcNow('yyyyMMdd-HHmmss')
 
+@description('Optional. AD Group Object ID to grant Network Contributor (network join) on the VNet. Resolved from networkJoinGroupName in config.')
+param networkJoinGroupObjectId string = ''
+
 var commonTags = {
   Location: location
   CreatedDate: createdDate
@@ -49,4 +52,20 @@ module virtualNetwork 'br/SharedDefraRegistry:network.virtual-network:0.4.2' = {
     dnsServers: dnsServers
     subnets: subnets
   }
+}
+
+// Grant Network Contributor (network join) on the VNet to the configured group
+var networkContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4d97b98b-1d4f-4787-a291-c67834d212e7')
+resource vnetExisting 'Microsoft.Network/virtualNetworks@2022-07-01' existing = {
+  name: name
+}
+resource networkJoinRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(networkJoinGroupObjectId)) {
+  scope: vnetExisting
+  name: guid(vnetExisting.id, networkJoinGroupObjectId, networkContributorRoleId)
+  properties: {
+    roleDefinitionId: networkContributorRoleId
+    principalId: networkJoinGroupObjectId
+    principalType: 'Group'
+  }
+  dependsOn: [ virtualNetwork ]
 }
