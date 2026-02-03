@@ -151,6 +151,8 @@ variables:
   # For token replacement, use a placeholder value (will be overridden by script with actual virtual network name)
   - name: virtualNetworkName
     value: 'ValidationPlaceholderVNet'
+  - name: routeTableName
+    value: ''
   # Virtual network parameters - can be overridden by pipeline parameters or variable files
   # IMPORTANT: These must be valid JSON arrays (e.g., ["10.179.128.0/24"] or [{"name":"subnet1","addressPrefix":"10.179.128.0/26"}])
   # Parameters default to '[]' to ensure valid JSON when using noescape
@@ -236,14 +238,19 @@ extends:
                       --query "properties.outputs.virtualNetworkName.value" \
                       --output tsv)
                     
+                    routeTableName=$(az deployment sub show \
+                      --name "$namingDeploymentName" \
+                      --query "properties.outputs.routeTableName.value" \
+                      --output tsv)
+                    
                     echo "Resource group name from naming convention module: $resourceGroupName"
                     echo "Virtual network name from naming convention module: $virtualNetworkName"
+                    echo "Route table name from naming convention module: $routeTableName"
                     
                     # Deploy resource group using Bicep template
                     bicepFile="$(Pipeline.Workspace)/s/self/resources/resource-group/resource-group-with-rbac.bicep"
                     deploymentName="rg-deploy-$(Build.BuildId)-$(Build.BuildNumber)"
                     deploymentName=$(echo "$deploymentName" | tr ' ' '-' | sed 's/[^a-zA-Z0-9._-]//g')
-                    adGroupObjectId="11dc7728-d98c-481f-8020-65b067a36b8a"
                     
                     echo "Deploying resource group with RBAC using Bicep..."
                     echo "Template: $bicepFile"
@@ -257,8 +264,7 @@ extends:
                       --parameters \
                         name="$resourceGroupName" \
                         location="$location" \
-                        subType="$subType" \
-                        adGroupObjectId="$adGroupObjectId"
+                        subType="$subType"
                     
                     # Get deployment outputs
                     resourceGroupNameOutput=$(az deployment sub show \
@@ -271,6 +277,7 @@ extends:
                     # Set pipeline variables for use in deployments
                     echo "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput"
                     echo "##vso[task.setvariable variable=virtualNetworkName]$virtualNetworkName"
+                    echo "##vso[task.setvariable variable=routeTableName]$routeTableName"
               - ${{ if eq(variables.IsNetworkRouteTable, true) }}:
                 - name: route-table
                   path: resources/network/route-table
@@ -322,15 +329,22 @@ extends:
                           #     serviceEndpoints: []
                           #     privateEndpointNetworkPolicies: Enabled
                           #     privateLinkServiceNetworkPolicies: Enabled
-                          $subnetsArray = @(
-                              @{
-                                  name = "subnet1"
-                                  addressPrefix = $subnetAddressPrefix
-                                  serviceEndpoints = @()
-                                  privateEndpointNetworkPolicies = "Enabled"
-                                  privateLinkServiceNetworkPolicies = "Enabled"
-                              }
-                          )
+                          #     routeTable: { id } when route table is deployed (assign to subnet1)
+                          $subnet1 = @{
+                              name = "subnet1"
+                              addressPrefix = $subnetAddressPrefix
+                              serviceEndpoints = @()
+                              privateEndpointNetworkPolicies = "Enabled"
+                              privateLinkServiceNetworkPolicies = "Enabled"
+                          }
+                          # Assign route table to subnet1 when route table was deployed (same RG; name has 01 suffix from route-table.bicep)
+                          $assignRouteTable = ('$(IsNetworkRouteTable)' -eq 'true') -and -not [string]::IsNullOrWhiteSpace('$(routeTableName)')
+                          if ($assignRouteTable) {
+                              $routeTableId = "/subscriptions/$(subscriptionId)/resourceGroups/$(virtualNetworkResourceGroup)/providers/Microsoft.Network/routeTables/$(routeTableName)01"
+                              $subnet1['routeTable'] = @{ id = $routeTableId }
+                              Write-Host "Assigning route table to subnet1: $routeTableId"
+                          }
+                          $subnetsArray = @($subnet1)
                           
                           # Convert to JSON string (compressed). Use -InputObject so single-element array stays [ {...} ] not {...}
                           $jsonString = ConvertTo-Json -InputObject $subnetsArray -Compress -Depth 10

@@ -1,4 +1,4 @@
-@description('Required. The Route Table object.')
+@description('Required. The Route Table object. name from naming-convention module (without instance); instance 01 is appended in this template.')
 param routeTable object
 @allowed([
   'UKSouth'
@@ -23,10 +23,13 @@ var commonTags = {
 }
 var tags = union(loadJsonContent('../../default-tags.json'), commonTags)
 
+// Instance number 01 hard coded (naming module omits it for route table)
+var routeTableName = '${routeTable.name}01'
+
 module route 'br/SharedDefraRegistry:network.route-table:0.4.2' = {
   name: 'route-table-${deploymentDate}'
   params: {
-    name: routeTable.name
+    name: routeTableName
     lock: lockEnabled ? 'CanNotDelete' : null
     location: location
     tags: tags
@@ -51,23 +54,3 @@ module route 'br/SharedDefraRegistry:network.route-table:0.4.2' = {
   }
 }
 
-module route_aks 'br/SharedDefraRegistry:network.route-table:0.4.2' = {
-  name: 'route-table-aks-${deploymentDate}'
-  params: {
-    name: '${routeTable.name}-AKS'
-    lock: lockEnabled ? 'CanNotDelete' : null
-    location: location
-    tags: tags
-    disableBgpRoutePropagation: true
-    routes: [
-      {
-        name: 'Default'
-        properties: {
-          addressPrefix: '0.0.0.0/0'
-          nextHopType: 'VirtualAppliance'
-          nextHopIpAddress: routeTable.virtualApplicanceIp
-        }
-      }
-    ]
-  }
-}

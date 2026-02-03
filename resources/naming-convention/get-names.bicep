@@ -48,6 +48,24 @@ module virtualNetworkNaming './naming-convention.bicep' = {
   }
 }
 
+// Get route table name using naming convention (instance number omitted here; hard coded in route-table.bicep)
+module routeTableNaming './naming-convention.bicep' = {
+  name: 'rt-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'NET'
+    resType: 'RT'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: '00' // placeholder; stripped below so route-table.bicep can append 01
+    toLower: false
+  }
+}
+// Name without instance number (last 2 chars); route-table.bicep appends instance 01
+var routeTableNameWithoutInstance = substring(routeTableNaming.outputs.name, 0, length(routeTableNaming.outputs.name) - 2)
+
 // Outputs
 output resourceGroupName string = resourceGroupNaming.outputs.name
 output virtualNetworkName string = virtualNetworkNaming.outputs.name
+output routeTableName string = routeTableNameWithoutInstance

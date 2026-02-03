@@ -54,8 +54,8 @@ module virtualNetwork 'br/SharedDefraRegistry:network.virtual-network:0.4.2' = {
   }
 }
 
-// Grant Network Contributor (network join) on the VNet to the configured group
-var networkContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4d97b98b-1d4f-4787-a291-c67834d212e7')
+// Grant Ability to join the VNet to the configured group
+var networkContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7eabc9a4-85f7-4f71-b8ab-75daaccc1033')
 resource vnetExisting 'Microsoft.Network/virtualNetworks@2022-07-01' existing = {
   name: name
 }

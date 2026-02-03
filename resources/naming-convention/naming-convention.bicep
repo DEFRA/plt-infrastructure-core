@@ -106,6 +106,7 @@ param role string
   'LW'    // Log Analytics Workspace
   'NSG'   // Network Security Group
   'RGP'   // Resource Group. Resource Group naming requires some judgment, it's selected function code should be roughly conformant to what resources are stored within it, eg a Resource Group containing DNS Zones would likely have a function code of "DNS". For any Resource Group likely to contain heterogenous resource types, "INF" should be used.
+  'RT'    // Route Table
   'STO'   // Storage Account
   'SUB'   // Azure Subnet
   'VNT'   // Virtual Network
