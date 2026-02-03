@@ -103,6 +103,20 @@ module virtualNetwork 'br/SharedDefraRegistry:network.virtual-network:0.4.2' = {
   dependsOn: deployRouteTable ? [ routeTable ] : []
 }
 
+// Associate route table with subnet1 (shared VNet module may not forward routeTable on subnets)
+resource subnet1RouteTableAssociation 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = if (deployRouteTable && length(subnets) > 0) {
+  parent: vnetExisting
+  name: 'subnet1'
+  properties: {
+    addressPrefix: subnets[0].addressPrefix
+    privateEndpointNetworkPolicies: subnets[0].privateEndpointNetworkPolicies ?? 'Enabled'
+    privateLinkServiceNetworkPolicies: subnets[0].privateLinkServiceNetworkPolicies ?? 'Enabled'
+    serviceEndpoints: subnets[0].serviceEndpoints ?? []
+    routeTable: { id: routeTableId }
+  }
+  dependsOn: [ virtualNetwork, routeTable ]
+}
+
 // Grant Ability to join the VNet to the configured group
 var networkContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7eabc9a4-85f7-4f71-b8ab-75daaccc1033')
 resource vnetExisting 'Microsoft.Network/virtualNetworks@2022-07-01' existing = {
