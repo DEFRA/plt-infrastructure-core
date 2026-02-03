@@ -39,7 +39,7 @@ Set-StrictMode -Version 3.0
 [string]$functionName = $MyInvocation.MyCommand
 [datetime]$startTime = [datetime]::UtcNow
 
-[int]$exitCode = -1
+[int]$exitCode = 1
 [bool]$setHostExitCode = (Test-Path -Path ENV:TF_BUILD) -and ($ENV:TF_BUILD -eq "true")
 [bool]$enableDebug = (Test-Path -Path ENV:SYSTEM_DEBUG) -and ($ENV:SYSTEM_DEBUG -eq "true")
 
@@ -70,14 +70,23 @@ try {
         throw "SYSTEM_ACCESSTOKEN is not set. Ensure the step has useSystemAccessToken: true."
     }
 
-    [object]$runPipelineRequestBody = @{
-        templateParameters = @{
-            VirtualNetworkName = $VirtualNetworkName
-            Subscription       = $SubscriptionName
-            Tenant             = $TenantId
-            PeerToSec          = $PeerToSec.ToString()
-        }
-    } | ConvertTo-Json
+    # Use exact JSON shape expected by ADO Pipelines API (camelCase keys)
+    $runPipelineRequestBody = @'
+{
+    "templateParameters": {
+        "VirtualNetworkName": "",
+        "Subscription": "",
+        "Tenant": "",
+        "PeerToSec": ""
+    }
+}
+'@
+    $bodyObj = $runPipelineRequestBody | ConvertFrom-Json
+    $bodyObj.templateParameters.VirtualNetworkName = $VirtualNetworkName
+    $bodyObj.templateParameters.Subscription = $SubscriptionName
+    $bodyObj.templateParameters.Tenant = $TenantId
+    $bodyObj.templateParameters.PeerToSec = $PeerToSec.ToString()
+    $runPipelineRequestBody = $bodyObj | ConvertTo-Json -Compress
 
     $organisationUri = $env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI.TrimEnd('/') + '/'
     $projectName = "CCoE-Infrastructure"
@@ -118,9 +127,11 @@ try {
     } while ($true)
 }
 catch {
-    $exitCode = -2
-    Write-Error $_.Exception.ToString()
-    throw $_.Exception
+    $exitCode = 1
+    $errMsg = $_.Exception.Message
+    if ($_.Exception.InnerException) { $errMsg += " | " + $_.Exception.InnerException.Message }
+    Write-Host "##vso[task.logissue type=error]$errMsg"
+    Write-Host "##vso[task.logissue type=error]$($_.Exception.ToString())"
 }
 finally {
     [DateTime]$endTime = [DateTime]::UtcNow

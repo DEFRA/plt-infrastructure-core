@@ -321,7 +321,8 @@ extends:
                   postDeployScriptsList:
                     - displayName: "Link the VNet to Hub"
                       scriptPath: scripts/pipeline/Trigger-VNetPeering.ps1
-                      type: PowerShell
+                      type: AzurePowerShell
+                      serviceConnectionVariableName: 'ssvServiceConnection'
                       useSystemAccessToken: true
                       scriptArguments: >
                         -VirtualNetworkName $(virtualNetworkName)
