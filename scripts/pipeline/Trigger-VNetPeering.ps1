@@ -19,7 +19,7 @@ Optional. Peer to sec vnet. Defaults to false
 
 .EXAMPLE
 .\Trigger-VNetPeering.ps1 -VirtualNetworkName <private Dns Zone Name> -SubscriptionName <dns zone subscription name> -TenantId <dns zone tenant id> -PeerToSec <Peer to sec vnet    >
-#> 
+#>
 
 [CmdletBinding()]
 param(
