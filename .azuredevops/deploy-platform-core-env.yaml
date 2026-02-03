@@ -290,7 +290,7 @@ extends:
                       type: AzurePowerShell
                       serviceConnectionVariableName: 'ssvServiceConnection'
                       inlineScript: |
-                        $groupName = '${{ coalesce(parameters.networkJoinGroupName, '$(networkJoinGroupName)') }}'
+                        $groupName = '$(networkJoinGroupName)'
                         if ([string]::IsNullOrWhiteSpace($groupName)) {
                           Write-Host "networkJoinGroupName not set; skipping network join role assignment."
                           Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]"
