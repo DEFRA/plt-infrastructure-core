@@ -162,7 +162,20 @@ variables:
     value: ${{ coalesce(parameters.dnsServers, '$(dnsServers)') }}
   - name: subnetAddressPrefix
     value: ${{ coalesce(parameters.subnetAddressPrefix, '$(subnetAddressPrefix)') }}
-  # subnets will be constructed from subnetAddressPrefix by preDeployScriptsList
+  # Per-subnet address prefixes (subnet1..subnet6); from config when not overridden by parameters
+  - name: subnet1AddressPrefix
+    value: ${{ coalesce(parameters.subnet1AddressPrefix, '$(subnet1AddressPrefix)') }}
+  - name: subnet2AddressPrefix
+    value: ${{ coalesce(parameters.subnet2AddressPrefix, '$(subnet2AddressPrefix)') }}
+  - name: subnet3AddressPrefix
+    value: ${{ coalesce(parameters.subnet3AddressPrefix, '$(subnet3AddressPrefix)') }}
+  - name: subnet4AddressPrefix
+    value: ${{ coalesce(parameters.subnet4AddressPrefix, '$(subnet4AddressPrefix)') }}
+  - name: subnet5AddressPrefix
+    value: ${{ coalesce(parameters.subnet5AddressPrefix, '$(subnet5AddressPrefix)') }}
+  - name: subnet6AddressPrefix
+    value: ${{ coalesce(parameters.subnet6AddressPrefix, '$(subnet6AddressPrefix)') }}
+  # subnets will be constructed from subnet1AddressPrefix..subnet6AddressPrefix by preDeployScriptsList
   - name: subnets
     value: '[]'  # Placeholder, will be set by script
   # networkJoinGroupObjectId set by preDeployScript (Resolve network join group); empty = skip role assignment
@@ -326,40 +339,36 @@ extends:
                             Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]"
                           }
                         }
-                    - displayName: "Convert subnets YAML to JSON and replace addressPrefix"
+                    - displayName: "Convert subnets to JSON (6 subnets, sizes from config)"
                       type: PowerShell
                       inlineScript: |
-                        $subnetAddressPrefix = '${{ coalesce(parameters.subnetAddressPrefix, '$(subnetAddressPrefix)') }}'
-                        Write-Host "Subnet address prefix parameter: $subnetAddressPrefix"
-                        
-                        if ([string]::IsNullOrWhiteSpace($subnetAddressPrefix)) {
-                          Write-Host "Warning: subnetAddressPrefix is empty. Using empty array for subnets."
-                          $emptyArray = '[]'
-                          Write-Host "##vso[task.setvariable variable=subnets]$emptyArray"
+                        # Per-subnet address prefixes from config (subnet1AddressPrefix..subnet6AddressPrefix); fallback to subnetAddressPrefix for subnet1
+                        $subnet1 = '${{ coalesce(parameters.subnet1AddressPrefix, '$(subnet1AddressPrefix)') }}'
+                        if ([string]::IsNullOrWhiteSpace($subnet1)) { $subnet1 = '${{ coalesce(parameters.subnetAddressPrefix, '$(subnetAddressPrefix)') }}' }
+                        $subnet2 = '${{ coalesce(parameters.subnet2AddressPrefix, '$(subnet2AddressPrefix)') }}'
+                        $subnet3 = '${{ coalesce(parameters.subnet3AddressPrefix, '$(subnet3AddressPrefix)') }}'
+                        $subnet4 = '${{ coalesce(parameters.subnet4AddressPrefix, '$(subnet4AddressPrefix)') }}'
+                        $subnet5 = '${{ coalesce(parameters.subnet5AddressPrefix, '$(subnet5AddressPrefix)') }}'
+                        $subnet6 = '${{ coalesce(parameters.subnet6AddressPrefix, '$(subnet6AddressPrefix)') }}'
+                        $prefixes = @($subnet1, $subnet2, $subnet3, $subnet4, $subnet5, $subnet6)
+                        $subnetsList = New-Object System.Collections.ArrayList
+                        for ($i = 0; $i -lt $prefixes.Count; $i++) {
+                          if ([string]::IsNullOrWhiteSpace($prefixes[$i])) { continue }
+                          $subnetsList.Add(@{
+                            name = "subnet$($i + 1)"
+                            addressPrefix = $prefixes[$i]
+                            serviceEndpoints = @()
+                            privateEndpointNetworkPolicies = "Enabled"
+                            privateLinkServiceNetworkPolicies = "Enabled"
+                          }) | Out-Null
+                        }
+                        if ($subnetsList.Count -eq 0) {
+                          Write-Host "Warning: no subnet address prefixes set. Using empty array."
+                          Write-Host "##vso[task.setvariable variable=subnets][]"
                         } else {
-                          # Construct subnets array based on the YAML structure template in core.yaml
-                          # The structure is documented in core.yaml for readability:
-                          #   - name: subnet1
-                          #     addressPrefix: <from pipeline parameter>
-                          #     serviceEndpoints: []
-                          #     privateEndpointNetworkPolicies: Enabled
-                          #     privateLinkServiceNetworkPolicies: Enabled
-                          # Route table is deployed with VNet and attached to subnet1 in virtual-network.bicep when routeTableName/firewallVirtualApplianceIp are set
-                          $subnetsArray = @(
-                              @{
-                                  name = "subnet1"
-                                  addressPrefix = $subnetAddressPrefix
-                                  serviceEndpoints = @()
-                                  privateEndpointNetworkPolicies = "Enabled"
-                                  privateLinkServiceNetworkPolicies = "Enabled"
-                              }
-                          )
-                          
-                          # Convert to JSON string (compressed). Use -InputObject so single-element array stays [ {...} ] not {...}
+                          $subnetsArray = $subnetsList.ToArray()
                           $jsonString = ConvertTo-Json -InputObject $subnetsArray -Compress -Depth 10
-                          Write-Host "Constructed subnets from YAML template structure and converted to JSON: $jsonString"
-                          
-                          # Set as pipeline variable for token replacement
+                          Write-Host "Constructed $($subnetsArray.Count) subnets with configurable sizes"
                           Write-Host "##vso[task.setvariable variable=subnets]$jsonString"
                         }
                   postDeployScriptsList:

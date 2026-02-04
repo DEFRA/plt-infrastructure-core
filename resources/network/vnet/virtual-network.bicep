@@ -103,19 +103,20 @@ module virtualNetwork 'br/SharedDefraRegistry:network.virtual-network:0.4.2' = {
   dependsOn: deployRouteTable ? [ routeTable ] : []
 }
 
-// Associate route table with subnet1 (shared VNet module may not forward routeTable on subnets)
-resource subnet1RouteTableAssociation 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = if (deployRouteTable && length(subnets) > 0) {
+// Associate route table with all subnets (shared VNet module may not forward routeTable on subnets)
+var subnetIndicesForRouteTable = deployRouteTable ? range(0, length(subnets)) : []
+resource subnetRouteTableAssociations 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = [for i in subnetIndicesForRouteTable: {
   parent: vnetExisting
-  name: 'subnet1'
+  name: subnets[i].name
   properties: {
-    addressPrefix: subnets[0].addressPrefix
-    privateEndpointNetworkPolicies: subnets[0].privateEndpointNetworkPolicies ?? 'Enabled'
-    privateLinkServiceNetworkPolicies: subnets[0].privateLinkServiceNetworkPolicies ?? 'Enabled'
-    serviceEndpoints: subnets[0].serviceEndpoints ?? []
+    addressPrefix: subnets[i].addressPrefix
+    privateEndpointNetworkPolicies: subnets[i].privateEndpointNetworkPolicies ?? 'Enabled'
+    privateLinkServiceNetworkPolicies: subnets[i].privateLinkServiceNetworkPolicies ?? 'Enabled'
+    serviceEndpoints: subnets[i].serviceEndpoints ?? []
     routeTable: { id: routeTableId }
   }
   dependsOn: [ virtualNetwork, routeTable ]
-}
+}]
 
 // Grant Ability to join the VNet to the configured group
 var networkContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7eabc9a4-85f7-4f71-b8ab-75daaccc1033')
