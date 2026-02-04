@@ -65,6 +65,30 @@ parameters:
     displayName: "Address prefix for the subnet (CIDR string, e.g., 10.179.128.0/26)"
     type: string
     default: ''
+  - name: subnet1AddressPrefix
+    displayName: "Address prefix for subnet1 (CIDR, e.g. 10.179.128.0/27)"
+    type: string
+    default: ''
+  - name: subnet2AddressPrefix
+    displayName: "Address prefix for subnet2 (CIDR)"
+    type: string
+    default: ''
+  - name: subnet3AddressPrefix
+    displayName: "Address prefix for subnet3 (CIDR)"
+    type: string
+    default: ''
+  - name: subnet4AddressPrefix
+    displayName: "Address prefix for subnet4 (CIDR)"
+    type: string
+    default: ''
+  - name: subnet5AddressPrefix
+    displayName: "Address prefix for subnet5 (CIDR)"
+    type: string
+    default: ''
+  - name: subnet6AddressPrefix
+    displayName: "Address prefix for subnet6 (CIDR)"
+    type: string
+    default: ''
   - name: environment
     displayName: "Environment name"
     type: string
