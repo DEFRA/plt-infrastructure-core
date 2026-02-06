@@ -333,16 +333,28 @@ extends:
                         $subnet5 = '$(subnet5AddressPrefix)'
                         $subnet6 = '$(subnet6AddressPrefix)'
                         $prefixes = @($subnet1, $subnet2, $subnet3, $subnet4, $subnet5, $subnet6)
+                        $delegationsVars = @('$(subnet1Delegations)', '$(subnet2Delegations)', '$(subnet3Delegations)', '$(subnet4Delegations)', '$(subnet5Delegations)', '$(subnet6Delegations)')
                         $subnetsList = New-Object System.Collections.ArrayList
                         for ($i = 0; $i -lt $prefixes.Count; $i++) {
                           if ([string]::IsNullOrWhiteSpace($prefixes[$i])) { continue }
-                          $subnetsList.Add(@{
+                          $subnetObj = @{
                             name = "subnet$($i + 1)"
                             addressPrefix = $prefixes[$i]
                             serviceEndpoints = @()
                             privateEndpointNetworkPolicies = "Enabled"
                             privateLinkServiceNetworkPolicies = "Enabled"
-                          }) | Out-Null
+                          }
+                          $delegationsJson = $delegationsVars[$i]
+                          if (-not [string]::IsNullOrWhiteSpace($delegationsJson)) {
+                            try {
+                              $delegations = $delegationsJson | ConvertFrom-Json
+                              if ($delegations) {
+                                if ($delegations -isnot [Array]) { $delegations = @($delegations) }
+                                if ($delegations.Count -gt 0) { $subnetObj['delegations'] = $delegations }
+                              }
+                            } catch { Write-Host "Warning: subnet$($i+1) delegations invalid JSON, skipping: $_" }
+                          }
+                          $subnetsList.Add($subnetObj) | Out-Null
                         }
                         if ($subnetsList.Count -eq 0) {
                           Write-Host "Warning: no subnet address prefixes set. Using empty array."
