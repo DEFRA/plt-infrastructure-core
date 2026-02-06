@@ -105,7 +105,7 @@ module virtualNetwork 'br/SharedDefraRegistry:network.virtual-network:0.4.2' = {
 
 // Associate route table with all subnets (shared VNet module may not forward routeTable on subnets)
 var subnetIndicesForRouteTable = deployRouteTable ? range(0, length(subnets)) : []
-// Delegations: pass through from subnet object when present and non-empty
+// Delegations: only from subnet object (config); no default – must be passed when required
 resource subnetRouteTableAssociations 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = [for i in subnetIndicesForRouteTable: {
   parent: vnetExisting
   name: subnets[i].name
