@@ -107,7 +107,6 @@ variables:
     value: ${{ or(eq(variables.IsAll,true), eq(parameters.deployResources, 'Rbac - Global Team Permissions')) }}
   - name: globalReadGroupObjectId
     value: 'dummyValueToPreventWarningInAzureDevOps'
-  # applicationID from pipeline param used to select config; normalized to upper in setup
   - name: applicationID
     value: ${{ parameters.applicationID }}
   # virtualNetworkResourceGroup will be set by the create-virtual-network-resource-group script deployment
@@ -166,9 +165,9 @@ extends:
                   azureCLIScriptType: bash
                   inlineScript: |
                     set -e
-                    # All values from config (variable files): subType, applicationID, deploymentEnvInstance, regionCode, instanceNumber, location
+                    # All values from config (variable files); svc must be uppercase for naming-convention @allowed
                     subType="$(subType)"
-                    svc="$(applicationID)"
+                    svc=$(echo "$(applicationID)" | tr '[:lower:]' '[:upper:]')
                     deploymentEnvInstance="$(deploymentEnvInstance)"
                     regionCode="$(regionCode)"
                     instanceNumber="$(instanceNumber)"

@@ -58,12 +58,13 @@ module routeTableNaming './naming-convention.bicep' = {
     resType: 'RT'
     deploymentEnvInstance: deploymentEnvInstance
     regionCode: regionCode
-    instanceNumber: '00' // placeholder; stripped below so route-table.bicep can append 01
+    instanceNumber: '00' // placeholder; stripped below so route-table.bicep can append as appropriate
     toLower: false
   }
 }
 // Name without instance number (last 2 chars); route-table.bicep appends instance 01
-var routeTableNameWithoutInstance = substring(routeTableNaming.outputs.name, 0, length(routeTableNaming.outputs.name) - 2)
+var nameLen = length(routeTableNaming.outputs.name)
+var routeTableNameWithoutInstance = nameLen > 2 ? substring(routeTableNaming.outputs.name, 0, nameLen - 2) : routeTableNaming.outputs.name
 
 // Outputs
 output resourceGroupName string = resourceGroupNaming.outputs.name
