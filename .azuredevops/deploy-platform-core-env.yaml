@@ -61,34 +61,6 @@ parameters:
     displayName: "DNS servers for the virtual network (JSON array of IP addresses)"
     type: string
     default: '[]'
-  - name: subnetAddressPrefix
-    displayName: "Address prefix for the subnet (CIDR string, e.g., 10.179.128.0/26)"
-    type: string
-    default: ''
-  - name: subnet1AddressPrefix
-    displayName: "Address prefix for subnet1 (CIDR, e.g. 10.179.128.0/27)"
-    type: string
-    default: ''
-  - name: subnet2AddressPrefix
-    displayName: "Address prefix for subnet2 (CIDR)"
-    type: string
-    default: ''
-  - name: subnet3AddressPrefix
-    displayName: "Address prefix for subnet3 (CIDR)"
-    type: string
-    default: ''
-  - name: subnet4AddressPrefix
-    displayName: "Address prefix for subnet4 (CIDR)"
-    type: string
-    default: ''
-  - name: subnet5AddressPrefix
-    displayName: "Address prefix for subnet5 (CIDR)"
-    type: string
-    default: ''
-  - name: subnet6AddressPrefix
-    displayName: "Address prefix for subnet6 (CIDR)"
-    type: string
-    default: ''
   - name: environment
     displayName: "Environment name"
     type: string
@@ -184,22 +156,8 @@ variables:
     value: ${{ coalesce(parameters.addressPrefixes, '$(addressPrefixes)') }}
   - name: dnsServers
     value: ${{ coalesce(parameters.dnsServers, '$(dnsServers)') }}
-  - name: subnetAddressPrefix
-    value: ${{ coalesce(parameters.subnetAddressPrefix, '$(subnetAddressPrefix)') }}
-  # Per-subnet address prefixes (subnet1..subnet6); from config when not overridden by parameters
-  - name: subnet1AddressPrefix
-    value: ${{ coalesce(parameters.subnet1AddressPrefix, '$(subnet1AddressPrefix)') }}
-  - name: subnet2AddressPrefix
-    value: ${{ coalesce(parameters.subnet2AddressPrefix, '$(subnet2AddressPrefix)') }}
-  - name: subnet3AddressPrefix
-    value: ${{ coalesce(parameters.subnet3AddressPrefix, '$(subnet3AddressPrefix)') }}
-  - name: subnet4AddressPrefix
-    value: ${{ coalesce(parameters.subnet4AddressPrefix, '$(subnet4AddressPrefix)') }}
-  - name: subnet5AddressPrefix
-    value: ${{ coalesce(parameters.subnet5AddressPrefix, '$(subnet5AddressPrefix)') }}
-  - name: subnet6AddressPrefix
-    value: ${{ coalesce(parameters.subnet6AddressPrefix, '$(subnet6AddressPrefix)') }}
-  # subnets will be constructed from subnet1AddressPrefix..subnet6AddressPrefix by preDeployScriptsList
+  # Subnet address prefixes (subnetAddressPrefix, subnet1AddressPrefix..subnet6AddressPrefix) read from config only
+  # subnets will be constructed from config by preDeployScriptsList
   - name: subnets
     value: '[]'  # Placeholder, will be set by script
   # networkJoinGroupObjectId set by preDeployScript (Resolve network join group); empty = skip role assignment
@@ -366,14 +324,14 @@ extends:
                     - displayName: "Convert subnets to JSON (6 subnets, sizes from config)"
                       type: PowerShell
                       inlineScript: |
-                        # Per-subnet address prefixes from config (subnet1AddressPrefix..subnet6AddressPrefix); fallback to subnetAddressPrefix for subnet1
-                        $subnet1 = '${{ coalesce(parameters.subnet1AddressPrefix, '$(subnet1AddressPrefix)') }}'
-                        if ([string]::IsNullOrWhiteSpace($subnet1)) { $subnet1 = '${{ coalesce(parameters.subnetAddressPrefix, '$(subnetAddressPrefix)') }}' }
-                        $subnet2 = '${{ coalesce(parameters.subnet2AddressPrefix, '$(subnet2AddressPrefix)') }}'
-                        $subnet3 = '${{ coalesce(parameters.subnet3AddressPrefix, '$(subnet3AddressPrefix)') }}'
-                        $subnet4 = '${{ coalesce(parameters.subnet4AddressPrefix, '$(subnet4AddressPrefix)') }}'
-                        $subnet5 = '${{ coalesce(parameters.subnet5AddressPrefix, '$(subnet5AddressPrefix)') }}'
-                        $subnet6 = '${{ coalesce(parameters.subnet6AddressPrefix, '$(subnet6AddressPrefix)') }}'
+                        # Per-subnet address prefixes from config only (subnet1AddressPrefix..subnet6AddressPrefix); fallback to subnetAddressPrefix for subnet1
+                        $subnet1 = '$(subnet1AddressPrefix)'
+                        if ([string]::IsNullOrWhiteSpace($subnet1)) { $subnet1 = '$(subnetAddressPrefix)' }
+                        $subnet2 = '$(subnet2AddressPrefix)'
+                        $subnet3 = '$(subnet3AddressPrefix)'
+                        $subnet4 = '$(subnet4AddressPrefix)'
+                        $subnet5 = '$(subnet5AddressPrefix)'
+                        $subnet6 = '$(subnet6AddressPrefix)'
                         $prefixes = @($subnet1, $subnet2, $subnet3, $subnet4, $subnet5, $subnet6)
                         $subnetsList = New-Object System.Collections.ArrayList
                         for ($i = 0; $i -lt $prefixes.Count; $i++) {
