@@ -16,8 +16,8 @@ param subnets array
 @description('Required. The Azure region where the resources will be deployed.')
 param location string
 
-@description('Required. Environment name.')
-param environment string
+@description('Required. Sub type (e.g. SND, PRD).')
+param subType string
 
 @description('Required. Boolean (as string) to enable or disable resource lock. Accepts true/false/1/0/yes/no.')
 param resourceLockEnabled string
@@ -41,7 +41,7 @@ param routeTableVirtualApplianceIp string = ''
 var commonTags = {
   Location: location
   CreatedDate: createdDate
-  Environment: environment
+  Environment: subType
   Purpose: 'ADP-VIRTUAL-NETWORK'
 }
 var tags = union(loadJsonContent('../../default-tags.json'), commonTags)
@@ -49,7 +49,7 @@ var tags = union(loadJsonContent('../../default-tags.json'), commonTags)
 // Deploy route table in same deployment as VNet when both routeTableName and routeTableVirtualApplianceIp are provided
 var deployRouteTable = !empty(routeTableName) && !empty(routeTableVirtualApplianceIp)
 var routeTableResourceName = '${routeTableName}01'
-var routeTableTags = union(loadJsonContent('../../default-tags.json'), { Location: location, CreatedDate: createdDate, Environment: environment, Purpose: 'ADP-ROUTE-TABLE' })
+var routeTableTags = union(loadJsonContent('../../default-tags.json'), { Location: location, CreatedDate: createdDate, Environment: subType, Purpose: 'ADP-ROUTE-TABLE' })
 
 module routeTable 'br/SharedDefraRegistry:network.route-table:0.4.2' = if (deployRouteTable) {
   name: 'route-table-${deploymentDate}'

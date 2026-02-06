@@ -16,9 +16,9 @@
               "subnetPrivateEndpoints": "#{{ networkResourceNamePrefix }}#{{ nc_resource_subnet }}#{{ nc_instance_regionid }}98"
             }
         },
-        "environment": {
-            "value": "#{{ environment }}"
-        },
+"subType": {
+            "value": "#{{ subType }}"
+          },
         "location": {
             "value": "#{{ location }}"
         },

@@ -8,7 +8,7 @@ param openAi = {
 }
 
 param location = '#{{ location }}'
-param environment = '#{{ environment }}'
+param subType = '#{{ subType }}'
 param managedIdentityName = '#{{ infraResourceNamePrefix }}#{{ nc_resource_managedidentity }}#{{ nc_instance_regionid }}01-open-ai'
 
 param openAiUserGroupId = '#{{ openAiUserGroupId }}'

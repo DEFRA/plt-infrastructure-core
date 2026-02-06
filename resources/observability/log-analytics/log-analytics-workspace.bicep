@@ -4,8 +4,8 @@ param logAnalytics object
 @description('Optional. The Azure region where the resources will be deployed.')
 param location string = resourceGroup().location
 
-@description('Required. Environment name.')
-param environment string
+@description('Required. Sub type (e.g. SND, PRD).')
+param subType string
 
 @description('Required. Boolean value to enable or disable resource lock.')
 param resourceLockEnabled bool
@@ -19,7 +19,7 @@ param createdDate string = utcNow('yyyy-MM-dd')
 var customTags = {
   Location: location
   CreatedDate: createdDate
-  Environment: environment
+  Environment: subType
   Name: logAnalytics.name
   Purpose: 'Log Analytics Workspace'
   Tier: 'Shared'

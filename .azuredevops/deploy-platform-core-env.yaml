@@ -29,46 +29,14 @@ parameters:
       - OpenAI - Infra  
       - OpenAI - Search Service
       - Rbac - Global Team Permissions
-  - name: subType
-    displayName: "Sub Type (3-4 characters, e.g., SSV5, PRD, DEV)"
+  - name: applicationID
+    displayName: "Application ID (config folder name, e.g. aie)"
     type: string
-    default: ''
-  - name: svc
-    displayName: "Service code (3 characters, e.g., AIE, AAD)"
+    default: 'aie'
+  - name: instance
+    displayName: "Instance (config folder name, e.g. 01)"
     type: string
-    default: ''
-  - name: deploymentEnvInstance
-    displayName: "Deployment Environment instance number (1 digit, 0-9)"
-    type: string
-    default: ''
-  - name: regionCode
-    displayName: "Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)"
-    type: string
-    default: ''
-  - name: instanceNumber
-    displayName: "Instance number within the region (2 digits, 00-99)"
-    type: string
-    default: ''
-  - name: location
-    displayName: "Azure region where the resource group will be created (e.g., UK South)"
-    type: string
-    default: 'UK South'
-  - name: addressPrefixes
-    displayName: "Address prefixes for the virtual network (JSON array of CIDR strings)"
-    type: string
-    default: '[]'
-  - name: dnsServers
-    displayName: "DNS servers for the virtual network (JSON array of IP addresses)"
-    type: string
-    default: '[]'
-  - name: environment
-    displayName: "Environment name"
-    type: string
-    default: ''
-  - name: resourceLockEnabled
-    displayName: "Enable resource lock (true/false)"
-    type: string
-    default: 'false'
+    default: '01'
 
 pr:
   branches:
@@ -139,6 +107,9 @@ variables:
     value: ${{ or(eq(variables.IsAll,true), eq(parameters.deployResources, 'Rbac - Global Team Permissions')) }}
   - name: globalReadGroupObjectId
     value: 'dummyValueToPreventWarningInAzureDevOps'
+  # applicationID from pipeline param (svc) used to select config; normalized to upper in setup
+  - name: applicationID
+    value: ${{ parameters.svc }}
   # virtualNetworkResourceGroup will be set by the create-virtual-network-resource-group script deployment
   # For validation, use a placeholder value (will be overridden by script with actual resource group name)
   - name: virtualNetworkResourceGroup
@@ -149,38 +120,43 @@ variables:
     value: 'ValidationPlaceholderVNet'
   - name: routeTableName
     value: ''
-  # Virtual network parameters - can be overridden by pipeline parameters or variable files
-  # IMPORTANT: These must be valid JSON arrays (e.g., ["10.179.128.0/24"] or [{"name":"subnet1","addressPrefix":"10.179.128.0/26"}])
-  # Parameters default to '[]' to ensure valid JSON when using noescape
-  - name: addressPrefixes
-    value: ${{ coalesce(parameters.addressPrefixes, '$(addressPrefixes)') }}
-  - name: dnsServers
-    value: ${{ coalesce(parameters.dnsServers, '$(dnsServers)') }}
-  # Subnet address prefixes (subnetAddressPrefix, subnet1AddressPrefix..subnet6AddressPrefix) read from config only
-  # subnets will be constructed from config by preDeployScriptsList
+  # addressPrefixes, dnsServers, environment, resourceLockEnabled, location, subType, deploymentEnvInstance, regionCode, instanceNumber come from config (variable files)
+  # subnets built from config by preDeployScriptsList (subnet1AddressPrefix..subnet6AddressPrefix, subnet1Delegations..)
   - name: subnets
-    value: '[]'  # Placeholder, will be set by script
-  # networkJoinGroupObjectId set by preDeployScript (Resolve network join group); empty = skip role assignment
+    value: '[]'
   - name: networkJoinGroupObjectId
     value: ''
-  - name: environment
-    value: ${{ coalesce(parameters.environment, '$(environment)') }}
-  - name: resourceLockEnabled
-    value: ${{ coalesce(parameters.resourceLockEnabled, '$(resourceLockEnabled)') }}
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
   parameters:
     projectName: $(projectName)
     deployFromFeature: ${{ parameters.deployFromFeature }}
+    applicationID: ${{ parameters.applicationID }}
+    instance: ${{ parameters.instance }}
     filePathsForTransform: |
       **/core/env/app-configuration/config-data/config-data.json
       **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    
       **/infra/core/env/open-ai/aad-groups/openaiaccessgroup.json
       **/infra/core/env/search-service/aad-groups/searchserviceaccessgroup.json
     groupedDeployments:
+        - name: setup
+          deployments:
+              - name: variable-setup
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: bash
+                inlineScript: |
+                  appId="$(applicationID)"
+                  applicationIDUpper=$(echo "$appId" | tr '[:lower:]' '[:upper:]')
+                  applicationIDLower=$(echo "$appId" | tr '[:upper:]' '[:lower:]')
+                  echo "##vso[task.setvariable variable=applicationID]$applicationIDUpper"
+                  echo "##vso[task.setvariable variable=applicationIDLower]$applicationIDLower"
+                  echo "Normalized applicationID to $applicationIDUpper, applicationIDLower to $applicationIDLower"
         - ${{ if eq(variables.IsNetwork, true) }}:
           - name: network
+            dependsOnGroupedDeployments:
+              - setup
             deployments:
               - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true), eq(variables.IsNetworkNsg, true)) }}:
                 - name: create-virtual-network-resource-group
@@ -190,16 +166,14 @@ extends:
                   azureCLIScriptType: bash
                   inlineScript: |
                     set -e
-                    
-                    # Get parameters from pipeline variables or parameters
-                    subType="${{ coalesce(parameters.subType, '$(subType)') }}"
-                    svc="${{ coalesce(parameters.svc, '$(svc)') }}"
-                    deploymentEnvInstance="${{ coalesce(parameters.deploymentEnvInstance, '$(deploymentEnvInstance)') }}"
-                    regionCode="${{ coalesce(parameters.regionCode, '$(regionCode)') }}"
-                    instanceNumber="${{ coalesce(parameters.instanceNumber, '$(instanceNumber)') }}"
-                    location="${{ coalesce(parameters.location, '$(location)') }}"
-                    
-                    echo "Getting names from naming convention module..."
+                    # All values from config (variable files): subType, applicationID, deploymentEnvInstance, regionCode, instanceNumber, location
+                    subType="$(subType)"
+                    svc="$(applicationID)"
+                    deploymentEnvInstance="$(deploymentEnvInstance)"
+                    regionCode="$(regionCode)"
+                    instanceNumber="$(instanceNumber)"
+                    location="$(location)"
+                    echo "Getting names from naming convention module (config-driven)..."
                     
                     # Get names from naming convention module (source of truth)
                     # Repo is checked out at .../s/self/ (self = plt-infrastructure-core)

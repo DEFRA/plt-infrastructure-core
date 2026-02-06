@@ -18,8 +18,8 @@ param resourceLockEnabled bool
 ])
 @description('Required. The Azure region where the resources will be deployed.')
 param location string
-@description('Required. Environment name.')
-param environment string
+@description('Required. Sub type (e.g. SND, PRD).')
+param subType string
 @description('Optional. Date in the format yyyy-MM-dd.')
 param createdDate string = utcNow('yyyy-MM-dd')
 @description('Optional. Date in the format yyyyMMdd-HHmmss.')
@@ -29,7 +29,7 @@ var customTags = {
   Name: openAi.name
   Location: location
   CreatedDate: createdDate
-  Environment: environment
+  Environment: subType
   Purpose: 'ADP OPEN AI'
 }
 

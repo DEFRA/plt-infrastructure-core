@@ -7,8 +7,8 @@ param storageAccount object
 @description('Optional. Location for all resources.')
 param location string = resourceGroup().location
 
-@description('Required. Environment name.')
-param environment string
+@description('Required. Sub type (e.g. SND, PRD).')
+param subType string
 
 @allowed([
   'Storage'
@@ -32,7 +32,7 @@ param createdDate string = utcNow('yyyy-MM-dd')
 var customTags = {
   Location: location
   CreatedDate: createdDate
-  Environment: environment
+  Environment: subType
 }
 
 var defaultTags = union(json(loadTextContent('../../../common/default-tags.json')), customTags)

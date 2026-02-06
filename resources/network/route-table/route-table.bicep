@@ -5,8 +5,8 @@ param routeTable object
 ])
 @description('Required. The Azure region where the resources will be deployed.')
 param location string
-@description('Required. Environment name.')
-param environment string
+@description('Required. Sub type (e.g. SND, PRD).')
+param subType string
 @description('Required. Boolean (as string) to enable or disable resource lock. Accepts true/false/1/0/yes/no.')
 param resourceLockEnabled string
 var lockEnabled = contains(['true', '1', 'yes'], toLower(resourceLockEnabled))
@@ -18,7 +18,7 @@ param deploymentDate string = utcNow('yyyyMMdd-HHmmss')
 var commonTags = {
   Location: location
   CreatedDate: createdDate
-  Environment: environment
+  Environment: subType
   Purpose: 'ADP-ROUTE-TABLE'
 }
 var tags = union(loadJsonContent('../../default-tags.json'), commonTags)

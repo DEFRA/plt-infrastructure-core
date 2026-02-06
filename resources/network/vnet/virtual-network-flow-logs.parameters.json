@@ -23,8 +23,8 @@
     "location": {
       "value": "#{{ location }}"
     },
-    "environment": {
-      "value": "#{{ environment }}"
+    "subType": {
+      "value": "#{{ subType }}"
     },
     "servicesResourceGroup": {
       "value": "#{{ servicesResourceGroup }}"

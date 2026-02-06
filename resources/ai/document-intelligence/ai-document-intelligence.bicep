@@ -10,8 +10,8 @@ param location string = resourceGroup().location
 @description('Optional. Restrict outbound network access.')
 param restrictOutboundNetworkAccess bool = false
 
-@description('Required. Environment name.')
-param environment string
+@description('Required. Sub type (e.g. SND, PRD).')
+param subType string
 
 @description('Optional. Date in the format yyyyMMdd-HHmmss.')
 param deploymentDate string = utcNow('yyyyMMdd-HHmmss')
@@ -25,7 +25,7 @@ param privateDnsZone object
 var customTags = {
   Location: location
   CreatedDate: createdDate
-  Environment: environment
+  Environment: subType
 }
 
 var defaultTags = union(json(loadTextContent('../../../common/default-tags.json')), customTags)

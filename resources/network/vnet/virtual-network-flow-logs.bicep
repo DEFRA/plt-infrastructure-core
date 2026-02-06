@@ -6,8 +6,8 @@ param flowLogs object
 param storageAccount object
 @description('Required. The Azure region where the resources will be deployed.')
 param location string
-@description('Required. Environment name.')
-param environment string
+@description('Required. Sub type (e.g. SND, PRD).')
+param subType string
 @description('Optional. Date in the format yyyy-MM-dd.')
 param createdDate string = utcNow('yyyy-MM-dd')
 @description('Optional. Resource group for flow log storage account.')
@@ -17,7 +17,7 @@ param servicesResourceGroup string
 var commonTags = {
   Location: location
   CreatedDate: createdDate
-  Environment: environment
+  Environment: subType
   Purpose: 'ADP-VIRTUAL-NETWORK'
 }
 var tags = union(loadJsonContent('../default-tags.json'), commonTags)
