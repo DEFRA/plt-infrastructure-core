@@ -107,9 +107,9 @@ variables:
     value: ${{ or(eq(variables.IsAll,true), eq(parameters.deployResources, 'Rbac - Global Team Permissions')) }}
   - name: globalReadGroupObjectId
     value: 'dummyValueToPreventWarningInAzureDevOps'
-  # applicationID from pipeline param (svc) used to select config; normalized to upper in setup
+  # applicationID from pipeline param used to select config; normalized to upper in setup
   - name: applicationID
-    value: ${{ parameters.svc }}
+    value: ${{ parameters.applicationID }}
   # virtualNetworkResourceGroup will be set by the create-virtual-network-resource-group script deployment
   # For validation, use a placeholder value (will be overridden by script with actual resource group name)
   - name: virtualNetworkResourceGroup
