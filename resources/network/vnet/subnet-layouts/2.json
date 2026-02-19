@@ -1,0 +1,26 @@
+[
+  {
+    "name": "subnet1",
+    "addressPrefix": "#{{ subnet1AddressPrefix }}",
+    "serviceEndpoints": [],
+    "privateEndpointNetworkPolicies": "Enabled",
+    "privateLinkServiceNetworkPolicies": "Enabled",
+    "delegations": [{"name": "aciDelegation", "properties": {"serviceName": "Microsoft.ContainerInstance/containerGroups"}}]
+  },
+  {
+    "name": "subnet2",
+    "addressPrefix": "#{{ subnet2AddressPrefix }}",
+    "serviceEndpoints": [],
+    "privateEndpointNetworkPolicies": "Enabled",
+    "privateLinkServiceNetworkPolicies": "Enabled",
+    "delegations": []
+  },
+  {
+    "name": "subnet3",
+    "addressPrefix": "#{{ subnet3AddressPrefix }}",
+    "serviceEndpoints": [],
+    "privateEndpointNetworkPolicies": "Enabled",
+    "privateLinkServiceNetworkPolicies": "Enabled",
+    "delegations": []
+  }
+]

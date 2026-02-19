@@ -1,0 +1,50 @@
+[
+  {
+    "name": "subnet1",
+    "addressPrefix": "#{{ subnet1AddressPrefix }}",
+    "serviceEndpoints": [],
+    "privateEndpointNetworkPolicies": "Enabled",
+    "privateLinkServiceNetworkPolicies": "Enabled",
+    "delegations": [{"name": "aciDelegation", "properties": {"serviceName": "Microsoft.ContainerInstance/containerGroups"}}]
+  },
+  {
+    "name": "subnet2",
+    "addressPrefix": "#{{ subnet2AddressPrefix }}",
+    "serviceEndpoints": [],
+    "privateEndpointNetworkPolicies": "Enabled",
+    "privateLinkServiceNetworkPolicies": "Enabled",
+    "delegations": []
+  },
+  {
+    "name": "subnet3",
+    "addressPrefix": "#{{ subnet3AddressPrefix }}",
+    "serviceEndpoints": [],
+    "privateEndpointNetworkPolicies": "Enabled",
+    "privateLinkServiceNetworkPolicies": "Enabled",
+    "delegations": []
+  },
+  {
+    "name": "subnet4",
+    "addressPrefix": "#{{ subnet4AddressPrefix }}",
+    "serviceEndpoints": [],
+    "privateEndpointNetworkPolicies": "Enabled",
+    "privateLinkServiceNetworkPolicies": "Enabled",
+    "delegations": []
+  },
+  {
+    "name": "subnet5",
+    "addressPrefix": "#{{ subnet5AddressPrefix }}",
+    "serviceEndpoints": [],
+    "privateEndpointNetworkPolicies": "Enabled",
+    "privateLinkServiceNetworkPolicies": "Enabled",
+    "delegations": []
+  },
+  {
+    "name": "subnet6",
+    "addressPrefix": "#{{ subnet6AddressPrefix }}",
+    "serviceEndpoints": [],
+    "privateEndpointNetworkPolicies": "Enabled",
+    "privateLinkServiceNetworkPolicies": "Enabled",
+    "delegations": []
+  }
+]

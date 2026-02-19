@@ -120,7 +120,7 @@ variables:
   - name: routeTableName
     value: ''
   # addressPrefixes, dnsServers, environment, resourceLockEnabled, location, subType, deploymentEnvInstance, regionCode, instanceNumber come from config (variable files)
-  # subnets built from config by preDeployScriptsList (subnet1AddressPrefix..subnet6AddressPrefix, subnet1Delegations..)
+  # subnets: from layout in filePathsForTransform (framework token replacement); preDeploy reads transformed layout and sets this
   - name: subnets
     value: '[]'
   - name: networkJoinGroupObjectId
@@ -138,6 +138,7 @@ extends:
       **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    
       **/infra/core/env/open-ai/aad-groups/openaiaccessgroup.json
       **/infra/core/env/search-service/aad-groups/searchserviceaccessgroup.json
+      **/resources/network/vnet/subnet-layouts/*.json
     groupedDeployments:
         - name: setup
           deployments:
@@ -294,50 +295,17 @@ extends:
                             Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]"
                           }
                         }
-                    - displayName: "Convert subnets to JSON (6 subnets, sizes from config)"
+                    - displayName: "Set subnets from layout (layout already tokenised by framework)"
                       type: PowerShell
                       inlineScript: |
-                        # Per-subnet address prefixes from config only (subnet1AddressPrefix..subnet6AddressPrefix); fallback to subnetAddressPrefix for subnet1
-                        $subnet1 = '$(subnet1AddressPrefix)'
-                        if ([string]::IsNullOrWhiteSpace($subnet1)) { $subnet1 = '$(subnetAddressPrefix)' }
-                        $subnet2 = '$(subnet2AddressPrefix)'
-                        $subnet3 = '$(subnet3AddressPrefix)'
-                        $subnet4 = '$(subnet4AddressPrefix)'
-                        $subnet5 = '$(subnet5AddressPrefix)'
-                        $subnet6 = '$(subnet6AddressPrefix)'
-                        $prefixes = @($subnet1, $subnet2, $subnet3, $subnet4, $subnet5, $subnet6)
-                        $delegationsVars = @('$(subnet1Delegations)', '$(subnet2Delegations)', '$(subnet3Delegations)', '$(subnet4Delegations)', '$(subnet5Delegations)', '$(subnet6Delegations)')
-                        $subnetsList = New-Object System.Collections.ArrayList
-                        for ($i = 0; $i -lt $prefixes.Count; $i++) {
-                          if ([string]::IsNullOrWhiteSpace($prefixes[$i])) { continue }
-                          $subnetObj = @{
-                            name = "subnet$($i + 1)"
-                            addressPrefix = $prefixes[$i]
-                            serviceEndpoints = @()
-                            privateEndpointNetworkPolicies = "Enabled"
-                            privateLinkServiceNetworkPolicies = "Enabled"
-                          }
-                          $delegationsJson = $delegationsVars[$i]
-                          if (-not [string]::IsNullOrWhiteSpace($delegationsJson)) {
-                            try {
-                              $delegations = $delegationsJson | ConvertFrom-Json
-                              if ($delegations) {
-                                if ($delegations -isnot [Array]) { $delegations = @($delegations) }
-                                if ($delegations.Count -gt 0) { $subnetObj['delegations'] = $delegations }
-                              }
-                            } catch { Write-Host "Warning: subnet$($i+1) delegations invalid JSON, skipping: $_" }
-                          }
-                          $subnetsList.Add($subnetObj) | Out-Null
-                        }
-                        if ($subnetsList.Count -eq 0) {
-                          Write-Host "Warning: no subnet address prefixes set. Using empty array."
-                          Write-Host "##vso[task.setvariable variable=subnets][]"
-                        } else {
-                          $subnetsArray = $subnetsList.ToArray()
-                          $jsonString = ConvertTo-Json -InputObject $subnetsArray -Compress -Depth 10
-                          Write-Host "Constructed $($subnetsArray.Count) subnets with configurable sizes"
-                          Write-Host "##vso[task.setvariable variable=subnets]$jsonString"
-                        }
+                        $layoutPath = "$(Build.SourcesDirectory)/self/resources/network/vnet/subnet-layouts/$(subnetLayout).json"
+                        if (-not (Test-Path $layoutPath)) { Write-Error "Subnet layout not found: $layoutPath"; exit 1 }
+                        $content = Get-Content $layoutPath -Raw -Encoding UTF8
+                        $subnets = $content | ConvertFrom-Json
+                        $valid = @($subnets | Where-Object { -not [string]::IsNullOrWhiteSpace($_.addressPrefix) })
+                        $json = if ($valid.Count -eq 0) { '[]' } else { ($valid | ConvertTo-Json -Compress -Depth 10) }
+                        Write-Host "##vso[task.setvariable variable=subnets]$json"
+                        Write-Host "Set subnets from layout $(subnetLayout) ($($valid.Count) subnets)"
                   postDeployScriptsList:
                     - displayName: "Link the VNet to Hub"
                       scriptPath: scripts/pipeline/Trigger-VNetPeering.ps1
