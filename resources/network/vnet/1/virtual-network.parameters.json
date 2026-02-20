@@ -1,0 +1,96 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "value": "#{{ virtualNetworkName }}"
+    },
+    "addressPrefixes": {
+      "value": #{{ noescape(addressPrefixes) }}
+    },
+    "dnsServers": {
+      "value": #{{ noescape(dnsServers) }}
+    },
+    "subnets": {
+      "value": [
+        {
+          "name": "subnet1",
+          "addressPrefix": "#{{ subnet1AddressPrefix }}",
+          "serviceEndpoints": [],
+          "privateEndpointNetworkPolicies": "Enabled",
+          "privateLinkServiceNetworkPolicies": "Enabled",
+          "delegations": [
+            {
+              "name": "aciDelegation",
+              "properties": { "serviceName": "Microsoft.ContainerInstance/containerGroups" }
+            }
+          ],
+          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+        },
+        {
+          "name": "subnet2",
+          "addressPrefix": "#{{ subnet2AddressPrefix }}",
+          "serviceEndpoints": [],
+          "privateEndpointNetworkPolicies": "Enabled",
+          "privateLinkServiceNetworkPolicies": "Enabled",
+          "delegations": [],
+          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+        },
+        {
+          "name": "subnet3",
+          "addressPrefix": "#{{ subnet3AddressPrefix }}",
+          "serviceEndpoints": [],
+          "privateEndpointNetworkPolicies": "Enabled",
+          "privateLinkServiceNetworkPolicies": "Enabled",
+          "delegations": [],
+          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+        },
+        {
+          "name": "subnet4",
+          "addressPrefix": "#{{ subnet4AddressPrefix }}",
+          "serviceEndpoints": [],
+          "privateEndpointNetworkPolicies": "Enabled",
+          "privateLinkServiceNetworkPolicies": "Enabled",
+          "delegations": [],
+          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+        },
+        {
+          "name": "subnet5",
+          "addressPrefix": "#{{ subnet5AddressPrefix }}",
+          "serviceEndpoints": [],
+          "privateEndpointNetworkPolicies": "Enabled",
+          "privateLinkServiceNetworkPolicies": "Enabled",
+          "delegations": [],
+          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+        },
+        {
+          "name": "subnet6",
+          "addressPrefix": "#{{ subnet6AddressPrefix }}",
+          "serviceEndpoints": [],
+          "privateEndpointNetworkPolicies": "Enabled",
+          "privateLinkServiceNetworkPolicies": "Enabled",
+          "delegations": [],
+          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+        }
+      ]
+    },
+    "location": {
+      "value": "#{{ location }}"
+    },
+    "subType": {
+      "value": "#{{ subType }}"
+    },
+    "resourceLockEnabled": {
+      "value": "#{{ resourceLockEnabled }}"
+    },
+    "networkJoinGroupObjectId": {
+      "value": "#{{ networkJoinGroupObjectId }}"
+    },
+    "routeTableName": {
+      "value": "#{{ routeTableName }}"
+    },
+    "routeTableVirtualApplianceIp": {
+      "value": "#{{ firewallVirtualApplianceIp }}"
+    }
+  }
+}

@@ -103,10 +103,10 @@ module virtualNetwork 'br/SharedDefraRegistry:network.virtual-network:0.4.2' = {
   dependsOn: deployRouteTable ? [ routeTable ] : []
 }
 
-// Associate route table with all subnets (shared VNet module may not forward routeTable on subnets)
-var subnetIndicesForRouteTable = deployRouteTable ? range(0, length(subnets)) : []
-// Delegations: only from subnet object (config); no default – must be passed when required
-resource subnetRouteTableAssociations 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = [for i in subnetIndicesForRouteTable: {
+// Apply each subnet from JSON (including routeTable when defined inline); batchSize(1) to avoid Azure 429
+var subnetDelegations = [for i in range(0, length(subnets)): contains(subnets[i], 'delegations') && length(subnets[i].delegations) > 0 ? subnets[i].delegations : []]
+@sys.batchSize(1)
+resource subnetAssociations 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = [for i in range(0, length(subnets)): {
   parent: vnetExisting
   name: subnets[i].name
   properties: {
@@ -114,10 +114,10 @@ resource subnetRouteTableAssociations 'Microsoft.Network/virtualNetworks/subnets
     privateEndpointNetworkPolicies: subnets[i].privateEndpointNetworkPolicies ?? 'Enabled'
     privateLinkServiceNetworkPolicies: subnets[i].privateLinkServiceNetworkPolicies ?? 'Enabled'
     serviceEndpoints: subnets[i].serviceEndpoints ?? []
-    routeTable: { id: routeTableId }
-    delegations: contains(subnets[i], 'delegations') && length(subnets[i].delegations) > 0 ? subnets[i].delegations : []
+    routeTable: contains(subnets[i], 'routeTable') && subnets[i].routeTable != null ? subnets[i].routeTable : null
+    delegations: subnetDelegations[i]
   }
-  dependsOn: [ virtualNetwork, routeTable ]
+  dependsOn: deployRouteTable ? [ virtualNetwork, routeTable ] : [ virtualNetwork ]
 }]
 
 // Grant Ability to join the VNet to the configured group

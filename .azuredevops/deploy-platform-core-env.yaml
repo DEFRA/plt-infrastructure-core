@@ -138,7 +138,6 @@ extends:
       **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    
       **/infra/core/env/open-ai/aad-groups/openaiaccessgroup.json
       **/infra/core/env/search-service/aad-groups/searchserviceaccessgroup.json
-      **/resources/network/vnet/subnet-layouts/*.json
     groupedDeployments:
         - name: setup
           deployments:
@@ -246,6 +245,11 @@ extends:
                     
                     echo "Resource group created successfully: $resourceGroupNameOutput"
                     
+                    # Route table resource ID for token replacement in parameter files (subnets reference routeTable.id inline)
+                    subscriptionId=$(az account show --query id -o tsv)
+                    routeTableResourceId="/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupNameOutput}/providers/Microsoft.Network/routeTables/${routeTableName}01"
+                    echo "##vso[task.setvariable variable=routeTableResourceId]$routeTableResourceId"
+                    
                     # Set pipeline variables for use in deployments
                     echo "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput"
                     echo "##vso[task.setvariable variable=virtualNetworkName]$virtualNetworkName"
@@ -256,27 +260,9 @@ extends:
               - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true)) }}:
                 - name: virtual-network
                   path: resources/network/vnet
-                  parameterFilePath: resources/network/vnet
+                  parameterFilePath: resources/network/vnet/$(subnetLayout)
                   resourceGroupName: $(virtualNetworkResourceGroup)
                   preDeployScriptsList:
-                    - displayName: "Inject route table params into parameter file for token replacement"
-                      type: PowerShell
-                      inlineScript: |
-                        # Pipeline variables may not be in variable files; inject route table params so RT deploys and links to subnet1
-                        $paramFile = "$(Build.SourcesDirectory)/self/resources/network/vnet/virtual-network.parameters.json"
-                        if (-not (Test-Path $paramFile)) {
-                          Write-Host "Parameter file not found: $paramFile"
-                          exit 0
-                        }
-                        $routeTableName = $env:ROUTETABLENAME
-                        $firewallIp = $env:FIREWALLVIRTUALAPPLIANCEIP
-                        if ([string]::IsNullOrWhiteSpace($routeTableName)) { $routeTableName = '$(routeTableName)' }
-                        if ([string]::IsNullOrWhiteSpace($firewallIp)) { $firewallIp = '$(firewallVirtualApplianceIp)' }
-                        $content = Get-Content $paramFile -Raw -Encoding UTF8
-                        $content = $content.Replace('#{{ routeTableName }}', $routeTableName)
-                        $content = $content.Replace('#{{ firewallVirtualApplianceIp }}', $firewallIp)
-                        Set-Content $paramFile -Value $content -Encoding UTF8 -NoNewline
-                        Write-Host "Injected routeTableName and firewallVirtualApplianceIp into parameter file"
                     - displayName: "Resolve network join group object ID"
                       type: AzurePowerShell
                       serviceConnectionVariableName: 'ssvServiceConnection'
@@ -295,17 +281,6 @@ extends:
                             Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]"
                           }
                         }
-                    - displayName: "Set subnets from layout (layout already tokenised by framework)"
-                      type: PowerShell
-                      inlineScript: |
-                        $layoutPath = "$(Build.SourcesDirectory)/self/resources/network/vnet/subnet-layouts/$(subnetLayout).json"
-                        if (-not (Test-Path $layoutPath)) { Write-Error "Subnet layout not found: $layoutPath"; exit 1 }
-                        $content = Get-Content $layoutPath -Raw -Encoding UTF8
-                        $subnets = $content | ConvertFrom-Json
-                        $valid = @($subnets | Where-Object { -not [string]::IsNullOrWhiteSpace($_.addressPrefix) })
-                        $json = if ($valid.Count -eq 0) { '[]' } else { ($valid | ConvertTo-Json -Compress -Depth 10) }
-                        Write-Host "##vso[task.setvariable variable=subnets]$json"
-                        Write-Host "Set subnets from layout $(subnetLayout) ($($valid.Count) subnets)"
                   postDeployScriptsList:
                     - displayName: "Link the VNet to Hub"
                       scriptPath: scripts/pipeline/Trigger-VNetPeering.ps1
@@ -320,7 +295,7 @@ extends:
                     - displayName: "Debug - Output transformed parameter file (runs on failure)"
                       type: PowerShell
                       inlineScript: |
-                        $transformedFile = "$(Build.SourcesDirectory)/self/resources/network/vnet/virtual-network.transformed.parameters.json"
+                        $transformedFile = "$(Build.SourcesDirectory)/self/resources/network/vnet/$(subnetLayout)/virtual-network.transformed.parameters.json"
                         if (Test-Path $transformedFile) {
                           Write-Host "=== Transformed Parameter File Contents ==="
                           Get-Content $transformedFile | Write-Host
