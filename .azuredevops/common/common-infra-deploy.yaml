@@ -98,6 +98,8 @@ extends:
                 path: ${{ deployment.path }}
                 scope: ${{ coalesce(deployment.scope,'Resource Group')}}
                 type: ${{ coalesce(deployment.type,'bicep')}}
+                templateName: ${{ deployment.templateName }}
+                deploy: ${{ deployment.deploy }}
                 scriptType: ${{ deployment.scriptType }}       
                 azurePowershellUseCore: ${{ deployment.azurePowershellUseCore }}                  
                 azureCLIScriptType: ${{ deployment.azureCLIScriptType }}   

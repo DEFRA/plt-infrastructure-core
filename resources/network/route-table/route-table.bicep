@@ -1,5 +1,9 @@
-@description('Required. The Route Table object. name from naming-convention module (without instance); instance 01 is appended in this template.')
+@description('Required. The Route Table object. name = base from naming (e.g. RT-XXX); suffix 01/02/03 is appended from routeTableSuffix.')
 param routeTable object
+@description('Suffix for this template (01 = default, 02, 03 = alternate route tables).')
+param routeTableSuffix string = '01'
+@description('Routes for this route table (defined in the template JSON).')
+param routes array
 @allowed([
   'UKSouth'
 ])
@@ -23,8 +27,7 @@ var commonTags = {
 }
 var tags = union(loadJsonContent('../../default-tags.json'), commonTags)
 
-// Instance number 01 hard coded (naming module omits it for route table)
-var routeTableName = '${routeTable.name}01'
+var routeTableName = '${routeTable.name}${routeTableSuffix}'
 
 module route 'br/SharedDefraRegistry:network.route-table:0.4.2' = {
   name: 'route-table-${deploymentDate}'
@@ -34,23 +37,7 @@ module route 'br/SharedDefraRegistry:network.route-table:0.4.2' = {
     location: location
     tags: tags
     disableBgpRoutePropagation: true
-    routes: [
-      {
-        name: 'Default'
-        properties: {
-          addressPrefix: '0.0.0.0/0'
-          nextHopType: 'VirtualAppliance'
-          nextHopIpAddress: routeTable.virtualApplicanceIp
-        }
-      }
-      {
-        name: 'Active_Directory_to_Internet'
-        properties: {
-          addressPrefix: 'AzureActiveDirectory'
-          nextHopType: 'Internet'
-        }
-      }
-    ]
+    routes: routes
   }
 }
 

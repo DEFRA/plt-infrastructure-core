@@ -25,7 +25,7 @@
               "properties": { "serviceName": "Microsoft.ContainerInstance/containerGroups" }
             }
           ],
-          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+          "routeTable": { "id": "#{{ subnet1RouteTableResourceId }}" }
         },
         {
           "name": "subnet2",
@@ -34,7 +34,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+          "routeTable": { "id": "#{{ subnet2RouteTableResourceId }}" }
         },
         {
           "name": "subnet3",
@@ -43,7 +43,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+          "routeTable": { "id": "#{{ subnet3RouteTableResourceId }}" }
         },
         {
           "name": "subnet4",
@@ -52,7 +52,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+          "routeTable": { "id": "#{{ subnet4RouteTableResourceId }}" }
         },
         {
           "name": "subnet5",
@@ -61,7 +61,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+          "routeTable": { "id": "#{{ subnet5RouteTableResourceId }}" }
         },
         {
           "name": "subnet6",
@@ -70,7 +70,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "id": "#{{ routeTableResourceId }}" }
+          "routeTable": { "id": "#{{ subnet6RouteTableResourceId }}" }
         }
       ]
     },
@@ -85,12 +85,6 @@
     },
     "networkJoinGroupObjectId": {
       "value": "#{{ networkJoinGroupObjectId }}"
-    },
-    "routeTableName": {
-      "value": "#{{ routeTableName }}"
-    },
-    "routeTableVirtualApplianceIp": {
-      "value": "#{{ firewallVirtualApplianceIp }}"
     }
   }
 }

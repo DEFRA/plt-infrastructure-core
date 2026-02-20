@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "routeTable": {
+      "value": {
+        "name": "#{{ routeTableName }}",
+        "virtualApplicanceIp": "#{{ firewallVirtualApplianceIp }}"
+      }
+    },
+    "routeTableSuffix": {
+      "value": "01"
+    },
+    "routes": {
+      "value": [
+        {
+          "name": "Default",
+          "properties": {
+            "addressPrefix": "0.0.0.0/0",
+            "nextHopType": "VirtualAppliance",
+            "nextHopIpAddress": "#{{ firewallVirtualApplianceIp }}"
+          }
+        },
+        {
+          "name": "Active_Directory_to_Internet",
+          "properties": {
+            "addressPrefix": "AzureActiveDirectory",
+            "nextHopType": "Internet"
+          }
+        }
+      ]
+    },
+    "location": {
+      "value": "#{{ location }}"
+    },
+    "subType": {
+      "value": "#{{ subType }}"
+    },
+    "resourceLockEnabled": {
+      "value": "#{{ resourceLockEnabled }}"
+    }
+  }
+}

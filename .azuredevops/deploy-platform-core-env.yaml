@@ -245,11 +245,6 @@ extends:
                     
                     echo "Resource group created successfully: $resourceGroupNameOutput"
                     
-                    # Route table resource ID for token replacement in parameter files (subnets reference routeTable.id inline)
-                    subscriptionId=$(az account show --query id -o tsv)
-                    routeTableResourceId="/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupNameOutput}/providers/Microsoft.Network/routeTables/${routeTableName}01"
-                    echo "##vso[task.setvariable variable=routeTableResourceId]$routeTableResourceId"
-                    
                     # Set pipeline variables for use in deployments
                     echo "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput"
                     echo "##vso[task.setvariable variable=virtualNetworkName]$virtualNetworkName"
@@ -258,6 +253,51 @@ extends:
                   path: infra/common/network
                   resourceGroupName: $(virtualNetworkResourceGroup)
               - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true)) }}:
+                - name: route-table-tokens-1
+                  path: resources/network/route-table
+                  parameterFilePath: resources/network/route-table/1
+                  resourceGroupName: $(virtualNetworkResourceGroup)
+                  templateName: route-table
+                  deploy: false
+                - name: route-table-tokens-2
+                  path: resources/network/route-table
+                  parameterFilePath: resources/network/route-table/2
+                  resourceGroupName: $(virtualNetworkResourceGroup)
+                  templateName: route-table
+                  deploy: false
+                - name: route-table-tokens-3
+                  path: resources/network/route-table
+                  parameterFilePath: resources/network/route-table/3
+                  resourceGroupName: $(virtualNetworkResourceGroup)
+                  templateName: route-table
+                  deploy: false
+                - name: deploy-route-tables
+                  type: 'script'
+                  scriptType: AzureCLI
+                  azureCLIScriptType: pscore
+                  serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                  inlineScript: |
+                    # Deploy route table 1 (default) always; deploy 2, 3, ... only when referenced in config (subnetNRouteTable)
+                    & "$(Build.SourcesDirectory)/self/scripts/pipeline/Deploy-RouteTables.ps1" `
+                      -BuildSourcesDirectory "$(Build.SourcesDirectory)" `
+                      -ResourceGroupName "$(virtualNetworkResourceGroup)" `
+                      -RouteTableName "$(routeTableName)" `
+                      -Location "$(location)"
+                - name: set-subnet-route-table-resource-ids
+                  type: 'script'
+                  scriptType: PowerShell
+                  inlineScript: |
+                    # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId
+                    foreach ($i in 1..6) {
+                      $rt = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
+                      if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
+                      $id = ''
+                      if ([int]$rt -gt 0) {
+                        $suffix = '{0:D2}' -f [int]$rt
+                        $id = (Get-Item -Path "Env:ROUTETABLE${suffix}RESOURCEID" -ErrorAction SilentlyContinue).Value
+                      }
+                      Write-Host "##vso[task.setvariable variable=subnet${i}RouteTableResourceId]$id"
+                    }
                 - name: virtual-network
                   path: resources/network/vnet
                   parameterFilePath: resources/network/vnet/$(subnetLayout)
