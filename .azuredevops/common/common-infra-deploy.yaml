@@ -80,6 +80,7 @@ extends:
     deployFromFeature: ${{ parameters.deployFromFeature }}
     privateAgentName: ${{ parameters.privateAgentName }}
     agentImage: ${{ parameters.agentImage }}
+    repositoryRoot: $(Pipeline.Workspace)/s/self
     filePathsForTransform: ${{ parameters.filePathsForTransform }}
     additionalRepositories: 
       - ${{ each repo in parameters.additionalRepositories }}:
