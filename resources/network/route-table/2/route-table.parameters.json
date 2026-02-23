@@ -20,13 +20,6 @@
             "nextHopType": "VirtualAppliance",
             "nextHopIpAddress": "#{{ firewallVirtualApplianceIp }}"
           }
-        },
-        {
-          "name": "Active_Directory_to_Internet",
-          "properties": {
-            "addressPrefix": "AzureActiveDirectory",
-            "nextHopType": "Internet"
-          }
         }
       ]
     },

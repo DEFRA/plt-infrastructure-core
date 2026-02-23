@@ -44,43 +44,6 @@
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
           "routeTable": { "id": "#{{ subnet3RouteTableResourceId }}" }
-        },
-        {
-          "name": "subnet4",
-          "addressPrefix": "#{{ subnet4AddressPrefix }}",
-          "serviceEndpoints": [],
-          "privateEndpointNetworkPolicies": "Enabled",
-          "privateLinkServiceNetworkPolicies": "Enabled",
-          "delegations": [],
-          "routeTable": { "id": "#{{ subnet4RouteTableResourceId }}" }
-        },
-        {
-          "name": "subnet5",
-          "addressPrefix": "#{{ subnet5AddressPrefix }}",
-          "serviceEndpoints": [],
-          "privateEndpointNetworkPolicies": "Enabled",
-          "privateLinkServiceNetworkPolicies": "Enabled",
-          "delegations": [],
-          "routeTable": { "id": "#{{ subnet5RouteTableResourceId }}" }
-        },
-        {
-          "name": "subnet6",
-          "addressPrefix": "#{{ subnet6AddressPrefix }}",
-          "serviceEndpoints": [],
-          "privateEndpointNetworkPolicies": "Enabled",
-          "privateLinkServiceNetworkPolicies": "Enabled",
-          "delegations": [],
-          "routeTable": { "id": "#{{ subnet6RouteTableResourceId }}" }
-        },
-        {
-          "name": "subnet7",
-          "addressPrefix": "#{{ subnet7AddressPrefix }}",
-          "serviceEndpoints": [],
-          "privateEndpointNetworkPolicies": "Enabled",
-          "privateLinkServiceNetworkPolicies": "Enabled",
-          "delegations": [],
-          "routeTable": { "id": "#{{ subnet7RouteTableResourceId }}" 
-        }
         }
       ]
     },
