@@ -277,18 +277,21 @@ extends:
                   azureCLIScriptType: pscore
                   serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
                   inlineScript: |
-                    # Deploy route table 1 (default) always; deploy 2, 3, ... when referenced in config (subnetNRouteTable). Token replacement in script.
+                    # Deploy route table 1 (default) always; deploy 2, 3, ... when referenced in config (subnetNRouteTable). Subnet count from config (subnetCount).
                     & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-RouteTables.ps1" `
                       -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
                       -ResourceGroupName "$(virtualNetworkResourceGroup)" `
                       -RouteTableName "$(routeTableName)" `
-                      -Location "$(location)"
+                      -Location "$(location)" `
+                      -SubnetCount $(subnetCount)
                 - name: set-subnet-route-table-resource-ids
                   type: 'script'
                   scriptType: PowerShell
                   inlineScript: |
-                    # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId
-                    foreach ($i in 1..6) {
+                    # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId. Count from config (subnetCount).
+                    $max = [int](Get-Item -Path "Env:SUBNETCOUNT" -ErrorAction SilentlyContinue).Value
+                    if (-not $max -or $max -lt 1) { $max = 7 }
+                    foreach ($i in 1..$max) {
                       $rt = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
                       if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
                       $id = ''

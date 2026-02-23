@@ -19,10 +19,15 @@ if (-not (Test-Path $routeTablePath)) {
 $templateFile = Join-Path $routeTablePath "route-table.bicep"
 if (-not (Test-Path $templateFile)) { Write-Error "Template not found: $templateFile" }
 
-# 1 is default and always deployed; add any alternative numbers referenced by subnets
+# Subnet count from parameter or env (config: subnetCount); default 7 for backwards compatibility
+if ($SubnetCount -lt 1) {
+  $SubnetCount = [int](Get-Item -Path "Env:SUBNETCOUNT" -ErrorAction SilentlyContinue).Value
+  if (-not $SubnetCount -or $SubnetCount -lt 1) { $SubnetCount = 7 }
+}
+# 1 is default and always deployed; add any alternative numbers referenced by subnets (subnet1RouteTable .. subnetNRouteTable)
 $referenced = [System.Collections.Generic.HashSet[int]]::new()
 [void]$referenced.Add(1)
-foreach ($i in 1..6) {
+foreach ($i in 1..$SubnetCount) {
   $v = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
   if (-not [string]::IsNullOrWhiteSpace($v)) {
     $n = [int]$v
