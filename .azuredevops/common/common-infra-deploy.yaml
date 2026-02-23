@@ -114,6 +114,7 @@ extends:
                 preDeployScriptsList: ${{ deployment.preDeployScriptsList }}
                 serviceConnectionVariableName: ${{ deployment.serviceConnectionVariableName }}
                 postDeployServiceConnectionVariableName: ${{ deployment.postDeployServiceConnectionVariableName }}
+                replaceTokenPaths: ${{ deployment.replaceTokenPaths }}
                 postDeployScriptsList:
                   - ? ${{ each resource in deployment.privateEndpointDnsRecordsForResources }}
                     : - displayName: Resolve Private Endpoint IP for '${{ resource.resourceName }}'

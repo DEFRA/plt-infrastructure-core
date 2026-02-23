@@ -1,14 +1,15 @@
 <#
 .SYNOPSIS
   Deploys route tables from numbered templates. Route table 1 (default) is always deployed.
-  Any alternative route tables referenced in config (subnet1RouteTable..subnet6RouteTable = 2, 3, etc.) are deployed dynamically.
-  Token replacement is done by the pipeline (replace-tokens step); this script uses the produced .transformed.parameters.json files.
+  Any alternative route tables referenced in config (subnetNRouteTable) are deployed dynamically.
+  Uses framework-produced .transformed.parameters.json only (framework replace-tokens step must run first).
 #>
 param(
   [string]$BuildSourcesDirectory,
   [string]$ResourceGroupName,
   [string]$RouteTableName,
-  [string]$Location
+  [string]$Location,
+  [int]$SubnetCount = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -42,10 +43,16 @@ if (-not $subscriptionId) { Write-Error "Could not get subscription ID" }
 
 foreach ($n in $toDeploy) {
   $paramDir = Join-Path $routeTablePath $n
+  $paramFile = Join-Path $paramDir "route-table.parameters.json"
   $transformed = Join-Path $paramDir "route-table.transformed.parameters.json"
-  if (-not (Test-Path $transformed)) {
-    Write-Warning "Transformed parameter file not found: $transformed (framework replace-tokens must run first); skipping route table $n"
+
+  if (-not (Test-Path $paramFile)) {
+    Write-Warning "Parameter file not found: $paramFile; skipping route table $n"
     continue
+  }
+
+  if (-not (Test-Path $transformed)) {
+    Write-Error "Transformed parameter file not found: $transformed (framework replace-tokens step must run first; no tokenisation in consumer pipeline)."
   }
 
   $suffix = $n.ToString("00")

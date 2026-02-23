@@ -253,24 +253,12 @@ extends:
                   path: infra/common/network
                   resourceGroupName: $(virtualNetworkResourceGroup)
               - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true)) }}:
-                - name: route-table-tokens-1
-                  path: resources/network/route-table
-                  parameterFilePath: resources/network/route-table/1
-                  resourceGroupName: $(virtualNetworkResourceGroup)
-                  templateName: route-table
-                  deploy: false
-                - name: route-table-tokens-2
-                  path: resources/network/route-table
-                  parameterFilePath: resources/network/route-table/2
-                  resourceGroupName: $(virtualNetworkResourceGroup)
-                  templateName: route-table
-                  deploy: false
-                - name: route-table-tokens-3
-                  path: resources/network/route-table
-                  parameterFilePath: resources/network/route-table/3
-                  resourceGroupName: $(virtualNetworkResourceGroup)
-                  templateName: route-table
-                  deploy: false
+                - name: route-table-tokens
+                  type: replaceTokensOnly
+                  replaceTokenPaths:
+                    - resources/network/route-table/1
+                    - resources/network/route-table/2
+                    - resources/network/route-table/3
                 - name: deploy-route-tables
                   type: 'script'
                   scriptType: AzureCLI
