@@ -2,7 +2,7 @@
 .SYNOPSIS
   Deploys route tables from numbered templates. Route table 1 (default) is always deployed.
   Any alternative route tables referenced in config (subnet1RouteTable..subnet6RouteTable = 2, 3, etc.) are deployed dynamically.
-  Uses framework-produced .transformed.parameters.json (token replacement is done by the pipeline replace-tokens step).
+  Token replacement is done by the pipeline (replace-tokens step); this script uses the produced .transformed.parameters.json files.
 #>
 param(
   [string]$BuildSourcesDirectory,
@@ -12,7 +12,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$routeTablePath = Join-Path $BuildSourcesDirectory "self/resources/network/route-table"
+$routeTablePath = Join-Path $BuildSourcesDirectory "resources/network/route-table"
+if (-not (Test-Path $routeTablePath)) {
+  $routeTablePath = Join-Path $BuildSourcesDirectory "self/resources/network/route-table"
+}
 $templateFile = Join-Path $routeTablePath "route-table.bicep"
 if (-not (Test-Path $templateFile)) { Write-Error "Template not found: $templateFile" }
 

@@ -277,9 +277,9 @@ extends:
                   azureCLIScriptType: pscore
                   serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
                   inlineScript: |
-                    # Deploy route table 1 (default) always; deploy 2, 3, ... only when referenced in config (subnetNRouteTable)
-                    & "$(Build.SourcesDirectory)/self/scripts/pipeline/Deploy-RouteTables.ps1" `
-                      -BuildSourcesDirectory "$(Build.SourcesDirectory)" `
+                    # Deploy route table 1 (default) always; deploy 2, 3, ... when referenced in config (subnetNRouteTable). Token replacement in script.
+                    & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-RouteTables.ps1" `
+                      -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
                       -ResourceGroupName "$(virtualNetworkResourceGroup)" `
                       -RouteTableName "$(routeTableName)" `
                       -Location "$(location)"
