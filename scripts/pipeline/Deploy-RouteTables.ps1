@@ -15,7 +15,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 function Get-TokenValue {
-  param([string]$Name)
+  param([string]$Name, [hashtable]$Overrides)
+  if ($Overrides -and $Overrides.ContainsKey($Name)) { return $Overrides[$Name] }
   $v = [Environment]::GetEnvironmentVariable($Name, 'Process')
   if ($null -ne $v) { return $v }
   $v = [Environment]::GetEnvironmentVariable($Name.ToUpperInvariant(), 'Process')
@@ -26,12 +27,13 @@ function Get-TokenValue {
 }
 
 function New-TransformedParametersFile {
-  param([string]$ParamFile, [string]$OutFile)
+  param([string]$ParamFile, [string]$OutFile, [hashtable]$TokenOverrides = @{})
   $content = Get-Content -LiteralPath $ParamFile -Raw -Encoding UTF8
   $content = [regex]::Replace($content, '#\{\{\s*([\w\.]+)\s*\}\}#', {
     param($m)
-    $val = Get-TokenValue -Name $m.Groups[1].Value
-    $val -replace '\\', '\\\\' -replace '"', '\"'
+    $val = Get-TokenValue -Name $m.Groups[1].Value -Overrides $TokenOverrides
+    if ($null -eq $val) { $val = '' }
+    $val.ToString() -replace '\\', '\\\\' -replace '"', '\"'
   })
   [System.IO.File]::WriteAllText($OutFile, $content, [System.Text.UTF8Encoding]::new($false))
 }
@@ -78,7 +80,10 @@ foreach ($n in $toDeploy) {
     $paramsToUse = $transformed
   } else {
     Write-Host "Creating $transformed from $paramFile (replacing #{{ tokens }} with pipeline variables)."
-    New-TransformedParametersFile -ParamFile $paramFile -OutFile $transformed
+    $overrides = @{}
+    if ($Location) { $overrides['location'] = $Location }
+    if ($RouteTableName) { $overrides['routeTableName'] = $RouteTableName }
+    New-TransformedParametersFile -ParamFile $paramFile -OutFile $transformed -TokenOverrides $overrides
     $paramsToUse = $transformed
   }
 
