@@ -119,6 +119,9 @@ variables:
     value: 'ValidationPlaceholderVNet'
   - name: routeTableName
     value: ''
+  # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
+  - name: firewallVirtualApplianceIp
+    value: ''
   # addressPrefixes, dnsServers, environment, resourceLockEnabled, location, subType, deploymentEnvInstance, regionCode, instanceNumber come from config (variable files)
   # subnets: from layout in filePathsForTransform (framework token replacement); preDeploy reads transformed layout and sets this
   - name: subnets
@@ -269,6 +272,7 @@ extends:
                       -ResourceGroupName "$(virtualNetworkResourceGroup)" `
                       -RouteTableName "$(routeTableName)" `
                       -Location "$(location)" `
+                      -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)" `
                       -SubnetCount $(subnetCount)
                 - name: set-subnet-route-table-resource-ids
                   type: 'script'

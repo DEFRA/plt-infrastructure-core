@@ -9,6 +9,7 @@ param(
   [string]$ResourceGroupName,
   [string]$RouteTableName,
   [string]$Location,
+  [string]$FirewallVirtualApplianceIp = '',
   [int]$SubnetCount = 0
 )
 
@@ -20,6 +21,7 @@ Write-Host "$DebugPrefix BuildSourcesDirectory = '$BuildSourcesDirectory'"
 Write-Host "$DebugPrefix ResourceGroupName      = '$ResourceGroupName'"
 Write-Host "$DebugPrefix RouteTableName         = '$RouteTableName' (length=$($RouteTableName.Length))"
 Write-Host "$DebugPrefix Location              = '$Location' (length=$($Location.Length))"
+Write-Host "$DebugPrefix FirewallVirtualApplianceIp = '$FirewallVirtualApplianceIp' (length=$($FirewallVirtualApplianceIp.Length))"
 Write-Host "$DebugPrefix SubnetCount           = $SubnetCount"
 
 function Get-TokenValue {
@@ -72,6 +74,7 @@ function New-TransformedParametersFile {
 
   Write-Host "$DebugPrefix After overrides: content contains '#{{ location }}' = $($content.Contains('#{{ location }}'))"
   Write-Host "$DebugPrefix After overrides: content contains '#{{ routeTableName }}' = $($content.Contains('#{{ routeTableName }}'))"
+  Write-Host "$DebugPrefix After overrides: content contains '#{{ firewallVirtualApplianceIp }}' = $($content.Contains('#{{ firewallVirtualApplianceIp }}'))"
 
   # Replace any remaining #{{ token }} with env/overrides
   $content = [regex]::Replace($content, '#\{\{\s*([\w\.]+)\s*\}\}#', {
@@ -139,6 +142,7 @@ foreach ($n in $toDeploy) {
     $overrides = @{}
     if (-not [string]::IsNullOrWhiteSpace($Location)) { $overrides['location'] = $Location }
     if (-not [string]::IsNullOrWhiteSpace($RouteTableName)) { $overrides['routeTableName'] = $RouteTableName }
+    if (-not [string]::IsNullOrWhiteSpace($FirewallVirtualApplianceIp)) { $overrides['firewallVirtualApplianceIp'] = $FirewallVirtualApplianceIp }
     # Fallback: pipeline may pass vars as env instead of args
     if (-not $overrides.ContainsKey('location')) {
       $loc = [Environment]::GetEnvironmentVariable('location', 'Process')
@@ -152,7 +156,13 @@ foreach ($n in $toDeploy) {
       $overrides['routeTableName'] = if ($rt) { $rt } else { '' }
       Write-Host "$DebugPrefix routeTableName from env: '$rt' -> overrides[routeTableName]='$($overrides['routeTableName'])'"
     }
-    Write-Host "$DebugPrefix Final overrides: location='$($overrides['location'])' routeTableName='$($overrides['routeTableName'])'"
+    if (-not $overrides.ContainsKey('firewallVirtualApplianceIp')) {
+      $fw = [Environment]::GetEnvironmentVariable('firewallVirtualApplianceIp', 'Process')
+      if ([string]::IsNullOrEmpty($fw)) { $fw = [Environment]::GetEnvironmentVariable('FIREWALLVIRTUALAPPLIANCEIP', 'Process') }
+      $overrides['firewallVirtualApplianceIp'] = if ($fw) { $fw } else { '' }
+      Write-Host "$DebugPrefix firewallVirtualApplianceIp from env: length=$(if ($fw) { $fw.Length } else { 0 }) -> overrides[firewallVirtualApplianceIp] length=$($overrides['firewallVirtualApplianceIp'].Length)"
+    }
+    Write-Host "$DebugPrefix Final overrides: location='$($overrides['location'])' routeTableName='$($overrides['routeTableName'])' firewallVirtualApplianceIp length=$($overrides['firewallVirtualApplianceIp'].Length)"
     New-TransformedParametersFile -ParamFile $paramFile -OutFile $transformed -TokenOverrides $overrides
     $paramsToUse = $transformed
   }
