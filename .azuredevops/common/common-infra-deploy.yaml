@@ -115,6 +115,7 @@ extends:
                 serviceConnectionVariableName: ${{ deployment.serviceConnectionVariableName }}
                 postDeployServiceConnectionVariableName: ${{ deployment.postDeployServiceConnectionVariableName }}
                 replaceTokenPaths: ${{ deployment.replaceTokenPaths }}
+                replaceTokenPathsString: ${{ deployment.replaceTokenPathsString }}
                 replaceTokenTargetFiles: ${{ deployment.replaceTokenTargetFiles }}
                 postDeployScriptsList:
                   - ? ${{ each resource in deployment.privateEndpointDnsRecordsForResources }}

@@ -253,16 +253,10 @@ extends:
                   path: infra/common/network
                   resourceGroupName: $(virtualNetworkResourceGroup)
               - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true)) }}:
-                # One replace-tokens step with all path lines (same as virtual-network) so v5 finds files under repositoryRoot
+                # Script step with workingDirectory = repo root so token replacement sees the right path (v5 task does not)
                 - name: route-table-tokens
                   type: replaceTokensOnly
-                  replaceTokenTargetFiles: |
-                    resources/network/route-table/1/*.parameters.json => *.transformed.parameters.json
-                    resources/network/route-table/1/*.bicepparam => *.transformed.bicepparam
-                    resources/network/route-table/2/*.parameters.json => *.transformed.parameters.json
-                    resources/network/route-table/2/*.bicepparam => *.transformed.bicepparam
-                    resources/network/route-table/3/*.parameters.json => *.transformed.parameters.json
-                    resources/network/route-table/3/*.bicepparam => *.transformed.bicepparam
+                  replaceTokenPathsString: 'resources/network/route-table/1;resources/network/route-table/2;resources/network/route-table/3'
                 - name: deploy-route-tables
                   type: 'script'
                   scriptType: AzureCLI
