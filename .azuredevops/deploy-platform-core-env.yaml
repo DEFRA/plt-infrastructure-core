@@ -278,9 +278,19 @@ extends:
                   type: 'script'
                   scriptType: PowerShell
                   inlineScript: |
-                    # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId. Count from previous step (derived from VNet template).
-                    $max = [int](Get-Item -Path "Env:SUBNETCOUNT" -ErrorAction SilentlyContinue).Value
-                    if (-not $max -or $max -lt 1) { $max = 1 }
+                    # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId. Subnet count derived from VNet template (same as deploy-route-tables).
+                    $layout = "$(subnetLayout)"
+                    $base = "$(Pipeline.Workspace)/s/self"
+                    $vnetPath = Join-Path $base "resources/network/vnet/$layout/virtual-network.parameters.json"
+                    if (-not (Test-Path $vnetPath)) { $vnetPath = Join-Path $base "self/resources/network/vnet/$layout/virtual-network.parameters.json" }
+                    $max = 1
+                    if (Test-Path $vnetPath) {
+                      try {
+                        $j = Get-Content -LiteralPath $vnetPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                        $subnets = $j.parameters.subnets.value
+                        if ($subnets -is [Array]) { $max = $subnets.Count }
+                      } catch { }
+                    }
                     foreach ($i in 1..$max) {
                       $rt = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
                       if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
