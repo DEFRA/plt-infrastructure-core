@@ -2,7 +2,7 @@
 .SYNOPSIS
   Deploys route tables from numbered templates. Route table 1 (default) is always deployed.
   Any alternative route tables referenced in config (subnetNRouteTable) are deployed dynamically.
-  Uses framework-produced .transformed.parameters.json only (framework replace-tokens step must run first).
+  Prefers .transformed.parameters.json from framework; if missing, replaces tokens in .parameters.json here and writes .transformed.parameters.json.
 #>
 param(
   [string]$BuildSourcesDirectory,
@@ -13,6 +13,29 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Get-TokenValue {
+  param([string]$Name)
+  $v = [Environment]::GetEnvironmentVariable($Name, 'Process')
+  if ($null -ne $v) { return $v }
+  $v = [Environment]::GetEnvironmentVariable($Name.ToUpperInvariant(), 'Process')
+  if ($null -ne $v) { return $v }
+  $v = [Environment]::GetEnvironmentVariable($Name.ToUpperInvariant().Replace('.', '_'), 'Process')
+  if ($null -ne $v) { return $v }
+  return ''
+}
+
+function New-TransformedParametersFile {
+  param([string]$ParamFile, [string]$OutFile)
+  $content = Get-Content -LiteralPath $ParamFile -Raw -Encoding UTF8
+  $content = [regex]::Replace($content, '#\{\{\s*([\w\.]+)\s*\}\}#', {
+    param($m)
+    $val = Get-TokenValue -Name $m.Groups[1].Value
+    $val -replace '\\', '\\\\' -replace '"', '\"'
+  })
+  [System.IO.File]::WriteAllText($OutFile, $content, [System.Text.UTF8Encoding]::new($false))
+}
+
 $routeTablePath = Join-Path $BuildSourcesDirectory "resources/network/route-table"
 if (-not (Test-Path $routeTablePath)) {
   $routeTablePath = Join-Path $BuildSourcesDirectory "self/resources/network/route-table"
@@ -54,8 +77,9 @@ foreach ($n in $toDeploy) {
   if (Test-Path $transformed) {
     $paramsToUse = $transformed
   } else {
-    Write-Warning "Transformed file not found: $transformed; using $paramFile (framework replace-tokens step did not run or uses in-place replacement)."
-    $paramsToUse = $paramFile
+    Write-Host "Creating $transformed from $paramFile (replacing #{{ tokens }} with pipeline variables)."
+    New-TransformedParametersFile -ParamFile $paramFile -OutFile $transformed
+    $paramsToUse = $transformed
   }
 
   $suffix = $n.ToString("00")
