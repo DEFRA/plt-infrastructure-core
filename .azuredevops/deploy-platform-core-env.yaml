@@ -266,21 +266,21 @@ extends:
                   azureCLIScriptType: pscore
                   serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
                   inlineScript: |
-                    # Deploy route table 1 (default) always; deploy 2, 3, ... when referenced in config (subnetNRouteTable). Subnet count from config (subnetCount).
+                    # Deploy route table 1 (default) always; deploy 2, 3, ... when referenced in config (subnetNRouteTable). Subnet count derived from VNet template (subnetLayout).
                     & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-RouteTables.ps1" `
                       -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
                       -ResourceGroupName "$(virtualNetworkResourceGroup)" `
                       -RouteTableName "$(routeTableName)" `
                       -Location "$(location)" `
                       -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)" `
-                      -SubnetCount $(subnetCount)
+                      -SubnetLayout "$(subnetLayout)"
                 - name: set-subnet-route-table-resource-ids
                   type: 'script'
                   scriptType: PowerShell
                   inlineScript: |
-                    # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId. Count from config (subnetCount).
+                    # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId. Count from previous step (derived from VNet template).
                     $max = [int](Get-Item -Path "Env:SUBNETCOUNT" -ErrorAction SilentlyContinue).Value
-                    if (-not $max -or $max -lt 1) { $max = 7 }
+                    if (-not $max -or $max -lt 1) { $max = 1 }
                     foreach ($i in 1..$max) {
                       $rt = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
                       if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
