@@ -51,8 +51,11 @@ foreach ($n in $toDeploy) {
     continue
   }
 
-  if (-not (Test-Path $transformed)) {
-    Write-Error "Transformed parameter file not found: $transformed (framework replace-tokens step must run first; no tokenisation in consumer pipeline)."
+  if (Test-Path $transformed) {
+    $paramsToUse = $transformed
+  } else {
+    Write-Warning "Transformed file not found: $transformed; using $paramFile (framework replace-tokens step did not run or uses in-place replacement)."
+    $paramsToUse = $paramFile
   }
 
   $suffix = $n.ToString("00")
@@ -60,7 +63,7 @@ foreach ($n in $toDeploy) {
   az deployment group create `
     --resource-group $ResourceGroupName `
     --template-file $templateFile `
-    --parameters $transformed `
+    --parameters $paramsToUse `
     --name "route-table-${suffix}-$(Get-Date -Format 'yyyyMMdd-HHmmss')" `
     --output none
   if ($LASTEXITCODE -ne 0) { throw "Route table $suffix deployment failed." }
