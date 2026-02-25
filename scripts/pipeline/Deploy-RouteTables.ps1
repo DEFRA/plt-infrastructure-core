@@ -57,21 +57,16 @@ if (-not (Test-Path $routeTablePath)) {
 $templateFile = Join-Path $routeTablePath "route-table.bicep"
 if (-not (Test-Path $templateFile)) { Write-Error "Template not found: $templateFile" }
 
-# Derive subnet count from VNet template for the selected layout
+# Derive subnet count from VNet template (count subnet names; file has tokens so avoid JSON parse)
 $vnetParamsPath = Join-Path $BuildSourcesDirectory "resources/network/vnet/$SubnetLayout/virtual-network.parameters.json"
 if (-not (Test-Path $vnetParamsPath)) {
   $vnetParamsPath = Join-Path $BuildSourcesDirectory "self/resources/network/vnet/$SubnetLayout/virtual-network.parameters.json"
 }
 $SubnetCount = 1
 if (Test-Path $vnetParamsPath) {
-  try {
-    $vnetJson = Get-Content -LiteralPath $vnetParamsPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    $subnets = $vnetJson.parameters.subnets.value
-    if ($subnets -is [Array]) { $SubnetCount = $subnets.Count }
-    elseif ($subnets) { $SubnetCount = 1 }
-  } catch {
-    Write-Warning "Could not read subnet count from $vnetParamsPath : $_"
-  }
+  $content = Get-Content -LiteralPath $vnetParamsPath -Raw -Encoding UTF8
+  $subnetNameMatches = [regex]::Matches($content, '"name":\s*"subnet\d+"')
+  if ($subnetNameMatches.Count -gt 0) { $SubnetCount = $subnetNameMatches.Count }
 }
 Write-Host "##vso[task.setvariable variable=subnetCount]$SubnetCount"
 
@@ -80,6 +75,8 @@ $referenced = [System.Collections.Generic.HashSet[int]]::new()
 [void]$referenced.Add(1)
 foreach ($i in 1..$SubnetCount) {
   $v = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
+  if ([string]::IsNullOrWhiteSpace($v)) { $v = [Environment]::GetEnvironmentVariable("subnet${i}RouteTable", 'Process') }
+  if ([string]::IsNullOrWhiteSpace($v)) { $v = [Environment]::GetEnvironmentVariable("subnet${i}routetable", 'Process') }
   if (-not [string]::IsNullOrWhiteSpace($v)) {
     $n = [int]$v
     if ($n -gt 0) { [void]$referenced.Add($n) }

@@ -304,8 +304,9 @@ extends:
                     foreach ($i in 1..$max) {
                       $v1 = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
                       $v2 = (Get-Item -Path "Env:subnet${i}RouteTable" -ErrorAction SilentlyContinue).Value
-                      $rt = $v1; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v2 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
-                      Write-Host "$Dbg subnet$i SUBNET${i}ROUTETABLE='$v1' subnet${i}RouteTable='$v2' -> rt=$rt"
+                      $v3 = [Environment]::GetEnvironmentVariable("subnet${i}routetable", 'Process')
+                      $rt = $v1; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v2 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v3 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
+                      Write-Host "$Dbg subnet$i SUBNET${i}ROUTETABLE='$v1' subnet${i}RouteTable='$v2' subnet${i}routetable='$v3' -> rt=$rt"
                       $id = ''
                       if ([int]$rt -gt 0) {
                         $suffix = '{0:D2}' -f [int]$rt
