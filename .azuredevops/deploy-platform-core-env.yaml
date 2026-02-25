@@ -291,12 +291,10 @@ extends:
                     Write-Host "$Dbg vnetPath=$vnetPath exists=$(Test-Path $vnetPath)"
                     $max = 1
                     if (Test-Path $vnetPath) {
-                      try {
-                        $j = Get-Content -LiteralPath $vnetPath -Raw -Encoding UTF8 | ConvertFrom-Json
-                        $subnets = $j.parameters.subnets.value
-                        if ($subnets -is [Array]) { $max = $subnets.Count }
-                        Write-Host "$Dbg subnets.Count=$max"
-                      } catch { Write-Host "$Dbg JSON parse error: $_" }
+                      $content = Get-Content -LiteralPath $vnetPath -Raw -Encoding UTF8
+                      $subnetNameMatches = [regex]::Matches($content, '"name":\s*"subnet\d+"')
+                      if ($subnetNameMatches.Count -gt 0) { $max = $subnetNameMatches.Count }
+                      Write-Host "$Dbg subnet count from file (name pattern)=$max"
                     }
                     $r01u = [string](Get-Item -Path 'Env:ROUTETABLE01RESOURCEID' -ErrorAction SilentlyContinue).Value
                     $r01l = [string](Get-Item -Path 'Env:routeTable01ResourceId' -ErrorAction SilentlyContinue).Value
