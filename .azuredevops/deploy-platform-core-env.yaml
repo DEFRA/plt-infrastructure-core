@@ -281,6 +281,8 @@ extends:
                     # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId. Subnet count derived from VNet template (same as deploy-route-tables).
                     $layout = "$(subnetLayout)"
                     $base = "$(Pipeline.Workspace)/s/self"
+                    if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)" }
+                    if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)/self" }
                     $vnetPath = Join-Path $base "resources/network/vnet/$layout/virtual-network.parameters.json"
                     if (-not (Test-Path $vnetPath)) { $vnetPath = Join-Path $base "self/resources/network/vnet/$layout/virtual-network.parameters.json" }
                     $max = 1
@@ -293,11 +295,13 @@ extends:
                     }
                     foreach ($i in 1..$max) {
                       $rt = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
+                      if ([string]::IsNullOrWhiteSpace($rt)) { $rt = (Get-Item -Path "Env:subnet${i}RouteTable" -ErrorAction SilentlyContinue).Value }
                       if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
                       $id = ''
                       if ([int]$rt -gt 0) {
                         $suffix = '{0:D2}' -f [int]$rt
                         $id = (Get-Item -Path "Env:ROUTETABLE${suffix}RESOURCEID" -ErrorAction SilentlyContinue).Value
+                        if ([string]::IsNullOrEmpty($id)) { $id = (Get-Item -Path "Env:routeTable${suffix}ResourceId" -ErrorAction SilentlyContinue).Value }
                       }
                       Write-Host "##vso[task.setvariable variable=subnet${i}RouteTableResourceId]$id"
                     }
