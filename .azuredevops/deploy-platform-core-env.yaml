@@ -279,32 +279,46 @@ extends:
                   scriptType: PowerShell
                   inlineScript: |
                     # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId. Subnet count derived from VNet template (same as deploy-route-tables).
+                    $Dbg = '[set-subnet-rt.DEBUG]'
                     $layout = "$(subnetLayout)"
                     $base = "$(Pipeline.Workspace)/s/self"
+                    Write-Host "$Dbg layout=$layout initial base=$base"
                     if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)" }
                     if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)/self" }
+                    Write-Host "$Dbg final base=$base resourcesExists=$(Test-Path (Join-Path $base 'resources'))"
                     $vnetPath = Join-Path $base "resources/network/vnet/$layout/virtual-network.parameters.json"
                     if (-not (Test-Path $vnetPath)) { $vnetPath = Join-Path $base "self/resources/network/vnet/$layout/virtual-network.parameters.json" }
+                    Write-Host "$Dbg vnetPath=$vnetPath exists=$(Test-Path $vnetPath)"
                     $max = 1
                     if (Test-Path $vnetPath) {
                       try {
                         $j = Get-Content -LiteralPath $vnetPath -Raw -Encoding UTF8 | ConvertFrom-Json
                         $subnets = $j.parameters.subnets.value
                         if ($subnets -is [Array]) { $max = $subnets.Count }
-                      } catch { }
+                        Write-Host "$Dbg subnets.Count=$max"
+                      } catch { Write-Host "$Dbg JSON parse error: $_" }
                     }
+                    $r01u = [string](Get-Item -Path 'Env:ROUTETABLE01RESOURCEID' -ErrorAction SilentlyContinue).Value
+                    $r01l = [string](Get-Item -Path 'Env:routeTable01ResourceId' -ErrorAction SilentlyContinue).Value
+                    $r02u = [string](Get-Item -Path 'Env:ROUTETABLE02RESOURCEID' -ErrorAction SilentlyContinue).Value
+                    $r02l = [string](Get-Item -Path 'Env:routeTable02ResourceId' -ErrorAction SilentlyContinue).Value
+                    Write-Host "$Dbg Route table IDs from previous step: ROUTETABLE01RESOURCEID len=$($r01u.Length) routeTable01ResourceId len=$($r01l.Length) ROUTETABLE02RESOURCEID len=$($r02u.Length) routeTable02ResourceId len=$($r02l.Length)"
                     foreach ($i in 1..$max) {
-                      $rt = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
-                      if ([string]::IsNullOrWhiteSpace($rt)) { $rt = (Get-Item -Path "Env:subnet${i}RouteTable" -ErrorAction SilentlyContinue).Value }
-                      if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
+                      $v1 = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
+                      $v2 = (Get-Item -Path "Env:subnet${i}RouteTable" -ErrorAction SilentlyContinue).Value
+                      $rt = $v1; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v2 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
+                      Write-Host "$Dbg subnet$i SUBNET${i}ROUTETABLE='$v1' subnet${i}RouteTable='$v2' -> rt=$rt"
                       $id = ''
                       if ([int]$rt -gt 0) {
                         $suffix = '{0:D2}' -f [int]$rt
-                        $id = (Get-Item -Path "Env:ROUTETABLE${suffix}RESOURCEID" -ErrorAction SilentlyContinue).Value
-                        if ([string]::IsNullOrEmpty($id)) { $id = (Get-Item -Path "Env:routeTable${suffix}ResourceId" -ErrorAction SilentlyContinue).Value }
-                      }
+                        $idU = (Get-Item -Path "Env:ROUTETABLE${suffix}RESOURCEID" -ErrorAction SilentlyContinue).Value
+                        $idL = (Get-Item -Path "Env:routeTable${suffix}ResourceId" -ErrorAction SilentlyContinue).Value
+                        $id = $idU; if ([string]::IsNullOrEmpty($id)) { $id = $idL }
+                        Write-Host "$Dbg subnet$i suffix=$suffix ROUTETABLE${suffix}RESOURCEID len=$(([string]$idU).Length) routeTable${suffix}ResourceId len=$(([string]$idL).Length) -> id len=$(([string]$id).Length)"
+                      } else { Write-Host "$Dbg subnet$i rt=0 -> id='' (no route table)" }
                       Write-Host "##vso[task.setvariable variable=subnet${i}RouteTableResourceId]$id"
                     }
+                    Write-Host "$Dbg Done. Set subnet1..$max RouteTableResourceId."
                 - name: virtual-network
                   path: resources/network/vnet
                   parameterFilePath: resources/network/vnet/$(subnetLayout)
