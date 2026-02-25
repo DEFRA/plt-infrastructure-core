@@ -305,8 +305,9 @@ extends:
                       $v1 = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
                       $v2 = (Get-Item -Path "Env:subnet${i}RouteTable" -ErrorAction SilentlyContinue).Value
                       $v3 = [Environment]::GetEnvironmentVariable("subnet${i}routetable", 'Process')
-                      $rt = $v1; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v2 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v3 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
-                      Write-Host "$Dbg subnet$i SUBNET${i}ROUTETABLE='$v1' subnet${i}RouteTable='$v2' subnet${i}routetable='$v3' -> rt=$rt"
+                      $v4 = (Get-ChildItem Env: | Where-Object { $_.Name -match "subnet.*$i.*route" } | Select-Object -First 1).Value
+                      $rt = $v1; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v2 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v3 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v4 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
+                      Write-Host "$Dbg subnet$i SUBNET${i}ROUTETABLE='$v1' subnet${i}RouteTable='$v2' subnet${i}routetable='$v3' envMatch='$v4' -> rt=$rt"
                       $id = ''
                       if ([int]$rt -gt 0) {
                         $suffix = '{0:D2}' -f [int]$rt
