@@ -302,6 +302,10 @@ extends:
                     $r02l = [string](Get-Item -Path 'Env:routeTable02ResourceId' -ErrorAction SilentlyContinue).Value
                     Write-Host "$Dbg Route table IDs from previous step: ROUTETABLE01RESOURCEID len=$($r01u.Length) routeTable01ResourceId len=$($r01l.Length) ROUTETABLE02RESOURCEID len=$($r02u.Length) routeTable02ResourceId len=$($r02l.Length)"
                     foreach ($i in 1..$max) {
+                      if ($i -eq 7) {
+                        $allSubnet7 = Get-ChildItem Env: | Where-Object { $_.Name -match 'subnet.*7.*route' } | ForEach-Object { "$($_.Name)=$($_.Value)" }
+                        Write-Host "$Dbg subnet7 env vars matching 'subnet.*7.*route': $($allSubnet7 -join '; ')"
+                      }
                       $v1 = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
                       $v2 = (Get-Item -Path "Env:subnet${i}RouteTable" -ErrorAction SilentlyContinue).Value
                       $v3 = [Environment]::GetEnvironmentVariable("subnet${i}routetable", 'Process')
