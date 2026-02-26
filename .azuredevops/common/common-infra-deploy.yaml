@@ -142,7 +142,7 @@ extends:
         # deploy to all environments except snd1 & snd2 for service pipelines
         - ${{ if eq(parameters.includePlatformEnvs, True) }}:
           - name: snd1
-            serviceConnection: AZR-AIE-SND1
+            serviceConnection: $(subscriptionName)
             deploymentBranches:
               - 'refs/heads/main'
             developmentEnvironment: true
@@ -153,5 +153,5 @@ extends:
                   SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
                   runAsPreJob: true
             azureRegions:
-              primary: 'UKSouth'
+              primary: $(location)
    

@@ -54,6 +54,7 @@ param svc string
   'ADG'   // Azure Data Gateway
   'ADL'   // Azure Data Lake
   'AFW'   // Azure Firewall
+  'APP'   // Application
   'ASE'   // Application Service Environment
   'ASP'   // Application Service Plan
   'AXW'   // Axway Server
@@ -66,7 +67,7 @@ param svc string
   'DHC'   // DHCP Server
   'DNS'   // DNS Zones
   'ETL'   // Extract Transform Load Server
-  'EXP'   // Exploratory
+  'EXP'   // Experimental / Exploratory
   'FES'   // Front-End
   'FLB'   // Front-End Load Balancer
   'FTP'   // File Transfer Server

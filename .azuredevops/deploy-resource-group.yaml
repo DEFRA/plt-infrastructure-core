@@ -1,3 +1,5 @@
+# Standalone pipeline: create a single resource group by role.
+# Can be run manually or from another pipeline. For platform RG creation (INF + EXP + APP), use deploy-platform-core-env.yaml.
 ---
 pool:
   name: DEFRA-COMMON-ubuntu2004-SSV5
@@ -10,114 +12,53 @@ parameters:
     displayName: Service code (3 characters, e.g., AIE, AAD)
     type: string
   - name: role
-    displayName: Role code (3 characters, use INF for heterogeneous resource groups)
+    displayName: Role code (3 characters, e.g. INF, EXP, APP)
     type: string
   - name: deploymentEnvInstance
     displayName: Deployment Environment instance number (1 digit, 0-9)
     type: string
   - name: regionCode
-    displayName: Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)
+    displayName: Region code (1 digit, e.g., 4 for UK South)
     type: string
   - name: instanceNumber
     displayName: Instance number within the region (2 digits, 00-99)
     type: string
   - name: location
-    displayName: Azure region where the resource group will be created (e.g., UK South)
+    displayName: Azure region short name (e.g. UKSouth)
     type: string
-    default: 'UK South'
   - name: subscriptionName
-    displayName: Azure Subscription Service Connection Name
+    displayName: Azure Subscription Service Connection Name (from config subscriptionName)
     type: string
-    default: 'AZR-AIE-SND1'
+  - name: adGroupObjectId
+    displayName: AD group object ID for resource group RBAC (from config adGroupObjectId)
+    type: string
 
 trigger: none
 
 stages:
   - stage: create_resource_group
     displayName: Create Resource Group
+    variables:
+      - name: subType
+        value: ${{ parameters.subType }}
+      - name: serviceCode
+        value: ${{ parameters.svc }}
+      - name: applicationID
+        value: ${{ parameters.svc }}
+      - name: deploymentEnvInstance
+        value: ${{ parameters.deploymentEnvInstance }}
+      - name: regionCode
+        value: ${{ parameters.regionCode }}
+      - name: instanceNumber
+        value: ${{ parameters.instanceNumber }}
+      - name: location
+        value: ${{ parameters.location }}
+      - name: adGroupObjectId
+        value: ${{ parameters.adGroupObjectId }}
     jobs:
-      - deployment: CreateResourceGroup
-        displayName: Create Resource Group
-        environment:
-          name: "${{ parameters.subType }}"
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - checkout: self
-                  path: s
-
-                # Deploy resource group with RBAC using Bicep
-                - task: AzureCLI@2
-                  displayName: Deploy Resource Group with RBAC
-                  inputs:
-                    azureSubscription: '${{ parameters.subscriptionName }}'
-                    scriptType: bash
-                    scriptLocation: inlineScript
-                    inlineScript: |
-                      set -e
-                      
-                      echo "Getting resource group name from naming convention module..."
-                      
-                      # Get resource group name from naming convention module (source of truth)
-                      namingConventionFile="$(Pipeline.Workspace)/s/resources/naming-convention/get-names.bicep"
-                      namingDeploymentName="get-names-$(Build.BuildId)-$(Build.BuildNumber)"
-                      
-                      # Create the deployment to get the name (it's just a calculation, no resources created)
-                      az deployment sub create \
-                        --name "$namingDeploymentName" \
-                        --location "${{ parameters.location }}" \
-                        --template-file "$namingConventionFile" \
-                        --parameters \
-                          subType="${{ parameters.subType }}" \
-                          svc="${{ parameters.svc }}" \
-                          role="${{ parameters.role }}" \
-                          deploymentEnvInstance="${{ parameters.deploymentEnvInstance }}" \
-                          regionCode="${{ parameters.regionCode }}" \
-                          instanceNumber="${{ parameters.instanceNumber }}"
-                      
-                      # Extract resource group name from outputs
-                      resourceGroupName=$(az deployment sub show \
-                        --name "$namingDeploymentName" \
-                        --query "properties.outputs.resourceGroupName.value" \
-                        --output tsv)
-                      
-                      echo "Resource group name from naming convention module: $resourceGroupName"
-                      
-                      # Deploy resource group with RBAC using Bicep
-                      bicepFile="$(Pipeline.Workspace)/s/resources/resource-group/resource-group-with-rbac.bicep"
-                      deploymentName="rg-deploy-$(Build.BuildId)-$(Build.BuildNumber)"
-                      adGroupObjectId="11dc7728-d98c-481f-8020-65b067a36b8a"
-                      
-                      echo "Deploying resource group with RBAC using Bicep..."
-                      echo "Template: $bicepFile"
-                      echo "Deployment name: $deploymentName"
-                      
-                      # Deploy the Bicep template with the name parameter
-                      az deployment sub create \
-                        --name "$deploymentName" \
-                        --location "${{ parameters.location }}" \
-                        --template-file "$bicepFile" \
-                        --parameters \
-                          name="$resourceGroupName" \
-                          location="${{ parameters.location }}" \
-                          subType="${{ parameters.subType }}" \
-                          adGroupObjectId="$adGroupObjectId"
-                      
-                      # Get deployment outputs
-                      resourceGroupName=$(az deployment sub show \
-                        --name "$deploymentName" \
-                        --query "properties.outputs.resourceGroupName.value" \
-                        --output tsv)
-                      
-                      resourceGroupId=$(az deployment sub show \
-                        --name "$deploymentName" \
-                        --query "properties.outputs.resourceGroupId.value" \
-                        --output tsv)
-                      
-                      echo "Resource group created successfully: $resourceGroupName"
-                      echo "Resource Group ID: $resourceGroupId"
-                      
-                      # Set pipeline variables
-                      echo "##vso[task.setvariable variable=resourceGroupName]$resourceGroupName"
-                      echo "##vso[task.setvariable variable=resourceGroupId]$resourceGroupId"
+      - template: templates/deploy-resource-group-job.yaml
+        parameters:
+          role: ${{ parameters.role }}
+          setNetworkVariables: false
+          subscriptionName: ${{ parameters.subscriptionName }}
+          repositoryRoot: $(Pipeline.Workspace)/s
