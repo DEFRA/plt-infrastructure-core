@@ -4,15 +4,15 @@
     "parameters": {
         "aiDocumentIntelligence": {
             "value": {
-                "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ nc_instance_regionid }}01",
+                "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ environmentId }}#{{ regionCode }}01",
                 "sku": "#{{ aiDocumentIntelligenceSku }}",
-                "customSubDomainName": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ nc_instance_regionid }}01",
+                "customSubDomainName": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ environmentId }}#{{ regionCode }}01",
                 "disableLocalAuth": false
             }    
         },
         "privateDnsZone": {
             "value": {
-                "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ nc_instance_regionid }}01.privatelink.cognitiveservices.azure.com",
+                "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ environmentId }}#{{ regionCode }}01.privatelink.cognitiveservices.azure.com",
                 "resourceGroup": "#{{ dnsResourceGroup }}"
             }
         },
@@ -20,7 +20,7 @@
             "value": {
               "name": "#{{ virtualNetworkName }}",
               "resourceGroup": "#{{ virtualNetworkResourceGroup }}",
-              "subnetPrivateEndpoints": "#{{ networkResourceNamePrefix }}#{{ nc_resource_subnet }}#{{ nc_instance_regionid }}98"
+              "subnetPrivateEndpoints": "#{{ networkResourceNamePrefix }}#{{ nc_resource_subnet }}#{{ environmentId }}#{{ regionCode }}98"
             }
         },
         "subType": {

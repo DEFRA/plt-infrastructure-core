@@ -279,50 +279,33 @@ extends:
                   scriptType: PowerShell
                   inlineScript: |
                     # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId. Subnet count derived from VNet template (same as deploy-route-tables).
-                    $Dbg = '[set-subnet-rt.DEBUG]'
                     $layout = "$(subnetLayout)"
                     $base = "$(Pipeline.Workspace)/s/self"
-                    Write-Host "$Dbg layout=$layout initial base=$base"
                     if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)" }
                     if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)/self" }
-                    Write-Host "$Dbg final base=$base resourcesExists=$(Test-Path (Join-Path $base 'resources'))"
                     $vnetPath = Join-Path $base "resources/network/vnet/$layout/virtual-network.parameters.json"
                     if (-not (Test-Path $vnetPath)) { $vnetPath = Join-Path $base "self/resources/network/vnet/$layout/virtual-network.parameters.json" }
-                    Write-Host "$Dbg vnetPath=$vnetPath exists=$(Test-Path $vnetPath)"
                     $max = 1
                     if (Test-Path $vnetPath) {
                       $content = Get-Content -LiteralPath $vnetPath -Raw -Encoding UTF8
                       $subnetNameMatches = [regex]::Matches($content, '"name":\s*"subnet\d+"')
                       if ($subnetNameMatches.Count -gt 0) { $max = $subnetNameMatches.Count }
-                      Write-Host "$Dbg subnet count from file (name pattern)=$max"
                     }
-                    $r01u = [string](Get-Item -Path 'Env:ROUTETABLE01RESOURCEID' -ErrorAction SilentlyContinue).Value
-                    $r01l = [string](Get-Item -Path 'Env:routeTable01ResourceId' -ErrorAction SilentlyContinue).Value
-                    $r02u = [string](Get-Item -Path 'Env:ROUTETABLE02RESOURCEID' -ErrorAction SilentlyContinue).Value
-                    $r02l = [string](Get-Item -Path 'Env:routeTable02ResourceId' -ErrorAction SilentlyContinue).Value
-                    Write-Host "$Dbg Route table IDs from previous step: ROUTETABLE01RESOURCEID len=$($r01u.Length) routeTable01ResourceId len=$($r01l.Length) ROUTETABLE02RESOURCEID len=$($r02u.Length) routeTable02ResourceId len=$($r02l.Length)"
                     foreach ($i in 1..$max) {
-                      if ($i -eq 7) {
-                        $allSubnet7 = Get-ChildItem Env: | Where-Object { $_.Name -match 'subnet.*7.*route' } | ForEach-Object { "$($_.Name)=$($_.Value)" }
-                        Write-Host "$Dbg subnet7 env vars matching 'subnet.*7.*route': $($allSubnet7 -join '; ')"
-                      }
                       $v1 = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
                       $v2 = (Get-Item -Path "Env:subnet${i}RouteTable" -ErrorAction SilentlyContinue).Value
                       $v3 = [Environment]::GetEnvironmentVariable("subnet${i}routetable", 'Process')
                       $v4 = (Get-ChildItem Env: | Where-Object { $_.Name -match "subnet.*$i.*route" } | Select-Object -First 1).Value
                       $rt = $v1; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v2 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v3 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v4 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
-                      Write-Host "$Dbg subnet$i SUBNET${i}ROUTETABLE='$v1' subnet${i}RouteTable='$v2' subnet${i}routetable='$v3' envMatch='$v4' -> rt=$rt"
                       $id = ''
                       if ([int]$rt -gt 0) {
                         $suffix = '{0:D2}' -f [int]$rt
                         $idU = (Get-Item -Path "Env:ROUTETABLE${suffix}RESOURCEID" -ErrorAction SilentlyContinue).Value
                         $idL = (Get-Item -Path "Env:routeTable${suffix}ResourceId" -ErrorAction SilentlyContinue).Value
                         $id = $idU; if ([string]::IsNullOrEmpty($id)) { $id = $idL }
-                        Write-Host "$Dbg subnet$i suffix=$suffix ROUTETABLE${suffix}RESOURCEID len=$(([string]$idU).Length) routeTable${suffix}ResourceId len=$(([string]$idL).Length) -> id len=$(([string]$id).Length)"
-                      } else { Write-Host "$Dbg subnet$i rt=0 -> id='' (no route table)" }
+                      }
                       Write-Host "##vso[task.setvariable variable=subnet${i}RouteTableResourceId]$id"
                     }
-                    Write-Host "$Dbg Done. Set subnet1..$max RouteTableResourceId."
                 - name: virtual-network
                   path: resources/network/vnet
                   parameterFilePath: resources/network/vnet/$(subnetLayout)
@@ -421,7 +404,7 @@ extends:
                       type: PowerShell
                       useSystemAccessToken: true
                       scriptArguments: >
-                        -PrivateDnsZoneName "$(infraResourceNamePrefix)$(nc_resource_ai_document_intelligence)$(nc_instance_regionid)01.privatelink.cognitiveservices.azure.com"
+                        -PrivateDnsZoneName "$(infraResourceNamePrefix)$(nc_resource_ai_document_intelligence)$(environmentId)$(regionCode)01.privatelink.cognitiveservices.azure.com"
                         -ResourceGroupName $(dnsResourceGroup)
                         -SubscriptionName $(subscriptionName)
                         -TenantId $(tenantId)                   
@@ -434,7 +417,7 @@ extends:
                   path: infra/core/env/storage-account
                   resourceGroupName: $(servicesResourceGroup)
                   privateEndpointDnsRecordsForResources:
-                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_storageaccount)$(nc_instance_regionid)01
+                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_storageaccount)$(environmentId)$(regionCode)01
                       resourceGroupName: $(servicesResourceGroup)
 
               - ${{ if eq(variables.IsApplicationKeyVault, true) }}:                    
@@ -443,7 +426,7 @@ extends:
                   parameterFilePath: infra/core/env/key-vault/application-keyvault-params
                   resourceGroupName: $(servicesResourceGroup)
                   privateEndpointDnsRecordsForResources:
-                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_keyvault)$(nc_instance_regionid)01
+                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_keyvault)$(environmentId)$(regionCode)01
                       resourceGroupName: $(servicesResourceGroup)
              
         - ${{ if eq(variables.IsOpenAi, true) }}:  
@@ -457,7 +440,7 @@ extends:
                   path: infra/core/env/open-ai
                   resourceGroupName: $(servicesResourceGroup)
                   privateEndpointDnsRecordsForResources:
-                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_openai)$(nc_instance_regionid)01
+                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_openai)$(environmentId)$(regionCode)01
                       resourceGroupName: $(servicesResourceGroup)                   
                   preDeployScriptsList:
                   - displayName: 'Get Group Id'
@@ -471,7 +454,7 @@ extends:
                   path: infra/core/env/search-service
                   resourceGroupName: $(servicesResourceGroup)
                   privateEndpointDnsRecordsForResources:
-                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_search)$(nc_instance_regionid)01
+                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_search)$(environmentId)$(regionCode)01
                       resourceGroupName: $(servicesResourceGroup)                  
                   preDeployScriptsList:
                   - displayName: 'Get Group Id'
@@ -485,9 +468,9 @@ extends:
                     serviceConnectionVariableName: "subscriptionName"
                     scriptPath: 'infra/core/env/scripts/PrivateEndpointConnection.ps1'
                     scriptArguments: > 
-                      -OpenAiName '$(infraResourceNamePrefix)$(nc_resource_openai)$(nc_instance_regionid)01'
+                      -OpenAiName '$(infraResourceNamePrefix)$(nc_resource_openai)$(environmentId)$(regionCode)01'
                       -ResourceGroupName '$(servicesResourceGroup)'
-                      -SearchServiceName '$(infraResourceNamePrefix)$(nc_resource_search)$(nc_instance_regionid)01'
+                      -SearchServiceName '$(infraResourceNamePrefix)$(nc_resource_search)$(environmentId)$(regionCode)01'
                       -Command 'Check'
                   postDeployScriptsList:
                   - displayName: 'Approve Private Endpoint Connection'
@@ -495,8 +478,8 @@ extends:
                     serviceConnectionVariableName: "subscriptionName"
                     scriptPath: 'infra/core/env/scripts/PrivateEndpointConnection.ps1'
                     scriptArguments: > 
-                      -OpenAiName '$(infraResourceNamePrefix)$(nc_resource_openai)$(nc_instance_regionid)01'
+                      -OpenAiName '$(infraResourceNamePrefix)$(nc_resource_openai)$(environmentId)$(regionCode)01'
                       -ResourceGroupName '$(servicesResourceGroup)'
-                      -SearchServiceName '$(infraResourceNamePrefix)$(nc_resource_search)$(nc_instance_regionid)01'
+                      -SearchServiceName '$(infraResourceNamePrefix)$(nc_resource_search)$(environmentId)$(regionCode)01'
                       -Command 'Approve'
 

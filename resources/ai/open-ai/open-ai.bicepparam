@@ -1,22 +1,22 @@
 using './open-ai.bicep'
 
 param openAi = {
-  name: '#{{ infraResourceNamePrefix }}#{{ nc_resource_openai }}#{{ nc_instance_regionid }}01'
+  name: '#{{ infraResourceNamePrefix }}#{{ nc_resource_openai }}#{{ environmentId }}#{{ regionCode }}01'
   skuName: '#{{ openAiSkuName }}'
-  customSubDomainName: '#{{ infraResourceNamePrefix }}#{{ nc_resource_openai }}#{{ nc_instance_regionid }}01'
-  privateEndpointName: '#{{ infraResourceNamePrefix }}#{{ nc_resource_privateendpoint }}#{{ nc_instance_regionid }}10'  
+  customSubDomainName: '#{{ infraResourceNamePrefix }}#{{ nc_resource_openai }}#{{ environmentId }}#{{ regionCode }}01'
+  privateEndpointName: '#{{ infraResourceNamePrefix }}#{{ nc_resource_privateendpoint }}#{{ environmentId }}#{{ regionCode }}10'  
 }
 
 param location = '#{{ location }}'
 param subType = '#{{ subType }}'
-param managedIdentityName = '#{{ infraResourceNamePrefix }}#{{ nc_resource_managedidentity }}#{{ nc_instance_regionid }}01-open-ai'
+param managedIdentityName = '#{{ infraResourceNamePrefix }}#{{ nc_resource_managedidentity }}#{{ environmentId }}#{{ regionCode }}01-open-ai'
 
 param openAiUserGroupId = '#{{ openAiUserGroupId }}'
 
 param vnet = {
   name: '#{{ virtualNetworkName }}'
   resourceGroup: '#{{ virtualNetworkResourceGroup }}'
-  subnetPrivateEndpoints: '#{{ networkResourceNamePrefix }}#{{ nc_resource_subnet }}#{{ nc_instance_regionid }}98'
+  subnetPrivateEndpoints: '#{{ networkResourceNamePrefix }}#{{ nc_resource_subnet }}#{{ environmentId }}#{{ regionCode }}98'
 }
 
 param monitoringWorkspace = {

@@ -10,14 +10,14 @@
     },
     "flowLogs": {
       "value": {
-        "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_flowlog }}#{{ nc_instance_regionid }}01",
+        "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_flowlog }}#{{ environmentId }}#{{ regionCode }}01",
         "enabled": "#{{ networkFlowLogsEnabled }}",
         "retentionDays": "#{{ networkFlowLogsRetentionDays }}"
       }
     },
     "storageAccount": {
       "value": {
-        "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_storageaccount }}#{{ nc_instance_regionid }}01"
+        "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_storageaccount }}#{{ environmentId }}#{{ regionCode }}01"
       }
     },
     "location": {
