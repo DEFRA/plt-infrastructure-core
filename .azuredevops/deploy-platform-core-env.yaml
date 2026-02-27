@@ -134,13 +134,6 @@ variables:
   - template: /config/common.yaml@PltConfig
   - template: /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
 
-resources:
-  repositories:
-    - repository: PltConfig
-      name: DEFRA/plt-config
-      endpoint: DEFRA
-      type: github
-      ref: refs/heads/ml/initial-structure
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
   parameters:
