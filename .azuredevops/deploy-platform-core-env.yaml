@@ -149,6 +149,7 @@ extends:
     deployFromFeature: ${{ parameters.deployFromFeature }}
     applicationID: ${{ parameters.applicationID }}
     instance: ${{ parameters.instance }}
+    primaryRegionKey: $(location)
     environments:
       - name: snd1
         serviceConnection: $(subscriptionName)

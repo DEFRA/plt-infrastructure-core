@@ -52,6 +52,10 @@ parameters:
     type: object
     default: 
       - /config/regional/{environment}-{region}.yaml@PltConfig
+  - name: primaryRegionKey
+    displayName: Primary region key for regional config path (e.g. uksouth). From config; used so path resolves at compile time.
+    type: string
+    default: ''
   - name: additionalRepositories
     displayName: Additional repositories that needs reference in the process
     type: object
@@ -78,6 +82,7 @@ extends:
         - ${{ repo }}
     variableFiles: ${{ parameters.variableFiles }}
     regionalVariableFiles: ${{ parameters.regionalVariableFiles }}
+    primaryRegionKey: ${{ parameters.primaryRegionKey }}
     applicationID: ${{ parameters.applicationID }}
     instance: ${{ parameters.instance }}
     groupedDeployments:
