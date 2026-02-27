@@ -172,15 +172,16 @@ extends:
           - 'refs/heads/main'
         developmentEnvironment: true
         privateAgentName: 'DEFRA-COMMON-UBUNTU-SSV3'
+        # primary must be compile-time (parameters) so job names are valid; config $(location) is still used at runtime via variables
         azureRegions:
-          primary: $(location)
+          primary: ${{ parameters.location }}
     filePathsForTransform: |
       **/core/env/app-configuration/config-data/config-data.json
       **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    
       **/infra/core/env/open-ai/aad-groups/openaiaccessgroup.json
       **/infra/core/env/search-service/aad-groups/searchserviceaccessgroup.json
     groupedDeployments:
-        - name: validate-config
+        - name: validate_config
           deployments:
               - name: validate-params-match-config
                 type: 'script'
