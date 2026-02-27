@@ -70,12 +70,8 @@ resources:
       name: DEFRA/ado-pipeline-common
       endpoint: DEFRA
       type: github
-      ref: refs/heads/ml/add-applicationID-support      
-    - repository: PltConfig
-      name: DEFRA/plt-config
-      endpoint: DEFRA
-      type: github
-      ref: refs/heads/ml/initial-structure
+      ref: refs/heads/ml/add-applicationID-support
+    # PltConfig is defined in the root pipeline (deploy-platform-core-env) so variable templates resolve; do not re-declare here to avoid duplicate alias.
 
 extends:
   template: /templates/pipelines/common-infrastructure-deploy.yaml@PipelineCommon
