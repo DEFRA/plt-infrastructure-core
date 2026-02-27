@@ -133,6 +133,8 @@ variables:
   # subscriptionName, location (primary region) from config (loaded below)
   - template: /config/common.yaml@PltConfig
   - template: /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
+  # Regional config loaded here so path can use $(location); PipelineCommon gets regionalVariableFiles: [] so it does not resolve the path
+  - template: /config/regional/snd1-$(location).yaml@PltConfig
 
 resources:
   repositories:
@@ -149,7 +151,7 @@ extends:
     deployFromFeature: ${{ parameters.deployFromFeature }}
     applicationID: ${{ parameters.applicationID }}
     instance: ${{ parameters.instance }}
-    primaryRegionKey: $(location)
+    regionalVariableFiles: []
     environments:
       - name: snd1
         serviceConnection: $(subscriptionName)
