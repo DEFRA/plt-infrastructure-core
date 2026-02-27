@@ -37,12 +37,6 @@ parameters:
     displayName: "Instance (config folder name, e.g. 01)"
     type: string
     default: '01'
-  - name: subscriptionName
-    displayName: "Azure DevOps service connection name (e.g. AZR-AIE-SND1). Set per application."
-    type: string
-  - name: primaryRegion
-    displayName: "Primary Azure region (e.g. uksouth). Set per application; from config."
-    type: string
 pr:
   branches:
     include:
@@ -136,6 +130,17 @@ variables:
   # Platform resource group roles to create (in addition to INF). INF is always created first. Comma-separated, e.g. EXP,APP. Set in config (variable files).
   - name: platformResourceGroups
     value: ''
+  # subscriptionName, location (primary region) from config (loaded below)
+  - template: /config/common.yaml@PltConfig
+  - template: /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
+
+resources:
+  repositories:
+    - repository: PltConfig
+      name: DEFRA/plt-config
+      endpoint: DEFRA
+      type: github
+      ref: refs/heads/main
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
@@ -146,13 +151,13 @@ extends:
     instance: ${{ parameters.instance }}
     environments:
       - name: snd1
-        serviceConnection: ${{ parameters.subscriptionName }}
+        serviceConnection: $(subscriptionName)
         deploymentBranches:
           - 'refs/heads/main'
         developmentEnvironment: true
         privateAgentName: 'DEFRA-COMMON-UBUNTU-SSV3'
         azureRegions:
-          primary: ${{ parameters.primaryRegion }}
+          primary: $(location)
     filePathsForTransform: |
       **/core/env/app-configuration/config-data/config-data.json
       **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    

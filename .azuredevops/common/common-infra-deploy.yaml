@@ -63,11 +63,7 @@ resources:
       endpoint: DEFRA
       type: github
       ref: refs/heads/ml/add-applicationID-support
-    - repository: PltConfig
-      name: DEFRA/plt-config
-      endpoint: DEFRA
-      type: github
-      ref: refs/heads/ml/initial-structure
+    # PltConfig provided by root pipeline (deploy-platform-core-env) for config variable templates
 
 extends:
   template: /templates/pipelines/common-infrastructure-deploy.yaml@PipelineCommon
