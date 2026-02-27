@@ -37,6 +37,14 @@ parameters:
     displayName: "Instance (config folder name, e.g. 01)"
     type: string
     default: '01'
+  - name: environmentName
+    displayName: "Environment name for config path (e.g. snd1). Must match config/regional/{environment}-{region}.yaml and config."
+    type: string
+    default: 'snd1'
+  - name: location
+    displayName: "Primary region key for config path (e.g. uksouth). Must match config and config/regional/{environment}-{region}.yaml."
+    type: string
+    default: 'uksouth'
 pr:
   branches:
     include:
@@ -133,8 +141,13 @@ variables:
   # subscriptionName, location (primary region) from config (loaded below)
   - template: /config/common.yaml@PltConfig
   - template: /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
-  # Regional config loaded here so path can use $(location); PipelineCommon gets regionalVariableFiles: [] so it does not resolve the path
-  - template: /config/regional/snd1-$(location).yaml@PltConfig
+  # Regional config: path uses compile-time parameters so template resolves; must match config (validated below)
+  - template: /config/regional/${{ parameters.environmentName }}-${{ parameters.location }}.yaml@PltConfig
+  # Expected values from parameters for config validation (same pipeline)
+  - name: expectedEnvironment
+    value: ${{ parameters.environmentName }}
+  - name: expectedLocation
+    value: ${{ parameters.location }}
 
 resources:
   repositories:
@@ -167,6 +180,29 @@ extends:
       **/infra/core/env/open-ai/aad-groups/openaiaccessgroup.json
       **/infra/core/env/search-service/aad-groups/searchserviceaccessgroup.json
     groupedDeployments:
+        - name: validate-config
+          deployments:
+              - name: validate-params-match-config
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: bash
+                inlineScript: |
+                  set -e
+                  err=0
+                  exp_env=$(echo "$(expectedEnvironment)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+                  act_env=$(echo "$(environment)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+                  if [ -n "$exp_env" ] && [ -n "$act_env" ] && [ "$act_env" != "$exp_env" ]; then
+                    echo "##vso[task.logissue type=error]Environment mismatch: pipeline parameter (environmentName=$exp_env) does not match config (environment=$(environment)). Update pipeline parameters or config so they match."
+                    err=1
+                  fi
+                  exp_loc=$(echo "$(expectedLocation)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+                  act_loc=$(echo "$(location)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+                  if [ -n "$exp_loc" ] && [ "$act_loc" != "$exp_loc" ]; then
+                    echo "##vso[task.logissue type=error]Location mismatch: pipeline parameter (location=$exp_loc) does not match config (location=$(location)). Update pipeline parameters or config so they match."
+                    err=1
+                  fi
+                  if [ $err -eq 1 ]; then exit 1; fi
+                  echo "Config validation passed: parameters match config."
         - name: setup
           deployments:
               - name: variable-setup
