@@ -37,10 +37,6 @@ parameters:
     displayName: "Instance (config folder name, e.g. 01)"
     type: string
     default: '01'
-  - name: location
-    displayName: "Location for config (e.g. uksouth, ukwest). Must match config/regional/{environment}-{region}.yaml filename."
-    type: string
-
 pr:
   branches:
     include:
@@ -142,7 +138,6 @@ extends:
     deployFromFeature: ${{ parameters.deployFromFeature }}
     applicationID: ${{ parameters.applicationID }}
     instance: ${{ parameters.instance }}
-    location: ${{ parameters.location }}
     filePathsForTransform: |
       **/core/env/app-configuration/config-data/config-data.json
       **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    
