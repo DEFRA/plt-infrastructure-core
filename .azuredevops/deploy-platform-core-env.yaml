@@ -130,17 +130,6 @@ variables:
   # Platform resource group roles to create (in addition to INF). INF is always created first. Comma-separated, e.g. EXP,APP. Set in config (variable files).
   - name: platformResourceGroups
     value: ''
-  # Load config first so location is available for regional path (passed to template).
-  - template: /config/common.yaml@PltConfig
-  - template: /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
-
-resources:
-  repositories:
-    - repository: PltConfig
-      name: DEFRA/plt-config
-      endpoint: DEFRA
-      type: github
-      ref: refs/heads/ml/initial-structure
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
@@ -149,7 +138,6 @@ extends:
     deployFromFeature: ${{ parameters.deployFromFeature }}
     applicationID: ${{ parameters.applicationID }}
     instance: ${{ parameters.instance }}
-    location: $(location)
     filePathsForTransform: |
       **/core/env/app-configuration/config-data/config-data.json
       **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    
