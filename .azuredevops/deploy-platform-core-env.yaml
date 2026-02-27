@@ -205,6 +205,8 @@ extends:
                   if [ $err -eq 1 ]; then exit 1; fi
                   echo "Config validation passed: parameters match config."
         - name: setup
+          dependsOnGroupedDeployments:
+            - validate_config
           deployments:
               - name: variable-setup
                 type: 'script'
@@ -255,7 +257,7 @@ extends:
                       if (-not $resourceGroupName) { throw "Could not get resourceGroupName for role $Role" }
                       $rgDeploymentName = "rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
                       Write-Host "Deploying resource group: $resourceGroupName"
-                      az deployment sub create --name $rgDeploymentName --location $location --template-file $bicepFile --parameters name=$resourceGroupName location=$location subType=$subType adGroupObjectId=$adGroupObjectId --output none
+                      az deployment sub create --name $rgDeploymentName --location $location --template-file $bicepFile --parameters name=$resourceGroupName location=$location subType=$subType adGroupObjectId=$adGroupObjectId resourceGroupRole=$Role --output none
                       if ($LASTEXITCODE -ne 0) { throw "Resource group deployment failed for role $Role" }
                       $resourceGroupNameOutput = az deployment sub show --name $rgDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
                       if ($Role -eq 'INF') {

@@ -15,11 +15,21 @@ param tags object = {}
 @description('Optional. Date in the format yyyy-MM-dd.')
 param createdDate string = utcNow('yyyy-MM-dd')
 
-@description('Optional. AD Group Object ID to assign Contributor role. If not provided, no role assignment will be created.')
+@description('Optional. AD Group Object ID to assign RBAC role. If not provided, no role assignment will be created.')
 param adGroupObjectId string = ''
+
+@description('Optional. Resource group role code (e.g. INF, EXP, APP). Used to decide which RBAC role to assign.')
+param resourceGroupRole string = ''
 
 @description('Optional. Contributor role definition ID. Default is the built-in Contributor role.')
 param contributorRoleDefinitionId string = '${subscription().id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c'
+
+@description('Optional. Windows 365 Network User role definition ID (used for INF). Default is the built-in Windows 365 Network User role.')
+param windows365NetworkUserRoleDefinitionId string = '${subscription().id}/providers/Microsoft.Authorization/roleDefinitions/7eabc9a4-85f7-4f71-b8ab-75daaccc1033'
+
+var roleDefinitionIdToAssign = toUpper(resourceGroupRole) == 'INF'
+  ? windows365NetworkUserRoleDefinitionId
+  : contributorRoleDefinitionId
 
 // Step 1: Create the resource group
 module resourceGroupModule './resource-group.bicep' = {
@@ -33,14 +43,14 @@ module resourceGroupModule './resource-group.bicep' = {
   }
 }
 
-// Step 2: Assign Contributor role to AD Group (if provided)
+// Step 2: Assign RBAC role to AD Group (if provided)
 // Deploy role assignment module scoped to the resource group
 module roleAssignmentModule './rg-role-assignment.bicep' = if (!empty(adGroupObjectId)) {
   name: 'role-assignment-${uniqueString(deployment().name, adGroupObjectId)}'
   scope: resourceGroup(subscription().subscriptionId, name)
   params: {
     adGroupObjectId: adGroupObjectId
-    roleDefinitionId: contributorRoleDefinitionId
+    roleDefinitionId: roleDefinitionIdToAssign
     principalType: 'Group'
   }
   dependsOn: [
