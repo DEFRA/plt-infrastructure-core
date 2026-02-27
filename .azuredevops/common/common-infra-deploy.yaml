@@ -56,10 +56,6 @@ parameters:
     displayName: Additional repositories that needs reference in the process
     type: object
     default: []
-  - name: includePlatformEnvs
-    displayName: Include Platform Environments (SND1 and SND2)
-    type: boolean
-    default: true
 resources:
   repositories:
     - repository: PipelineCommon
@@ -133,24 +129,6 @@ extends:
                           -Ttl 120
                   - ${{ each script in deployment.postDeployScriptsList }}:
                       - ${{ script }}
-    ${{ if gt(length(parameters.environments), 0) }}:
-      environments:
-        - ${{ parameters.environments }}
-    ${{ else }}:
-      environments:
-        # deploy to all environments except snd1 & snd2 for service pipelines
-        - ${{ if eq(parameters.includePlatformEnvs, True) }}:
-          - name: snd1
-            serviceConnection: $(subscriptionName)
-            deploymentBranches:
-              - 'refs/heads/main'
-            developmentEnvironment: true
-            privateAgentName: 'DEFRA-COMMON-UBUNTU-SSV3'
-            ${{ if ne( coalesce(parameters.keyVaultName,''), '') }}:
-              keyVaultList:
-                - Name: ${{ parameters.keyVaultName }}
-                  SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
-                  runAsPreJob: true
-            azureRegions:
-              primary: 'uksouth'
+    # Caller passes environments (no default; application pipeline defines its own).
+    environments: ${{ parameters.environments }}
    

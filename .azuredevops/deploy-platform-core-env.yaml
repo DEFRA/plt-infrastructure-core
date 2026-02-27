@@ -37,6 +37,12 @@ parameters:
     displayName: "Instance (config folder name, e.g. 01)"
     type: string
     default: '01'
+  - name: subscriptionName
+    displayName: "Azure DevOps service connection name (e.g. AZR-AIE-SND1). Set per application."
+    type: string
+  - name: primaryRegion
+    displayName: "Primary Azure region (e.g. uksouth). Set per application; from config."
+    type: string
 pr:
   branches:
     include:
@@ -138,6 +144,15 @@ extends:
     deployFromFeature: ${{ parameters.deployFromFeature }}
     applicationID: ${{ parameters.applicationID }}
     instance: ${{ parameters.instance }}
+    environments:
+      - name: snd1
+        serviceConnection: ${{ parameters.subscriptionName }}
+        deploymentBranches:
+          - 'refs/heads/main'
+        developmentEnvironment: true
+        privateAgentName: 'DEFRA-COMMON-UBUNTU-SSV3'
+        azureRegions:
+          primary: ${{ parameters.primaryRegion }}
     filePathsForTransform: |
       **/core/env/app-configuration/config-data/config-data.json
       **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    
