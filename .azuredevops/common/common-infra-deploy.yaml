@@ -151,7 +151,5 @@ extends:
                 - Name: ${{ parameters.keyVaultName }}
                   SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
                   runAsPreJob: true
-            # primary: placeholder so template compiles; actual value must come from config (caller must override or PipelineCommon must use location from variableFiles).
-            azureRegions:
-              primary: 'REPLACE_FROM_CONFIG'
+            # azureRegions not set: PipelineCommon reads location from config (variableFiles/core) and uses it for path and primary region.
    
