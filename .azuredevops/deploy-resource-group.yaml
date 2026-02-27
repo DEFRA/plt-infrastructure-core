@@ -24,7 +24,7 @@ parameters:
     displayName: Instance number within the region (2 digits, 00-99)
     type: string
   - name: location
-    displayName: Azure region short name (e.g. UKSouth)
+    displayName: Azure region short name, lowercase (e.g. uksouth, ukwest)
     type: string
   - name: subscriptionName
     displayName: Azure Subscription Service Connection Name (from config subscriptionName)

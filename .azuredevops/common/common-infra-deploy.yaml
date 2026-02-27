@@ -59,7 +59,11 @@ parameters:
   - name: includePlatformEnvs
     displayName: Include Platform Environments (SND1 and SND2)
     type: boolean
-    default: true    
+    default: true
+  # Location for the regional config file path: config/regional/{environment}-{region}.yaml (e.g. uksouth, ukwest). Must be passed by caller; no default.
+  - name: location
+    displayName: Location (e.g. uksouth, ukwest) for loading config/regional/{env}-{region}.yaml
+    type: string
 
 resources:
   repositories:
@@ -152,6 +156,7 @@ extends:
                 - Name: ${{ parameters.keyVaultName }}
                   SecretsFilter: ${{ parameters.keyVaultSecretsFilter }}
                   runAsPreJob: true
+            # location → azureRegions.primary: PipelineCommon uses it to build the regional file path (config/regional/{env}-{region}.yaml). Runtime location comes from the loaded regional file.
             azureRegions:
-              primary: $(location)
+              primary: ${{ parameters.location }}
    
