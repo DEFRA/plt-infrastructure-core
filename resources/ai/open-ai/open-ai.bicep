@@ -14,9 +14,9 @@ param monitoringWorkspace object
 param resourceLockEnabled bool
 
 @allowed([
-  'UKSouth'
+  'uksouth'
 ])
-@description('Required. The Azure region where the resources will be deployed.')
+@description('Required. The Azure region where the resources will be deployed (lowercase short name, e.g. uksouth).')
 param location string
 @description('Required. Sub type (e.g. SND, PRD).')
 param subType string
