@@ -60,6 +60,10 @@ parameters:
     displayName: Include Platform Environments (SND1 and SND2)
     type: boolean
     default: true
+  - name: location
+    displayName: Location for regional config path (from config; passed by caller that loads config first)
+    type: string
+    default: ''
 resources:
   repositories:
     - repository: PipelineCommon
@@ -88,6 +92,7 @@ extends:
     regionalVariableFiles: ${{ parameters.regionalVariableFiles }}
     applicationID: ${{ parameters.applicationID }}
     instance: ${{ parameters.instance }}
+    location: ${{ parameters.location }}
     groupedDeployments:
       - ${{ each groupTemplate in parameters.groupedDeployments }}:
         - name: ${{ groupTemplate.name }}
