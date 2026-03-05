@@ -5,7 +5,7 @@
         "aiDocumentIntelligence": {
             "value": {
                 "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ environmentId }}#{{ regionCode }}01",
-                "sku": "#{{ aiDocumentIntelligenceSku }}",
+                "sku": "#{{ documentIntelligenceSku }}",
                 "customSubDomainName": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ environmentId }}#{{ regionCode }}01",
                 "disableLocalAuth": false
             }    
