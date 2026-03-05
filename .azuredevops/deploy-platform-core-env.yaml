@@ -132,6 +132,9 @@ variables:
   # infraResourceGroupName from set-resource-names; placeholder for Validate job; overridden in Deploy.
   - name: infraResourceGroupName
     value: 'ValidationPlaceholderRG'
+  # servicesResourceGroup (APP RG) set by create-platform-resource-groups when APP role is created. Placeholder for Validate job.
+  - name: servicesResourceGroup
+    value: 'ValidationPlaceholderRG'
   # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
   - name: firewallVirtualApplianceIp
     value: ''
