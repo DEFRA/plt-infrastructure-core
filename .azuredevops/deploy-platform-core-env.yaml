@@ -138,7 +138,9 @@ variables:
   # Platform resource group roles to create (in addition to INF). INF is always created first. Comma-separated, e.g. EXP,APP. Set in config (variable files).
   - name: platformResourceGroups
     value: ''
-  # subscriptionName, location (primary region) from config (loaded below)
+  # subscriptionName, location (primary region), documentIntelligenceSku from config (loaded below)
+  - name: documentIntelligenceSku
+    value: ''
   - template: /config/common.yaml@PltConfig
   - template: /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
   # Regional config: path uses compile-time parameters so template resolves; must match config (validated below)
@@ -219,11 +221,10 @@ extends:
                   echo "##vso[task.setvariable variable=applicationID]$applicationIDUpper"
                   echo "##vso[task.setvariable variable=applicationIDLower]$applicationIDLower"
                   echo "Normalized applicationID to $applicationIDUpper, applicationIDLower to $applicationIDLower"
-        - ${{ if eq(variables.IsNetwork, true) }}:
-          - name: network
-            dependsOnGroupedDeployments:
-              - setup
-            deployments:
+        - name: network
+          dependsOnGroupedDeployments:
+            - setup
+          deployments:
               - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true), eq(variables.IsNetworkNsg, true)) }}:
                 - name: create-platform-resource-groups
                   type: 'script'
@@ -385,6 +386,24 @@ extends:
                 - name: dns-zone
                   path: infra/core/env/public-dns-zone
                   resourceGroupName: $(dnsResourceGroup)
+              - ${{ if and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none')) }}:
+                - name: ai-document-intelligence-zone
+                  path: infra/core/env/private-dns-zone
+                  resourceGroupName: $(dnsResourceGroup)
+                  postDeployScriptsList:
+                    - displayName: Link the Private DNS Zone to Central networks
+                      scriptPath: infra/core/env/scripts/Trigger-LinkPrivateDNSZones.ps1
+                      type: PowerShell
+                      useSystemAccessToken: true
+                      scriptArguments: >
+                        -PrivateDnsZoneName "$(infraResourceNamePrefix)$(nc_resource_ai_document_intelligence)$(environmentId)$(regionCode)01.privatelink.cognitiveservices.azure.com"
+                        -ResourceGroupName $(dnsResourceGroup)
+                        -SubscriptionName $(subscriptionName)
+                        -TenantId $(tenantId)                   
+                - name: ai-document-intelligence
+                  path: infra/core/env/ai-document-intelligence
+                  parameterFilePath: infra/core/env/ai-document-intelligence/ai-document-intelligence-depolyment-1-params
+                  resourceGroupName: $(servicesResourceGroup)
 
         - ${{ if eq(variables.IsMonitoring, true) }}:
           - name: monitoring
@@ -411,24 +430,6 @@ extends:
               - network
             deployments:
 
-              - ${{ if eq(variables.IsApplicationAiDocumentIntelligence1, true) }}:
-                - name: ai-document-intelligence-zone
-                  path: infra/core/env/private-dns-zone
-                  resourceGroupName: $(dnsResourceGroup)
-                  postDeployScriptsList:
-                    - displayName: Link the Private DNS Zone to Central networks
-                      scriptPath: infra/core/env/scripts/Trigger-LinkPrivateDNSZones.ps1
-                      type: PowerShell
-                      useSystemAccessToken: true
-                      scriptArguments: >
-                        -PrivateDnsZoneName "$(infraResourceNamePrefix)$(nc_resource_ai_document_intelligence)$(environmentId)$(regionCode)01.privatelink.cognitiveservices.azure.com"
-                        -ResourceGroupName $(dnsResourceGroup)
-                        -SubscriptionName $(subscriptionName)
-                        -TenantId $(tenantId)                   
-                - name: ai-document-intelligence
-                  path: infra/core/env/ai-document-intelligence
-                  parameterFilePath: infra/core/env/ai-document-intelligence/ai-document-intelligence-depolyment-1-params
-                  resourceGroupName: $(servicesResourceGroup)
               - ${{ if eq(variables.IsApplicationStorageAccount, true) }}:                    
                 - name: application-storage-account
                   path: infra/core/env/storage-account
