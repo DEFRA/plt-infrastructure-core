@@ -248,14 +248,9 @@ extends:
                     if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)/self" }
                     $namingFile = Join-Path $root "resources/naming-convention/get-names.bicep"
                     if (-not (Test-Path $namingFile)) { throw "get-names.bicep not found at $namingFile" }
-                    $subType = $env:subType ?? $env:SUBTYPE
-                    $svc = ($env:serviceCode ?? $env:SERVICECODE ?? ($env:applicationID ?? $env:APPLICATIONID).ToString().ToUpperInvariant())
-                    $deploymentEnvInstance = $env:deploymentEnvInstance ?? $env:DEPLOYMENTENVINSTANCE
-                    $regionCode = $env:regionCode ?? $env:REGIONCODE
-                    $instanceNumber = $env:instanceNumber ?? $env:INSTANCENUMBER
-                    $location = $env:location ?? $env:LOCATION
+                    $location = "$(location)"
                     $namingDeploymentName = "get-names-infra-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
-                    $namingParams = "subType=$subType svc=$svc role=INF deploymentEnvInstance=$deploymentEnvInstance regionCode=$regionCode instanceNumber=$instanceNumber"
+                    $namingParams = "subType=$(subType) svc=$(serviceCode) role=INF deploymentEnvInstance=$(deploymentEnvInstance) regionCode=$(regionCode) instanceNumber=$(instanceNumber)"
                     if (-not [string]::IsNullOrWhiteSpace("$(privateLinkZoneSuffix)") -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneResType)")) {
                       $namingParams += " privateLinkZoneSuffix=$(privateLinkZoneSuffix) privateLinkZoneResType=$(privateLinkZoneResType)"
                     }
@@ -284,15 +279,11 @@ extends:
                     $root = "$(Pipeline.Workspace)/s/self"
                     if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)" }
                     if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)/self" }
-                    $subType = $env:subType ?? $env:SUBTYPE
-                    $svc = ($env:serviceCode ?? $env:SERVICECODE ?? ($env:applicationID ?? $env:APPLICATIONID).ToString().ToUpperInvariant())
-                    $deploymentEnvInstance = $env:deploymentEnvInstance ?? $env:DEPLOYMENTENVINSTANCE
-                    $regionCode = $env:regionCode ?? $env:REGIONCODE
-                    $instanceNumber = $env:instanceNumber ?? $env:INSTANCENUMBER
-                    $location = $env:location ?? $env:LOCATION
-                    $adGroupObjectId = $env:adGroupObjectId ?? $env:ADGROUPOBJECTID
-                    if (-not $subType -or -not $svc -or -not $deploymentEnvInstance -or -not $regionCode -or -not $instanceNumber -or -not $location -or -not $adGroupObjectId) {
-                      throw 'Required config (variable file) values missing: subType, serviceCode (or applicationID), deploymentEnvInstance, regionCode, instanceNumber, location, adGroupObjectId. Set these in plt-config (e.g. config/aie/01/core.yaml and config/regional/snd1-uksouth.yaml).'
+                    $subType = "$(subType)"
+                    $location = "$(location)"
+                    $adGroupObjectId = "$(adGroupObjectId)"
+                    if (-not $subType -or -not $location -or -not $adGroupObjectId) {
+                      throw 'Required config (variable file) values missing: subType, location, adGroupObjectId. Set these in plt-config (e.g. config/aie/01/core.yaml and config/regional/snd1-uksouth.yaml).'
                     }
                     $namingFile = Join-Path $root "resources/naming-convention/get-names.bicep"
                     if (-not (Test-Path $namingFile)) { $namingFile = Join-Path $root "self/resources/naming-convention/get-names.bicep" }
@@ -307,7 +298,7 @@ extends:
                       } else {
                         $namingDeploymentName = "get-names-rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
                         Write-Host "Getting resource group name for role $Role..."
-                        $namingParams = "subType=$subType svc=$svc role=$Role deploymentEnvInstance=$deploymentEnvInstance regionCode=$regionCode instanceNumber=$instanceNumber"
+                        $namingParams = "subType=$(subType) svc=$(serviceCode) role=$Role deploymentEnvInstance=$(deploymentEnvInstance) regionCode=$(regionCode) instanceNumber=$(instanceNumber)"
                         az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParams --output none
                         if ($LASTEXITCODE -ne 0) { throw "Naming convention deployment failed for role $Role" }
                         $resourceGroupName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
