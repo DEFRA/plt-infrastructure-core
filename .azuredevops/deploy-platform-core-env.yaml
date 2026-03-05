@@ -318,6 +318,9 @@ extends:
                       if ($Role -eq 'INF') {
                         Write-Host "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput"
                       }
+                      if ($Role -eq 'APP') {
+                        Write-Host "##vso[task.setvariable variable=servicesResourceGroup]$resourceGroupNameOutput"
+                      }
                     }
               - ${{ if eq(variables.IsNetworkNsg, true) }}:
                 - name: network-security-group
