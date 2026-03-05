@@ -439,8 +439,8 @@ extends:
               # Private DNS zone creation (ai-document-intelligence-zone) omitted: corporate policy prevents creation in certain subscriptions. Use existing zone and add DNS lookup later. Module kept under resources/network/private-dns-zone for other scenarios.
               - ${{ if and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none')) }}:
                 - name: ai-document-intelligence
-                  path: infra/core/env/ai-document-intelligence
-                  parameterFilePath: infra/core/env/ai-document-intelligence/ai-document-intelligence-depolyment-1-params
+                  path: resources/ai/document-intelligence
+                  parameterFilePath: resources/ai/document-intelligence
                   resourceGroupName: $(servicesResourceGroup)
 
         - ${{ if eq(variables.IsMonitoring, true) }}:
