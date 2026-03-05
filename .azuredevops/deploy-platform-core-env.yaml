@@ -225,7 +225,46 @@ extends:
           dependsOnGroupedDeployments:
             - setup
           deployments:
-              - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true), eq(variables.IsNetworkNsg, true)) }}:
+              # Set all INF resource names early from get-names (extend with more outputs as needed). Runs when network or document intelligence zone is needed.
+              - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true), eq(variables.IsNetworkNsg, true), and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none'))) }}:
+                - name: set-resource-names
+                  type: 'script'
+                  scriptType: AzureCLI
+                  azureCLIScriptType: pscore
+                  serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                  inlineScript: |
+                    $ErrorActionPreference = 'Stop'
+                    $root = "$(Pipeline.Workspace)/s/self"
+                    if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)" }
+                    if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)/self" }
+                    $namingFile = Join-Path $root "resources/naming-convention/get-names.bicep"
+                    if (-not (Test-Path $namingFile)) { throw "get-names.bicep not found at $namingFile" }
+                    $subType = $env:subType ?? $env:SUBTYPE
+                    $svc = ($env:serviceCode ?? $env:SERVICECODE ?? ($env:applicationID ?? $env:APPLICATIONID).ToString().ToUpperInvariant())
+                    $deploymentEnvInstance = $env:deploymentEnvInstance ?? $env:DEPLOYMENTENVINSTANCE
+                    $regionCode = $env:regionCode ?? $env:REGIONCODE
+                    $instanceNumber = $env:instanceNumber ?? $env:INSTANCENUMBER
+                    $location = $env:location ?? $env:LOCATION
+                    $namingDeploymentName = "get-names-infra-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
+                    $namingParams = "subType=$subType svc=$svc role=INF deploymentEnvInstance=$deploymentEnvInstance regionCode=$regionCode instanceNumber=$instanceNumber"
+                    if (-not [string]::IsNullOrWhiteSpace("$(privateLinkZoneSuffix)") -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneResType)")) {
+                      $namingParams += " privateLinkZoneSuffix=$(privateLinkZoneSuffix) privateLinkZoneResType=$(privateLinkZoneResType)"
+                    }
+                    az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParams --output none
+                    if ($LASTEXITCODE -ne 0) { throw "set-resource-names: get-names (INF) failed" }
+                    $rgName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
+                    $vnetName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.virtualNetworkName.value" -o tsv
+                    $rtName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.routeTableName.value" -o tsv
+                    $zoneName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneName.value" -o tsv 2>$null
+                    if (-not $rgName) { throw "set-resource-names: could not get resourceGroupName" }
+                    Write-Host "##vso[task.setvariable variable=infraResourceGroupName]$rgName"
+                    Write-Host "##vso[task.setvariable variable=virtualNetworkName]$vnetName"
+                    Write-Host "##vso[task.setvariable variable=routeTableName]$rtName"
+                    if (-not [string]::IsNullOrWhiteSpace($zoneName)) {
+                      Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateLinkZoneName]$zoneName"
+                    }
+                    Write-Host "Set resource names: infraResourceGroupName=$rgName, virtualNetworkName=$vnetName, routeTableName=$rtName"
+              - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true), eq(variables.IsNetworkNsg, true), and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none'))) }}:
                 - name: create-platform-resource-groups
                   type: 'script'
                   scriptType: AzureCLI
@@ -234,6 +273,8 @@ extends:
                   inlineScript: |
                     $ErrorActionPreference = 'Stop'
                     $root = "$(Pipeline.Workspace)/s/self"
+                    if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)" }
+                    if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)/self" }
                     $subType = $env:subType ?? $env:SUBTYPE
                     $svc = ($env:serviceCode ?? $env:SERVICECODE ?? ($env:applicationID ?? $env:APPLICATIONID).ToString().ToUpperInvariant())
                     $deploymentEnvInstance = $env:deploymentEnvInstance ?? $env:DEPLOYMENTENVINSTANCE
@@ -250,15 +291,18 @@ extends:
                     if (-not (Test-Path $bicepFile)) { $bicepFile = Join-Path $root "self/resources/resource-group/resource-group-with-rbac.bicep" }
                     $roles = @('INF') + (("$(platformResourceGroups)" -split ',').Trim() | Where-Object { $_ })
                     foreach ($Role in $roles) {
-                      $namingDeploymentName = "get-names-rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
-                      Write-Host "Getting resource group name for role $Role..."
-                      $namingParams = "subType=$subType svc=$svc role=$Role deploymentEnvInstance=$deploymentEnvInstance regionCode=$regionCode instanceNumber=$instanceNumber"
-                      if ($Role -eq 'INF' -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneSuffix)") -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneResType)")) {
-                        $namingParams += " privateLinkZoneSuffix=$(privateLinkZoneSuffix) privateLinkZoneResType=$(privateLinkZoneResType)"
+                      $resourceGroupName = $null
+                      if ($Role -eq 'INF' -and -not [string]::IsNullOrWhiteSpace("$(infraResourceGroupName)")) {
+                        $resourceGroupName = "$(infraResourceGroupName)"
+                        Write-Host "Using pre-set infraResourceGroupName for INF: $resourceGroupName"
+                      } else {
+                        $namingDeploymentName = "get-names-rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
+                        Write-Host "Getting resource group name for role $Role..."
+                        $namingParams = "subType=$subType svc=$svc role=$Role deploymentEnvInstance=$deploymentEnvInstance regionCode=$regionCode instanceNumber=$instanceNumber"
+                        az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParams --output none
+                        if ($LASTEXITCODE -ne 0) { throw "Naming convention deployment failed for role $Role" }
+                        $resourceGroupName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
                       }
-                      az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParams --output none
-                      if ($LASTEXITCODE -ne 0) { throw "Naming convention deployment failed for role $Role" }
-                      $resourceGroupName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
                       if (-not $resourceGroupName) { throw "Could not get resourceGroupName for role $Role" }
                       $rgDeploymentName = "rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
                       Write-Host "Deploying resource group: $resourceGroupName"
@@ -266,15 +310,7 @@ extends:
                       if ($LASTEXITCODE -ne 0) { throw "Resource group deployment failed for role $Role" }
                       $resourceGroupNameOutput = az deployment sub show --name $rgDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
                       if ($Role -eq 'INF') {
-                        $virtualNetworkName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.virtualNetworkName.value" -o tsv
-                        $routeTableName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.routeTableName.value" -o tsv
                         Write-Host "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput"
-                        Write-Host "##vso[task.setvariable variable=virtualNetworkName]$virtualNetworkName"
-                        Write-Host "##vso[task.setvariable variable=routeTableName]$routeTableName"
-                        $zoneName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneName.value" -o tsv 2>$null
-                        if (-not [string]::IsNullOrWhiteSpace($zoneName)) {
-                          Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateLinkZoneName]$zoneName"
-                        }
                       }
                     }
               - ${{ if eq(variables.IsNetworkNsg, true) }}:
