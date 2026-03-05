@@ -396,7 +396,8 @@ extends:
                   resourceGroupName: $(dnsResourceGroup)
               - ${{ if and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none')) }}:
                 - name: ai-document-intelligence-zone
-                  path: infra/core/env/private-dns-zone
+                  path: resources/network/private-dns-zone
+                  parameterFilePath: resources/network/private-dns-zone
                   resourceGroupName: $(dnsResourceGroup)
                   postDeployScriptsList:
                     - displayName: Link the Private DNS Zone to Central networks
