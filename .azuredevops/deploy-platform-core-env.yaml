@@ -398,7 +398,7 @@ extends:
                 - name: ai-document-intelligence-zone
                   path: resources/network/private-dns-zone
                   parameterFilePath: resources/network/private-dns-zone
-                  resourceGroupName: $(dnsResourceGroup)
+                  resourceGroupName: $(virtualNetworkResourceGroup)
                   postDeployScriptsList:
                     - displayName: Link the Private DNS Zone to Central networks
                       scriptPath: infra/core/env/scripts/Trigger-LinkPrivateDNSZones.ps1
@@ -406,7 +406,7 @@ extends:
                       useSystemAccessToken: true
                       scriptArguments: >
                         -PrivateDnsZoneName "$(documentIntelligencePrivateLinkZoneName)"
-                        -ResourceGroupName $(dnsResourceGroup)
+                        -ResourceGroupName $(virtualNetworkResourceGroup)
                         -SubscriptionName $(subscriptionName)
                         -TenantId $(tenantId)                   
                 - name: ai-document-intelligence

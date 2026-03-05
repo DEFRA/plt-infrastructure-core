@@ -1,5 +1,5 @@
 // Creates the private DNS zone for Azure Document Intelligence (e.g. *.privatelink.cognitiveservices.azure.com).
-// Zone name and resource group come from config/naming (documentIntelligencePrivateLinkZoneName, dnsResourceGroup).
+// Zone name from config/naming (documentIntelligencePrivateLinkZoneName). Deployed to same RG as VNet (virtualNetworkResourceGroup).
 targetScope = 'resourceGroup'
 
 @description('Name of the private DNS zone (e.g. from naming convention: SNDAIEINFADI1401.privatelink.cognitiveservices.azure.com).')
