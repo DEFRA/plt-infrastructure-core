@@ -252,7 +252,11 @@ extends:
                     foreach ($Role in $roles) {
                       $namingDeploymentName = "get-names-rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
                       Write-Host "Getting resource group name for role $Role..."
-                      az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters subType=$subType svc=$svc role=$Role deploymentEnvInstance=$deploymentEnvInstance regionCode=$regionCode instanceNumber=$instanceNumber --output none
+                      $namingParams = "subType=$subType svc=$svc role=$Role deploymentEnvInstance=$deploymentEnvInstance regionCode=$regionCode instanceNumber=$instanceNumber"
+                      if ($Role -eq 'INF' -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneSuffix)") -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneResType)")) {
+                        $namingParams += " privateLinkZoneSuffix=$(privateLinkZoneSuffix) privateLinkZoneResType=$(privateLinkZoneResType)"
+                      }
+                      az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParams --output none
                       if ($LASTEXITCODE -ne 0) { throw "Naming convention deployment failed for role $Role" }
                       $resourceGroupName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
                       if (-not $resourceGroupName) { throw "Could not get resourceGroupName for role $Role" }
@@ -267,6 +271,10 @@ extends:
                         Write-Host "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput"
                         Write-Host "##vso[task.setvariable variable=virtualNetworkName]$virtualNetworkName"
                         Write-Host "##vso[task.setvariable variable=routeTableName]$routeTableName"
+                        $zoneName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneName.value" -o tsv 2>$null
+                        if (-not [string]::IsNullOrWhiteSpace($zoneName)) {
+                          Write-Host "##vso[task.setvariable variable=privateLinkZoneName]$zoneName"
+                        }
                       }
                     }
               - ${{ if eq(variables.IsNetworkNsg, true) }}:
@@ -396,7 +404,7 @@ extends:
                       type: PowerShell
                       useSystemAccessToken: true
                       scriptArguments: >
-                        -PrivateDnsZoneName "$(infraResourceNamePrefix)$(nc_resource_ai_document_intelligence)$(environmentId)$(regionCode)01.privatelink.cognitiveservices.azure.com"
+                        -PrivateDnsZoneName "$(documentIntelligencePrivateLinkZoneName)"
                         -ResourceGroupName $(dnsResourceGroup)
                         -SubscriptionName $(subscriptionName)
                         -TenantId $(tenantId)                   

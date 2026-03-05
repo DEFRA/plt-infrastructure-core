@@ -100,6 +100,7 @@ param role string
   'AAS'   // Azure Analysis Services
   'AVS'   // Availability Set
   'AWA'   // Web App
+  'ADI'   // Azure Document Intelligence (private link zone prefix)
   'BEP'   // Back End Pool
   'CR'    // Azure Container Registry
   'FLB'   // Load Balancer

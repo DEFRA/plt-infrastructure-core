@@ -12,15 +12,15 @@
         },
         "privateDnsZone": {
             "value": {
-                "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ environmentId }}#{{ regionCode }}01.privatelink.cognitiveservices.azure.com",
-                "resourceGroup": "#{{ dnsResourceGroup }}"
+                "name": "#{{ documentIntelligencePrivateLinkZoneName }}",
+                "resourceGroup": "#{{ virtualNetworkResourceGroup }}"
             }
         },
         "vnet": {
             "value": {
               "name": "#{{ virtualNetworkName }}",
               "resourceGroup": "#{{ virtualNetworkResourceGroup }}",
-              "subnetPrivateEndpoints": "#{{ networkResourceNamePrefix }}#{{ nc_resource_subnet }}#{{ environmentId }}#{{ regionCode }}98"
+              "subnetPrivateEndpoints": "#{{ pepSubnet }}"
             }
         },
         "subType": {
