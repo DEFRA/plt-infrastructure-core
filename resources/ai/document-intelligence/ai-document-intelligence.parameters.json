@@ -4,9 +4,9 @@
     "parameters": {
         "aiDocumentIntelligence": {
             "value": {
-                "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ environmentId }}#{{ regionCode }}01",
+                "name": "#{{ documentIntelligenceResourceName }}",
                 "sku": "#{{ documentIntelligenceSku }}",
-                "customSubDomainName": "#{{ infraResourceNamePrefix }}#{{ nc_resource_ai_document_intelligence }}#{{ environmentId }}#{{ regionCode }}01",
+                "customSubDomainName": "#{{ documentIntelligenceResourceName }}",
                 "disableLocalAuth": false
             }    
         },

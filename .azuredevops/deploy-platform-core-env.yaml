@@ -129,6 +129,9 @@ variables:
   # Private link zone name from set-resource-names (e.g. for Document Intelligence). Placeholder for Validate job; overridden in Deploy.
   - name: documentIntelligencePrivateLinkZoneName
     value: 'ValidationPlaceholderZone'
+  # Document Intelligence resource name from set-resource-names (derived from get-names). Placeholder for Validate job; overridden in Deploy.
+  - name: documentIntelligenceResourceName
+    value: 'ValidationPlaceholderDI'
   # infraResourceGroupName from set-resource-names; placeholder for Validate job; overridden in Deploy.
   - name: infraResourceGroupName
     value: 'ValidationPlaceholderRG'
@@ -260,12 +263,16 @@ extends:
                     $vnetName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.virtualNetworkName.value" -o tsv
                     $rtName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.routeTableName.value" -o tsv
                     $zoneName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneName.value" -o tsv 2>$null
+                    $docIntelligenceName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.documentIntelligenceResourceName.value" -o tsv 2>$null
                     if (-not $rgName) { throw "set-resource-names: could not get resourceGroupName" }
                     Write-Host "##vso[task.setvariable variable=infraResourceGroupName]$rgName"
                     Write-Host "##vso[task.setvariable variable=virtualNetworkName]$vnetName"
                     Write-Host "##vso[task.setvariable variable=routeTableName]$rtName"
                     if (-not [string]::IsNullOrWhiteSpace($zoneName)) {
                       Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateLinkZoneName]$zoneName"
+                    }
+                    if (-not [string]::IsNullOrWhiteSpace($docIntelligenceName)) {
+                      Write-Host "##vso[task.setvariable variable=documentIntelligenceResourceName]$docIntelligenceName"
                     }
                     Write-Host "Set resource names: infraResourceGroupName=$rgName, virtualNetworkName=$vnetName, routeTableName=$rtName"
               - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true), eq(variables.IsNetworkNsg, true), and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none'))) }}:
