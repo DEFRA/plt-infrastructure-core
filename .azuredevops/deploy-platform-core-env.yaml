@@ -178,7 +178,11 @@ extends:
     deployFromFeature: ${{ parameters.deployFromFeature }}
     applicationID: ${{ parameters.applicationID }}
     instance: ${{ parameters.instance }}
-    regionalVariableFiles: []
+    # Load config into deployment job so script steps (set-resource-names, create-platform-resource-groups) have subType, serviceCode, location, etc.
+    regionalVariableFiles:
+      - /config/common.yaml@PltConfig
+      - /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
+      - /config/regional/{environment}-{region}.yaml@PltConfig
     environments:
       - name: snd1
         serviceConnection: $(subscriptionName)
