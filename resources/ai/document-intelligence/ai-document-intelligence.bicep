@@ -22,13 +22,13 @@ param createdDate string = utcNow('yyyy-MM-dd')
 @description('Required. The parameter object for the private Dns zone. The object must contain the name and resourceGroup values')
 param privateDnsZone object
 
-var customTags = {
+var commonTags = {
   Location: location
   CreatedDate: createdDate
   Environment: subType
 }
 
-var defaultTags = union(json(loadTextContent('../../../common/default-tags.json')), customTags)
+var defaultTags = union(loadJsonContent('../../default-tags.json'), commonTags)
 
 var documentIntelligenceTags = {
   Name: aiDocumentIntelligence.name
