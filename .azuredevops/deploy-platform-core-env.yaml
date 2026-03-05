@@ -436,21 +436,8 @@ extends:
                 - name: dns-zone
                   path: infra/core/env/public-dns-zone
                   resourceGroupName: $(dnsResourceGroup)
+              # Private DNS zone creation (ai-document-intelligence-zone) omitted: corporate policy prevents creation in certain subscriptions. Use existing zone and add DNS lookup later. Module kept under resources/network/private-dns-zone for other scenarios.
               - ${{ if and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none')) }}:
-                - name: ai-document-intelligence-zone
-                  path: resources/network/private-dns-zone
-                  parameterFilePath: resources/network/private-dns-zone
-                  resourceGroupName: $(virtualNetworkResourceGroup)
-                  postDeployScriptsList:
-                    - displayName: Link the Private DNS Zone to Central networks
-                      scriptPath: infra/core/env/scripts/Trigger-LinkPrivateDNSZones.ps1
-                      type: PowerShell
-                      useSystemAccessToken: true
-                      scriptArguments: >
-                        -PrivateDnsZoneName "$(documentIntelligencePrivateLinkZoneName)"
-                        -ResourceGroupName $(virtualNetworkResourceGroup)
-                        -SubscriptionName $(subscriptionName)
-                        -TenantId $(tenantId)                   
                 - name: ai-document-intelligence
                   path: infra/core/env/ai-document-intelligence
                   parameterFilePath: infra/core/env/ai-document-intelligence/ai-document-intelligence-depolyment-1-params
