@@ -125,7 +125,13 @@ variables:
   - name: virtualNetworkName
     value: 'ValidationPlaceholderVNet'
   - name: routeTableName
-    value: ''
+    value: 'ValidationPlaceholderRT'
+  # Private link zone name from set-resource-names (e.g. for Document Intelligence). Placeholder for Validate job; overridden in Deploy.
+  - name: documentIntelligencePrivateLinkZoneName
+    value: 'ValidationPlaceholderZone'
+  # infraResourceGroupName from set-resource-names; placeholder for Validate job; overridden in Deploy.
+  - name: infraResourceGroupName
+    value: 'ValidationPlaceholderRG'
   # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
   - name: firewallVirtualApplianceIp
     value: ''
