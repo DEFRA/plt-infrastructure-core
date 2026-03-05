@@ -273,7 +273,7 @@ extends:
                         Write-Host "##vso[task.setvariable variable=routeTableName]$routeTableName"
                         $zoneName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneName.value" -o tsv 2>$null
                         if (-not [string]::IsNullOrWhiteSpace($zoneName)) {
-                          Write-Host "##vso[task.setvariable variable=privateLinkZoneName]$zoneName"
+                          Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateLinkZoneName]$zoneName"
                         }
                       }
                     }
