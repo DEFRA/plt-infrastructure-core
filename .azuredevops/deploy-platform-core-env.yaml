@@ -286,11 +286,11 @@ extends:
                         Write-Host "##vso[task.setvariable variable=servicesResourceGroup]$resourceGroupNameOutput"
                       }
                     }
-                - name: route-table-tokens
-                  type: replaceTokensOnly
-                  replaceTokenPathsString: 'resources/network/route-table/1;resources/network/route-table/2;resources/network/route-table/3'
-                - name: deploy-route-tables
-                  type: 'script'
+              - name: route-table-tokens
+                type: replaceTokensOnly
+                replaceTokenPathsString: 'resources/network/route-table/1;resources/network/route-table/2;resources/network/route-table/3'
+              - name: deploy-route-tables
+                type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
