@@ -302,6 +302,7 @@ extends:
                   azureCLIScriptType: pscore
                   inlineScript: |
                     $ErrorActionPreference = 'Stop'
+                    $tempDir = if ($env:TEMP) { $env:TEMP } elseif ($env:AGENT_TEMPDIRECTORY) { $env:AGENT_TEMPDIRECTORY } else { '/tmp' }
                     $root = "$(Pipeline.Workspace)/s/self"
                     if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)" }
                     if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)/self" }
@@ -324,15 +325,33 @@ extends:
                       } else {
                         $namingDeploymentName = "get-names-rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
                         Write-Host "Getting resource group name for role $Role..."
-                        $namingParams = "subType='$(subType)' svc='$(serviceCode)' role='$Role' deploymentEnvInstance='$(deploymentEnvInstance)' regionCode='$(regionCode)' instanceNumber='$(instanceNumber)'"
-                        az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParams --output none
+                        $namingParams = @{
+                          subType = @{ value = "$(subType)" }
+                          svc = @{ value = "$(serviceCode)" }
+                          role = @{ value = $Role }
+                          deploymentEnvInstance = @{ value = "$(deploymentEnvInstance)" }
+                          regionCode = @{ value = "$(regionCode)" }
+                          instanceNumber = @{ value = "$(instanceNumber)" }
+                        }
+                        $namingParamsPath = Join-Path $tempDir "get-names-rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss').json"
+                        @{ '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'; contentVersion = '1.0.0.0'; parameters = $namingParams } | ConvertTo-Json -Depth 4 | Set-Content -Path $namingParamsPath -Encoding utf8
+                        az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParamsPath --output none
                         if ($LASTEXITCODE -ne 0) { throw "Naming convention deployment failed for role $Role" }
                         $resourceGroupName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
                       }
                       if (-not $resourceGroupName) { throw "Could not get resourceGroupName for role $Role" }
                       $rgDeploymentName = "rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
                       Write-Host "Deploying resource group: $resourceGroupName"
-                      az deployment sub create --name $rgDeploymentName --location $location --template-file $bicepFile --parameters name=$resourceGroupName location=$location subType=$subType adGroupObjectId=$adGroupObjectId resourceGroupRole=$Role --output none
+                      $rgParams = @{
+                        name = @{ value = $resourceGroupName }
+                        location = @{ value = $location }
+                        subType = @{ value = $subType }
+                        adGroupObjectId = @{ value = $adGroupObjectId }
+                        resourceGroupRole = @{ value = $Role }
+                      }
+                      $rgParamsPath = Join-Path $tempDir "rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss').json"
+                      @{ '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'; contentVersion = '1.0.0.0'; parameters = $rgParams } | ConvertTo-Json -Depth 4 | Set-Content -Path $rgParamsPath -Encoding utf8
+                      az deployment sub create --name $rgDeploymentName --location $location --template-file $bicepFile --parameters $rgParamsPath --output none
                       if ($LASTEXITCODE -ne 0) { throw "Resource group deployment failed for role $Role" }
                       $resourceGroupNameOutput = az deployment sub show --name $rgDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
                       if ($Role -eq 'INF') {
