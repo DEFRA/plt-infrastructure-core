@@ -250,15 +250,6 @@ extends:
                   serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
                   inlineScript: |
                     $ErrorActionPreference = 'Stop'
-                    Write-Host "=== set-resource-names DEBUG ==="
-                    Write-Host "subType=[$(subType)]"
-                    Write-Host "serviceCode=[$(serviceCode)]"
-                    Write-Host "deploymentEnvInstance=[$(deploymentEnvInstance)]"
-                    Write-Host "regionCode=[$(regionCode)]"
-                    Write-Host "instanceNumber=[$(instanceNumber)]"
-                    Write-Host "location=[$(location)]"
-                    Write-Host "Env: subType=$($env:subType) SUBTYPE=$($env:SUBTYPE)"
-                    Write-Host "Env: serviceCode=$($env:serviceCode) SERVICECODE=$($env:SERVICECODE)"
                     $root = "$(Pipeline.Workspace)/s/self"
                     if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)" }
                     if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)/self" }
@@ -266,10 +257,10 @@ extends:
                     if (-not (Test-Path $namingFile)) { throw "get-names.bicep not found at $namingFile" }
                     $location = "$(location)"
                     $namingDeploymentName = "get-names-infra-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
-                    $namingParams = "subType=$(subType) svc=$(serviceCode) role=INF deploymentEnvInstance=$(deploymentEnvInstance) regionCode=$(regionCode) instanceNumber=$(instanceNumber)"
-                    Write-Host "namingParams=[$namingParams]"
+                    # Quote all values so Azure CLI passes them as strings (Bicep params are strings; unquoted 1/4 become ints and can fail)
+                    $namingParams = "subType='$(subType)' svc='$(serviceCode)' role='INF' deploymentEnvInstance='$(deploymentEnvInstance)' regionCode='$(regionCode)' instanceNumber='$(instanceNumber)'"
                     if (-not [string]::IsNullOrWhiteSpace("$(privateLinkZoneSuffix)") -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneResType)")) {
-                      $namingParams += " privateLinkZoneSuffix=$(privateLinkZoneSuffix) privateLinkZoneResType=$(privateLinkZoneResType)"
+                      $namingParams += " privateLinkZoneSuffix='$(privateLinkZoneSuffix)' privateLinkZoneResType='$(privateLinkZoneResType)'"
                     }
                     az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParams --output none
                     if ($LASTEXITCODE -ne 0) { throw "set-resource-names: get-names (INF) failed" }
@@ -319,7 +310,7 @@ extends:
                       } else {
                         $namingDeploymentName = "get-names-rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
                         Write-Host "Getting resource group name for role $Role..."
-                        $namingParams = "subType=$(subType) svc=$(serviceCode) role=$Role deploymentEnvInstance=$(deploymentEnvInstance) regionCode=$(regionCode) instanceNumber=$(instanceNumber)"
+                        $namingParams = "subType='$(subType)' svc='$(serviceCode)' role='$Role' deploymentEnvInstance='$(deploymentEnvInstance)' regionCode='$(regionCode)' instanceNumber='$(instanceNumber)'"
                         az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParams --output none
                         if ($LASTEXITCODE -ne 0) { throw "Naming convention deployment failed for role $Role" }
                         $resourceGroupName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
