@@ -407,4 +407,20 @@ extends:
                         $ip = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.privateEndpointIpAddress.value" -o tsv
                         Write-Host "Document Intelligence Private Endpoint IP (for subsequent DNS update): $ip"
                         if (-not [string]::IsNullOrWhiteSpace($ip)) { Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateEndpointIp]$ip" }
+                    - displayName: 'Set Document Intelligence private endpoint DNS record'
+                      type: AzurePowerShell
+                      azurePowerShellVersion: LatestVersion
+                      azurePowerShellUseCore: true
+                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                      inlineScript: |
+                        $ip = "$(documentIntelligencePrivateEndpointIp)"
+                        $fqdn = "$(documentIntelligenceResourceName).cognitiveservices.azure.com"
+                        $region = "$(location)".ToLowerInvariant()
+                        if ([string]::IsNullOrWhiteSpace($ip)) { Write-Host "Skipping DNS record: no private endpoint IP"; exit 0 }
+                        $env:PRIVATEENDPOINTDNSRECORDSJSON = @([PSCustomObject]@{ Fqdn = $fqdn; IpAddress = @($ip); Region = $region }) | ConvertTo-Json
+                        $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = "$(region_to_dns_resourcegroup_mapping_table)"
+                        $scriptPath = Join-Path "$(Pipeline.Workspace)" "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
+                        if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path "$(Build.SourcesDirectory)" "self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
+                        if (-not (Test-Path $scriptPath)) { throw "Set-PrivateDnsRecordSet.ps1 not found" }
+                        & $scriptPath -Ttl 300
 
