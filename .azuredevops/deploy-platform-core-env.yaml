@@ -1,34 +1,10 @@
-name: 1.0.$(BuildID)-${{ parameters.deployResources }}
+name: 1.0.$(BuildID)
 
 parameters:
   - name: deployFromFeature
     displayName: "Deploy from Feature Branch"
     type: boolean
     default: false
-  - name: deployResources
-    displayName: "Resources to Deploy"
-    type: string
-    default: "All"
-    values:
-      - All
-      - Network - All
-      - Network - VNET
-      - Network - NSGs
-      - Network - Route Tables
-      - Network - Public DNS Zone
-      - Network - Flow Logs
-      - Monitoring - All
-      - Monitoring - Insights
-      - Monitoring - Azure Monitor Workspace
-      - Application - All
-      - Application - AI Document Intelligence - Deployment 1
-      - Application - Storage Account
-      - Application - Key Vault
-      - Platform - Key Vault
-      - OpenAI - All
-      - OpenAI - Infra  
-      - OpenAI - Search Service
-      - Rbac - Global Team Permissions
   - name: applicationID
     displayName: "Application ID (config folder name, e.g. aie)"
     type: string
@@ -66,54 +42,6 @@ trigger:
       - infra/common/*
      
 variables:
-  - name: IsAll
-    value: ${{ eq(parameters.deployResources,'All') }}
-  - name: IsNetwork
-    value: ${{ or(eq(variables.IsAll,true), startsWith(parameters.deployResources,'Network')) }}
-  - name: IsNetworkAll
-    value: ${{ or(eq(variables.IsAll,true), eq(parameters.deployResources,'Network - All')) }}
-  - name: IsNetworkVnet
-    value: ${{ or(eq(variables.IsNetworkAll,true), eq(parameters.deployResources,'Network - VNET')) }}
-  - name: IsNetworkNsg
-    value: ${{ or(eq(variables.IsNetworkAll,true), eq(parameters.deployResources,'Network - NSGs')) }}
-  - name: IsNetworkRouteTable
-    value: ${{ or(eq(variables.IsNetworkAll,true), eq(parameters.deployResources,'Network - Route Tables')) }}
-  - name: IsNetworkFlowLogs
-    value: ${{ or(eq(variables.IsNetworkAll,true), eq(parameters.deployResources,'Network - Flow Logs')) }}
-  - name: IsNetworkPublicDNSZone
-    value: ${{ or(eq(variables.IsNetworkAll,true), eq(parameters.deployResources,'Network - Public DNS Zone')) }}
-  - name: IsMonitoring
-    value: ${{ or(eq(variables.IsAll,true), startsWith(parameters.deployResources, 'Monitoring')) }}
-  - name: IsMonitoringAll
-    value: ${{ or(eq(variables.IsAll,true), eq(parameters.deployResources,'Monitoring - All')) }}
-  - name: IsMonitoringInsights
-    value: ${{ or(eq(variables.IsMonitoringAll,true), eq(parameters.deployResources,'Monitoring - Insights')) }}
-  - name: IsMonitoringAzureMonitorWorkspace
-    value: ${{ or(eq(variables.IsMonitoringAll,true), eq(parameters.deployResources,'Monitoring - Azure Monitor Workspace')) }}
-  - name: IsPlatformKeyVault
-    value: ${{ or(eq(variables.IsAll,true), eq(parameters.deployResources, 'Platform - Key Vault')) }}
-  - name: IsApplication
-    value: ${{ or(eq(variables.IsAll,true), startsWith(parameters.deployResources, 'Application')) }}
-  - name: IsApplicationAll
-    value: ${{ or(eq(variables.IsAll,true), eq(parameters.deployResources, 'Application - All')) }}
-  - name: IsApplicationAiDocumentIntelligence1
-    value: ${{ or(eq(variables.IsApplicationAll,true), eq(parameters.deployResources, 'Application - AI Document Intelligence - Deployment 1')) }}
-  - name: IsApplicationStorageAccount
-    value: ${{ or(eq(variables.IsApplicationAll,true), eq(parameters.deployResources, 'Application - Storage Account')) }}
-  - name: IsApplicationKeyVault
-    value: ${{ or(eq(variables.IsApplicationAll,true), eq(parameters.deployResources, 'Application - Key Vault')) }}
-  - name: IsOpenAi
-    value: ${{ or(eq(variables.IsAll,true), startsWith(parameters.deployResources, 'OpenAI -')) }}
-  - name: IsOpenAiAll
-    value: ${{ or(eq(variables.IsAll,true), eq(parameters.deployResources, 'OpenAI - All')) }}
-  - name: IsOpenAiInfra
-    value: ${{ or(eq(variables.IsOpenAiAll,true), eq(parameters.deployResources, 'OpenAI - Infra')) }}
-  - name: IsOpenAiSearchService
-    value: ${{ or(eq(variables.IsOpenAiAll,true), eq(parameters.deployResources, 'OpenAI - Search Service')) }}
-  - name: IsGlobalTeamPermissions
-    value: ${{ or(eq(variables.IsAll,true), eq(parameters.deployResources, 'Rbac - Global Team Permissions')) }}
-  - name: globalReadGroupObjectId
-    value: 'dummyValueToPreventWarningInAzureDevOps'
   - name: applicationID
     value: ${{ parameters.applicationID }}
   # virtualNetworkResourceGroup will be set by the create-virtual-network-resource-group script deployment
@@ -241,14 +169,12 @@ extends:
           dependsOnGroupedDeployments:
             - setup
           deployments:
-              # Set all INF resource names early from get-names (extend with more outputs as needed). Runs when network or document intelligence zone is needed.
-              - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true), eq(variables.IsNetworkNsg, true), and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none'))) }}:
-                - name: set-resource-names
-                  type: 'script'
-                  scriptType: AzureCLI
-                  azureCLIScriptType: pscore
-                  serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                  inlineScript: |
+              - name: set-resource-names
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: pscore
+                serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                inlineScript: |
                     $ErrorActionPreference = 'Stop'
                     $root = "$(Pipeline.Workspace)/s/self"
                     if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)" }
@@ -294,13 +220,12 @@ extends:
                       Write-Host "##vso[task.setvariable variable=documentIntelligenceResourceName]$docIntelligenceName"
                     }
                     Write-Host "Set resource names: infraResourceGroupName=$rgName, virtualNetworkName=$vnetName, routeTableName=$rtName"
-              - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true), eq(variables.IsNetworkNsg, true), and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none'))) }}:
-                - name: create-platform-resource-groups
-                  type: 'script'
-                  scriptType: AzureCLI
-                  serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                  azureCLIScriptType: pscore
-                  inlineScript: |
+              - name: create-platform-resource-groups
+                type: 'script'
+                scriptType: AzureCLI
+                serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                azureCLIScriptType: pscore
+                inlineScript: |
                     $ErrorActionPreference = 'Stop'
                     $tempDir = if ($env:TEMP) { $env:TEMP } elseif ($env:AGENT_TEMPDIRECTORY) { $env:AGENT_TEMPDIRECTORY } else { '/tmp' }
                     $root = "$(Pipeline.Workspace)/s/self"
@@ -361,13 +286,7 @@ extends:
                         Write-Host "##vso[task.setvariable variable=servicesResourceGroup]$resourceGroupNameOutput"
                       }
                     }
-              - ${{ if eq(variables.IsNetworkNsg, true) }}:
-                - name: network-security-group
-                  path: infra/common/network
-                  resourceGroupName: $(virtualNetworkResourceGroup)
-              - ${{ if or(eq(variables.IsNetworkVnet, true), eq(variables.IsNetworkRouteTable, true)) }}:
-                # Script step with workingDirectory = repo root so token replacement sees the right path (v5 task does not)
-                - name: route-table-tokens
+              - name: route-table-tokens
                   type: replaceTokensOnly
                   replaceTokenPathsString: 'resources/network/route-table/1;resources/network/route-table/2;resources/network/route-table/3'
                 - name: deploy-route-tables
@@ -467,17 +386,9 @@ extends:
                             Write-Host "✗ JSON parsing error: $_"
                             Write-Host "Error details: $($_.Exception.Message)"
                           }
-                        } else {
+                        }                         else {
                           Write-Host "Transformed file not found at: $transformedFile"
                         }
-              - ${{ if eq(variables.IsNetworkFlowLogs, true) }}:
-                - name: virtual-network-flow-logs
-                  path: infra/common/network
-                  resourceGroupName: $(networkWatcherResourceGroup)
-              - ${{ if eq(variables.IsNetworkPublicDNSZone, true) }}:
-                - name: dns-zone
-                  path: infra/core/env/public-dns-zone
-                  resourceGroupName: $(dnsResourceGroup)
               # Private DNS zone creation (ai-document-intelligence-zone) omitted: corporate policy prevents creation in certain subscriptions. Use existing zone and add DNS lookup later. Module kept under resources/network/private-dns-zone for other scenarios.
               - ${{ if and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none')) }}:
                 - name: ai-document-intelligence
@@ -496,100 +407,4 @@ extends:
                         $ip = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.privateEndpointIpAddress.value" -o tsv
                         Write-Host "Document Intelligence Private Endpoint IP (for subsequent DNS update): $ip"
                         if (-not [string]::IsNullOrWhiteSpace($ip)) { Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateEndpointIp]$ip" }
-
-        - ${{ if eq(variables.IsMonitoring, true) }}:
-          - name: monitoring
-            deployments:
-              - ${{ if eq(variables.IsMonitoringInsights, true) }}:
-                - name: GetAppInsightConnectionString
-                  type: 'script'
-                  scriptType: AzurePowerShell
-                  inlineScript: |
-                    $output = (Get-AzApplicationInsights -ResourceGroupName $(servicesResourceGroup) -Name $(applicationInsightsName)).ConnectionString
-                    Write-Host "##vso[task.setvariable variable=appInsightConnectionString;]$output"         
-            
-              - ${{ if eq(variables.IsMonitoringAzureMonitorWorkspace, true) }}:
-                - name: azure-monitor-workspace
-                  path: infra/core/env/observability
-                  resourceGroupName: $(servicesResourceGroup)
-
-
-                  
-        - ${{ if eq(variables.IsApplication, true) }}:  
-          - name: application_infra
-            ${{ if eq(variables.IsAll, true) }}:
-              dependsOnGroupedDeployments:
-              - network
-            deployments:
-
-              - ${{ if eq(variables.IsApplicationStorageAccount, true) }}:                    
-                - name: application-storage-account
-                  path: infra/core/env/storage-account
-                  resourceGroupName: $(servicesResourceGroup)
-                  privateEndpointDnsRecordsForResources:
-                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_storageaccount)$(environmentId)$(regionCode)01
-                      resourceGroupName: $(servicesResourceGroup)
-
-              - ${{ if eq(variables.IsApplicationKeyVault, true) }}:                    
-                - name: key-vault
-                  path: infra/core/env/key-vault
-                  parameterFilePath: infra/core/env/key-vault/application-keyvault-params
-                  resourceGroupName: $(servicesResourceGroup)
-                  privateEndpointDnsRecordsForResources:
-                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_keyvault)$(environmentId)$(regionCode)01
-                      resourceGroupName: $(servicesResourceGroup)
-             
-        - ${{ if eq(variables.IsOpenAi, true) }}:  
-          - name: openai
-            ${{ if eq(variables.IsAll, true) }}:
-              dependsOnGroupedDeployments:
-              - network
-            deployments:
-              - ${{ if eq(variables.IsOpenAiInfra, true) }}:    
-                - name: open-ai
-                  path: infra/core/env/open-ai
-                  resourceGroupName: $(servicesResourceGroup)
-                  privateEndpointDnsRecordsForResources:
-                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_openai)$(environmentId)$(regionCode)01
-                      resourceGroupName: $(servicesResourceGroup)                   
-                  preDeployScriptsList:
-                  - displayName: 'Get Group Id'
-                    type: AzurePowerShell
-                    serviceConnectionVariableName: 'ssvServiceConnection'
-                    inlineScript: |
-                      $groupId = (Get-AzADGroup -DisplayName '$(openAiUserGroup)').id
-                      Write-Host "##vso[task.setvariable variable=openAiUserGroupId;]$groupId"
-              - ${{ if eq(variables.IsOpenAiSearchService, true) }}:
-                - name: search-service
-                  path: infra/core/env/search-service
-                  resourceGroupName: $(servicesResourceGroup)
-                  privateEndpointDnsRecordsForResources:
-                    - resourceName: $(infraResourceNamePrefix)$(nc_resource_search)$(environmentId)$(regionCode)01
-                      resourceGroupName: $(servicesResourceGroup)                  
-                  preDeployScriptsList:
-                  - displayName: 'Get Group Id'
-                    type: AzurePowerShell
-                    serviceConnectionVariableName: 'ssvServiceConnection'
-                    inlineScript: |
-                      $groupId = (Get-AzADGroup -DisplayName '$(searchServiceUserGroup)').id
-                      Write-Host "##vso[task.setvariable variable=searchServiceUserGroupId;]$groupId"
-                  - displayName: 'Check Private Endpoint Connection'
-                    type: AzurePowerShell
-                    serviceConnectionVariableName: "subscriptionName"
-                    scriptPath: 'infra/core/env/scripts/PrivateEndpointConnection.ps1'
-                    scriptArguments: > 
-                      -OpenAiName '$(infraResourceNamePrefix)$(nc_resource_openai)$(environmentId)$(regionCode)01'
-                      -ResourceGroupName '$(servicesResourceGroup)'
-                      -SearchServiceName '$(infraResourceNamePrefix)$(nc_resource_search)$(environmentId)$(regionCode)01'
-                      -Command 'Check'
-                  postDeployScriptsList:
-                  - displayName: 'Approve Private Endpoint Connection'
-                    type: AzurePowerShell
-                    serviceConnectionVariableName: "subscriptionName"
-                    scriptPath: 'infra/core/env/scripts/PrivateEndpointConnection.ps1'
-                    scriptArguments: > 
-                      -OpenAiName '$(infraResourceNamePrefix)$(nc_resource_openai)$(environmentId)$(regionCode)01'
-                      -ResourceGroupName '$(servicesResourceGroup)'
-                      -SearchServiceName '$(infraResourceNamePrefix)$(nc_resource_search)$(environmentId)$(regionCode)01'
-                      -Command 'Approve'
 
