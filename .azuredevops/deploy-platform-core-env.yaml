@@ -250,6 +250,15 @@ extends:
                   serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
                   inlineScript: |
                     $ErrorActionPreference = 'Stop'
+                    Write-Host "=== set-resource-names DEBUG ==="
+                    Write-Host "subType=[$(subType)]"
+                    Write-Host "serviceCode=[$(serviceCode)]"
+                    Write-Host "deploymentEnvInstance=[$(deploymentEnvInstance)]"
+                    Write-Host "regionCode=[$(regionCode)]"
+                    Write-Host "instanceNumber=[$(instanceNumber)]"
+                    Write-Host "location=[$(location)]"
+                    Write-Host "Env: subType=$($env:subType) SUBTYPE=$($env:SUBTYPE)"
+                    Write-Host "Env: serviceCode=$($env:serviceCode) SERVICECODE=$($env:SERVICECODE)"
                     $root = "$(Pipeline.Workspace)/s/self"
                     if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)" }
                     if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)/self" }
@@ -258,6 +267,7 @@ extends:
                     $location = "$(location)"
                     $namingDeploymentName = "get-names-infra-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
                     $namingParams = "subType=$(subType) svc=$(serviceCode) role=INF deploymentEnvInstance=$(deploymentEnvInstance) regionCode=$(regionCode) instanceNumber=$(instanceNumber)"
+                    Write-Host "namingParams=[$namingParams]"
                     if (-not [string]::IsNullOrWhiteSpace("$(privateLinkZoneSuffix)") -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneResType)")) {
                       $namingParams += " privateLinkZoneSuffix=$(privateLinkZoneSuffix) privateLinkZoneResType=$(privateLinkZoneResType)"
                     }
