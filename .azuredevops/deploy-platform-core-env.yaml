@@ -257,12 +257,25 @@ extends:
                     if (-not (Test-Path $namingFile)) { throw "get-names.bicep not found at $namingFile" }
                     $location = "$(location)"
                     $namingDeploymentName = "get-names-infra-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
-                    # Quote all values so Azure CLI passes them as strings (Bicep params are strings; unquoted 1/4 become ints and can fail)
-                    $namingParams = "subType='$(subType)' svc='$(serviceCode)' role='INF' deploymentEnvInstance='$(deploymentEnvInstance)' regionCode='$(regionCode)' instanceNumber='$(instanceNumber)'"
-                    if (-not [string]::IsNullOrWhiteSpace("$(privateLinkZoneSuffix)") -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneResType)")) {
-                      $namingParams += " privateLinkZoneSuffix='$(privateLinkZoneSuffix)' privateLinkZoneResType='$(privateLinkZoneResType)'"
+                    $params = @{
+                      subType = @{ value = "$(subType)" }
+                      svc = @{ value = "$(serviceCode)" }
+                      role = @{ value = "INF" }
+                      deploymentEnvInstance = @{ value = "$(deploymentEnvInstance)" }
+                      regionCode = @{ value = "$(regionCode)" }
+                      instanceNumber = @{ value = "$(instanceNumber)" }
                     }
-                    az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParams --output none
+                    if (-not [string]::IsNullOrWhiteSpace("$(privateLinkZoneSuffix)") -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneResType)")) {
+                      $params['privateLinkZoneSuffix'] = @{ value = "$(privateLinkZoneSuffix)" }
+                      $params['privateLinkZoneResType'] = @{ value = "$(privateLinkZoneResType)" }
+                    }
+                    $paramsPath = Join-Path $env:TEMP "get-names-params-$(Get-Date -Format 'yyyyMMddHHmmss').json"
+                    @{ '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'; contentVersion = '1.0.0.0'; parameters = $params } | ConvertTo-Json -Depth 4 | Set-Content -Path $paramsPath -Encoding utf8
+                    Write-Host "=== set-resource-names DEBUG: parameters file ==="
+                    Write-Host "paramsPath=$paramsPath"
+                    Get-Content -Raw $paramsPath | Write-Host
+                    Write-Host "=== end parameters file ==="
+                    az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $paramsPath --output none
                     if ($LASTEXITCODE -ne 0) { throw "set-resource-names: get-names (INF) failed" }
                     $rgName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
                     $vnetName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.virtualNetworkName.value" -o tsv
