@@ -286,15 +286,15 @@ extends:
                         Write-Host "##vso[task.setvariable variable=servicesResourceGroup]$resourceGroupNameOutput"
                       }
                     }
-              - name: route-table-tokens
+                - name: route-table-tokens
                   type: replaceTokensOnly
                   replaceTokenPathsString: 'resources/network/route-table/1;resources/network/route-table/2;resources/network/route-table/3'
                 - name: deploy-route-tables
                   type: 'script'
-                  scriptType: AzureCLI
-                  azureCLIScriptType: pscore
-                  serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                  inlineScript: |
+                scriptType: AzureCLI
+                azureCLIScriptType: pscore
+                serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                inlineScript: |
                     # Deploy route table 1 (default) always; deploy 2, 3, ... when referenced in config (subnetNRouteTable). Subnet count derived from VNet template (subnetLayout).
                     & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-RouteTables.ps1" `
                       -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
@@ -303,10 +303,10 @@ extends:
                       -Location "$(location)" `
                       -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)" `
                       -SubnetLayout "$(subnetLayout)"
-                - name: set-subnet-route-table-resource-ids
-                  type: 'script'
-                  scriptType: PowerShell
-                  inlineScript: |
+              - name: set-subnet-route-table-resource-ids
+                type: 'script'
+                scriptType: PowerShell
+                inlineScript: |
                     # Set pipeline variables for token replacement: subnetNRouteTableResourceId from subnetNRouteTable and routeTable0NResourceId. Subnet count derived from VNet template (same as deploy-route-tables).
                     $layout = "$(subnetLayout)"
                     $base = "$(Pipeline.Workspace)/s/self"
@@ -335,11 +335,11 @@ extends:
                       }
                       Write-Host "##vso[task.setvariable variable=subnet${i}RouteTableResourceId]$id"
                     }
-                - name: virtual-network
-                  path: resources/network/vnet
-                  parameterFilePath: resources/network/vnet/$(subnetLayout)
-                  resourceGroupName: $(virtualNetworkResourceGroup)
-                  preDeployScriptsList:
+              - name: virtual-network
+                path: resources/network/vnet
+                parameterFilePath: resources/network/vnet/$(subnetLayout)
+                resourceGroupName: $(virtualNetworkResourceGroup)
+                preDeployScriptsList:
                     - displayName: "Resolve network join group object ID"
                       type: AzurePowerShell
                       serviceConnectionVariableName: 'ssvServiceConnection'
@@ -358,7 +358,7 @@ extends:
                             Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]"
                           }
                         }
-                  postDeployScriptsList:
+                postDeployScriptsList:
                     - displayName: "Link the VNet to Hub"
                       scriptPath: scripts/pipeline/Trigger-VNetPeering.ps1
                       type: AzurePowerShell
@@ -386,7 +386,7 @@ extends:
                             Write-Host "✗ JSON parsing error: $_"
                             Write-Host "Error details: $($_.Exception.Message)"
                           }
-                        }                         else {
+                        } else {
                           Write-Host "Transformed file not found at: $transformedFile"
                         }
               # Private DNS zone creation (ai-document-intelligence-zone) omitted: corporate policy prevents creation in certain subscriptions. Use existing zone and add DNS lookup later. Module kept under resources/network/private-dns-zone for other scenarios.
