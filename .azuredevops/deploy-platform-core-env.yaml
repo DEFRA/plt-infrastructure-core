@@ -269,7 +269,8 @@ extends:
                       $params['privateLinkZoneSuffix'] = @{ value = "$(privateLinkZoneSuffix)" }
                       $params['privateLinkZoneResType'] = @{ value = "$(privateLinkZoneResType)" }
                     }
-                    $paramsPath = Join-Path $env:TEMP "get-names-params-$(Get-Date -Format 'yyyyMMddHHmmss').json"
+                    $tempDir = if ($env:TEMP) { $env:TEMP } elseif ($env:AGENT_TEMPDIRECTORY) { $env:AGENT_TEMPDIRECTORY } else { '/tmp' }
+                    $paramsPath = Join-Path $tempDir "get-names-params-$(Get-Date -Format 'yyyyMMddHHmmss').json"
                     @{ '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'; contentVersion = '1.0.0.0'; parameters = $params } | ConvertTo-Json -Depth 4 | Set-Content -Path $paramsPath -Encoding utf8
                     Write-Host "=== set-resource-names DEBUG: parameters file ==="
                     Write-Host "paramsPath=$paramsPath"
