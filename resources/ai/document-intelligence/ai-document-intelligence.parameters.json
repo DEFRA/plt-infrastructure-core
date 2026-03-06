@@ -10,12 +10,6 @@
                 "disableLocalAuth": false
             }    
         },
-        "privateDnsZone": {
-            "value": {
-                "name": "#{{ documentIntelligencePrivateLinkZoneName }}",
-                "resourceGroup": "#{{ virtualNetworkResourceGroup }}"
-            }
-        },
         "vnet": {
             "value": {
               "name": "#{{ virtualNetworkName }}",

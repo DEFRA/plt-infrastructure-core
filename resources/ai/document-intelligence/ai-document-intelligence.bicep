@@ -19,9 +19,6 @@ param deploymentDate string = utcNow('yyyyMMdd-HHmmss')
 @description('Optional. Date in the format yyyy-MM-dd.')
 param createdDate string = utcNow('yyyy-MM-dd')
 
-@description('Required. The parameter object for the private Dns zone. The object must contain the name and resourceGroup values')
-param privateDnsZone object
-
 var commonTags = {
   Location: location
   CreatedDate: createdDate
@@ -36,17 +33,7 @@ var documentIntelligenceTags = {
   Tier: 'Shared'
 }
 
-var dnsTags = {
-  Name: privateDnsZone.name
-  Purpose: 'AKS Private DNS Zone'
-}
-
-resource private_dns_zone 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
-  name: privateDnsZone.name
-  scope: resourceGroup(privateDnsZone.resourceGroup)
-}
-
-
+// Private DNS zone creation/linking removed (blocked by policy). Private endpoint IP is output for use in a subsequent DNS update.
 module documentIntelligenceResource 'br/avm:cognitive-services/account:0.8.0' = {
   name: 'ai-document-intelligence-${deploymentDate}'
   params: {
@@ -61,44 +48,15 @@ module documentIntelligenceResource 'br/avm:cognitive-services/account:0.8.0' = 
     managedIdentities: {
       systemAssigned: true
     }
-    
     privateEndpoints: [
       {
-         privateDnsZoneGroup: {
-          privateDnsZoneGroupConfigs: [
-            {
-              privateDnsZoneResourceId: private_dns_zone.id
-            }
-          ]
-        }
         subnetResourceId: resourceId(vnet.resourceGroup, 'Microsoft.Network/virtualNetworks/subnets', vnet.name, vnet.subnetPrivateEndpoints)
       }
     ]
-
     tags: union(defaultTags, documentIntelligenceTags)
-
   }
 }
 
-module privateDnsZoneModule 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = {
-  name: 'aks-private-dns-zone-${deploymentDate}'
-  scope: resourceGroup(privateDnsZone.resourceGroup)
-  params: {
-   name: privateDnsZone.name
-   tags: union(defaultTags, dnsTags)
-   a: [
-    {
-      aRecords: [
-        {
-          ipv4Address: documentIntelligenceResource.outputs.privateEndpoints[0].customDnsConfig[0].ipAddresses[0]
-
-        }
-      ]
-      name: '@'  
-      ttl: 300
-    }
-  ]  
-
-  }
-}
+// Private endpoint IP for subsequent DNS update (e.g. add A record to existing zone). Pipeline can consume this output.
+output privateEndpointIpAddress string = documentIntelligenceResource.outputs.privateEndpoints[0].customDnsConfig[0].ipAddresses[0]
 
