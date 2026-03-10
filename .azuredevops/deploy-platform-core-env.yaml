@@ -191,9 +191,10 @@ extends:
                       regionCode = @{ value = "$(regionCode)" }
                       instanceNumber = @{ value = "$(instanceNumber)" }
                     }
-                    if (-not [string]::IsNullOrWhiteSpace("$(privateLinkZoneSuffix)") -and -not [string]::IsNullOrWhiteSpace("$(privateLinkZoneResType)")) {
-                      $params['privateLinkZoneSuffix'] = @{ value = "$(privateLinkZoneSuffix)" }
-                      $params['privateLinkZoneResType'] = @{ value = "$(privateLinkZoneResType)" }
+                    # Suffix from config (e.g. adiPrivateLinkZoneSuffix); resType from pipeline (we know we need ADI for Doc Intelligence)
+                    if (-not [string]::IsNullOrWhiteSpace("$(adiPrivateLinkZoneSuffix)")) {
+                      $params['privateLinkZoneSuffix'] = @{ value = "$(adiPrivateLinkZoneSuffix)" }
+                      $params['privateLinkZoneResType'] = @{ value = 'ADI' }
                     }
                     $tempDir = if ($env:TEMP) { $env:TEMP } elseif ($env:AGENT_TEMPDIRECTORY) { $env:AGENT_TEMPDIRECTORY } else { '/tmp' }
                     $paramsPath = Join-Path $tempDir "get-names-params-$(Get-Date -Format 'yyyyMMddHHmmss').json"
@@ -208,7 +209,7 @@ extends:
                     $vnetName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.virtualNetworkName.value" -o tsv
                     $rtName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.routeTableName.value" -o tsv
                     $zoneName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneName.value" -o tsv 2>$null
-                    $docIntelligenceName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.documentIntelligenceResourceName.value" -o tsv 2>$null
+                    $privateLinkResourceName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneResourceName.value" -o tsv 2>$null
                     if (-not $rgName) { throw "set-resource-names: could not get resourceGroupName" }
                     Write-Host "##vso[task.setvariable variable=infraResourceGroupName]$rgName"
                     Write-Host "##vso[task.setvariable variable=virtualNetworkName]$vnetName"
@@ -216,8 +217,9 @@ extends:
                     if (-not [string]::IsNullOrWhiteSpace($zoneName)) {
                       Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateLinkZoneName]$zoneName"
                     }
-                    if (-not [string]::IsNullOrWhiteSpace($docIntelligenceName)) {
-                      Write-Host "##vso[task.setvariable variable=documentIntelligenceResourceName]$docIntelligenceName"
+                    # Map generic output to Doc Intelligence variable (this pipeline deploys Doc Intelligence)
+                    if (-not [string]::IsNullOrWhiteSpace($privateLinkResourceName)) {
+                      Write-Host "##vso[task.setvariable variable=documentIntelligenceResourceName]$privateLinkResourceName"
                     }
                     Write-Host "Set resource names: infraResourceGroupName=$rgName, virtualNetworkName=$vnetName, routeTableName=$rtName"
               - name: create-platform-resource-groups
@@ -418,7 +420,7 @@ extends:
                         $region = "$(location)".ToLowerInvariant()
                         if ([string]::IsNullOrWhiteSpace($ip)) { Write-Host "Skipping DNS record: no private endpoint IP"; exit 0 }
                         $env:PRIVATEENDPOINTDNSRECORDSJSON = @([PSCustomObject]@{ Fqdn = $fqdn; IpAddress = @($ip); Region = $region }) | ConvertTo-Json
-                        $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = "$(region_to_dns_resourcegroup_mapping_table)"
+                        $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = "$(regionToDnsResourcegroupMappingTable)"
                         $scriptPath = Join-Path "$(Pipeline.Workspace)" "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
                         if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path "$(Build.SourcesDirectory)" "self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
                         if (-not (Test-Path $scriptPath)) { throw "Set-PrivateDnsRecordSet.ps1 not found" }

@@ -18,10 +18,10 @@ param regionCode string
 @description('Required. Instance number within the region (2 digits, 00-99)')
 param instanceNumber string
 
-@description('Optional. Private link zone suffix (e.g. privatelink.cognitiveservices.azure.com). When set with privateLinkZoneResType, outputs privateLinkZoneName.')
+@description('Optional. Private link zone suffix (e.g. privatelink.cognitiveservices.azure.com). When set with privateLinkZoneResType, outputs privateLinkZoneName and privateLinkZoneResourceName.')
 param privateLinkZoneSuffix string = ''
 
-@description('Optional. Resource type code for the zone prefix (e.g. ADI for Azure Document Intelligence). When set with privateLinkZoneSuffix, outputs privateLinkZoneName.')
+@description('Optional. Resource type code for the zone prefix (e.g. ADI, KVT). When set with privateLinkZoneSuffix, outputs privateLinkZoneName and privateLinkZoneResourceName.')
 param privateLinkZoneResType string = ''
 
 // Get resource group name using naming convention
@@ -72,7 +72,7 @@ module routeTableNaming './naming-convention.bicep' = {
 var nameLen = length(routeTableNaming.outputs.name)
 var routeTableNameWithoutInstance = nameLen > 2 ? substring(routeTableNaming.outputs.name, 0, nameLen - 2) : routeTableNaming.outputs.name
 
-// Optional: get private link DNS zone name (prefix from naming convention + suffix, e.g. SNDAIEINFADI1401.privatelink.cognitiveservices.azure.com)
+// Optional: get private link DNS zone name (prefix from naming convention + suffix). Caller passes suffix (from config) and resType (pipeline knows which type, e.g. ADI).
 module privateLinkZoneNaming './naming-convention.bicep' = if (!empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType)) {
   name: 'pdz-naming-${uniqueString(deployment().name, privateLinkZoneSuffix, privateLinkZoneResType)}'
   params: {
@@ -92,5 +92,5 @@ output resourceGroupName string = resourceGroupNaming.outputs.name
 output virtualNetworkName string = virtualNetworkNaming.outputs.name
 output routeTableName string = routeTableNameWithoutInstance
 output privateLinkZoneName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? '${privateLinkZoneNaming.outputs.name}.${privateLinkZoneSuffix}' : ''
-// Document Intelligence resource name (same naming as private link zone prefix); derived when privateLinkZoneResType is set.
-output documentIntelligenceResourceName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? privateLinkZoneNaming.outputs.name : ''
+// Generic resource name (prefix) for the private link zone. Concrete pipelines map this to their variable (e.g. documentIntelligenceResourceName).
+output privateLinkZoneResourceName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? privateLinkZoneNaming.outputs.name : ''
