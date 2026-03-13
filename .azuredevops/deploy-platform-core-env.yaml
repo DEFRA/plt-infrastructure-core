@@ -45,6 +45,8 @@ variables:
   - group: entra
   - name: applicationID
     value: ${{ parameters.applicationID }}
+  - name: instance
+    value: ${{ parameters.instance }}
   # virtualNetworkResourceGroup will be set by the create-virtual-network-resource-group script deployment
   # For validation, use a placeholder value (will be overridden by script with actual resource group name)
   - name: virtualNetworkResourceGroup
