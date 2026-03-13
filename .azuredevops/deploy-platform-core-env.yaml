@@ -42,6 +42,7 @@ trigger:
       - infra/common/*
      
 variables:
+  - group: entra
   - name: applicationID
     value: ${{ parameters.applicationID }}
   # virtualNetworkResourceGroup will be set by the create-virtual-network-resource-group script deployment
@@ -106,6 +107,8 @@ extends:
     deployFromFeature: ${{ parameters.deployFromFeature }}
     applicationID: ${{ parameters.applicationID }}
     instance: ${{ parameters.instance }}
+    additionalRepositories:
+      - PltConfig
     # Load config into deployment job so script steps (set-resource-names, create-platform-resource-groups) have subType, serviceCode, location, etc.
     regionalVariableFiles:
       - /config/common.yaml@PltConfig
@@ -154,6 +157,19 @@ extends:
           dependsOnGroupedDeployments:
             - validate_config
           deployments:
+              - name: create-aad-groups
+                type: 'script'
+                scriptType: AzurePowerShell
+                serviceConnectionVariableName: 'ssvServiceConnection'
+                inlineScript: |
+                  $manifestPath = "$(Pipeline.Workspace)/s/PltConfig/config/$(applicationID)/$(instance)/aad-group.json"
+                  if (-not (Test-Path $manifestPath)) { Write-Host "No aad-group.json at $manifestPath; skipping Create AAD Groups."; exit 0 }
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Create-AADGroups.ps1" `
+                    -AADGroupsJsonManifestPath $manifestPath `
+                    -ClientId $(entraSPClientId) `
+                    -TenantId $(tenantId) `
+                    -ClientSecret $(entraSPToken)
+                  if ($LASTEXITCODE -ne 0) { throw "Create-AADGroups failed" }
               - name: variable-setup
                 type: 'script'
                 scriptType: AzureCLI
@@ -420,7 +436,7 @@ extends:
                         $region = "$(location)".ToLowerInvariant()
                         if ([string]::IsNullOrWhiteSpace($ip)) { Write-Host "Skipping DNS record: no private endpoint IP"; exit 0 }
                         $env:PRIVATEENDPOINTDNSRECORDSJSON = @([PSCustomObject]@{ Fqdn = $fqdn; IpAddress = @($ip); Region = $region }) | ConvertTo-Json
-                        $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = "$(regionToDnsResourcegroupMappingTable)"
+                        $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = '$(regionToDnsResourcegroupMappingTable)'
                         $scriptPath = Join-Path "$(Pipeline.Workspace)" "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
                         if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path "$(Build.SourcesDirectory)" "self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
                         if (-not (Test-Path $scriptPath)) { throw "Set-PrivateDnsRecordSet.ps1 not found" }
