@@ -65,8 +65,8 @@ if (-not (Test-Path $vnetParamsPath)) {
 $SubnetCount = 1
 if (Test-Path $vnetParamsPath) {
   $content = Get-Content -LiteralPath $vnetParamsPath -Raw -Encoding UTF8
-  $subnetNameMatches = [regex]::Matches($content, '"name":\s*"subnet\d+"')
-  if ($subnetNameMatches.Count -gt 0) { $SubnetCount = $subnetNameMatches.Count }
+  $subnetCountMatches = [regex]::Matches($content, 'subnet\d+AddressPrefix')
+  if ($subnetCountMatches.Count -gt 0) { $SubnetCount = $subnetCountMatches.Count }
 }
 Write-Host "##vso[task.setvariable variable=subnetCount]$SubnetCount"
 

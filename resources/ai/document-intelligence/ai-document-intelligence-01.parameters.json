@@ -14,7 +14,7 @@
             "value": {
               "name": "#{{ virtualNetworkName }}",
               "resourceGroup": "#{{ virtualNetworkResourceGroup }}",
-              "subnetPrivateEndpoints": "#{{ pepSubnet }}"
+              "subnetPrivateEndpoints": "#{{ subnet3Name }}"
             }
         },
         "subType": {

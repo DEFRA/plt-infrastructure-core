@@ -24,6 +24,9 @@ param privateLinkZoneSuffix string = ''
 @description('Optional. Resource type code for the zone prefix (e.g. ADI, KVT). When set with privateLinkZoneSuffix, outputs privateLinkZoneName and privateLinkZoneResourceName.')
 param privateLinkZoneResType string = ''
 
+@description('Optional. Subnet name configs: array of {resType, instanceNumber}. When set, outputs subnetNames array. Config provides suffix (resType) per subnet; instanceNumber is 01, 02, etc.')
+param subnetNameConfigs array = []
+
 // Get resource group name using naming convention
 module resourceGroupNaming './naming-convention.bicep' = {
   name: 'rg-naming-${uniqueString(deployment().name)}'
@@ -72,6 +75,21 @@ module routeTableNaming './naming-convention.bicep' = {
 var nameLen = length(routeTableNaming.outputs.name)
 var routeTableNameWithoutInstance = nameLen > 2 ? substring(routeTableNaming.outputs.name, 0, nameLen - 2) : routeTableNaming.outputs.name
 
+// Subnet naming: one module per subnet config. Config provides resType (suffix) per subnet; instanceNumber is 01, 02, etc.
+module subnetNaming './naming-convention.bicep' = [for i in range(0, length(subnetNameConfigs)): {
+  name: 'subnet-${i}-${uniqueString(deployment().name, subnetNameConfigs[i].resType, subnetNameConfigs[i].instanceNumber)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'NET'
+    resType: subnetNameConfigs[i].resType
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: subnetNameConfigs[i].instanceNumber
+    toLower: false
+  }
+}]
+
 // Optional: get private link DNS zone name (prefix from naming convention + suffix). Caller passes suffix (from config) and resType (pipeline knows which type, e.g. ADI).
 module privateLinkZoneNaming './naming-convention.bicep' = if (!empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType)) {
   name: 'pdz-naming-${uniqueString(deployment().name, privateLinkZoneSuffix, privateLinkZoneResType)}'
@@ -91,6 +109,7 @@ module privateLinkZoneNaming './naming-convention.bicep' = if (!empty(privateLin
 output resourceGroupName string = resourceGroupNaming.outputs.name
 output virtualNetworkName string = virtualNetworkNaming.outputs.name
 output routeTableName string = routeTableNameWithoutInstance
+output subnetNames array = [for i in range(0, length(subnetNameConfigs)): subnetNaming[i].outputs.name]
 output privateLinkZoneName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? '${privateLinkZoneNaming.outputs.name}.${privateLinkZoneSuffix}' : ''
 // Generic resource name (prefix) for the private link zone. Concrete pipelines map this to their variable (e.g. documentIntelligenceResourceName).
 output privateLinkZoneResourceName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? privateLinkZoneNaming.outputs.name : ''

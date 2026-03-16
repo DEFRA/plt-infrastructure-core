@@ -14,7 +14,7 @@
     "subnets": {
       "value": [
         {
-          "name": "subnet1",
+          "name": "#{{ subnet1Name }}",
           "addressPrefix": "#{{ subnet1AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
@@ -28,7 +28,7 @@
           "routeTable": { "id": "#{{ subnet1RouteTableResourceId }}" }
         },
         {
-          "name": "subnet2",
+          "name": "#{{ subnet2Name }}",
           "addressPrefix": "#{{ subnet2AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
@@ -37,7 +37,7 @@
           "routeTable": { "id": "#{{ subnet2RouteTableResourceId }}" }
         },
         {
-          "name": "subnet3",
+          "name": "#{{ subnet3Name }}",
           "addressPrefix": "#{{ subnet3AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
@@ -46,7 +46,7 @@
           "routeTable": { "id": "#{{ subnet3RouteTableResourceId }}" }
         },
         {
-          "name": "subnet4",
+          "name": "#{{ subnet4Name }}",
           "addressPrefix": "#{{ subnet4AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
@@ -55,7 +55,7 @@
           "routeTable": { "id": "#{{ subnet4RouteTableResourceId }}" }
         },
         {
-          "name": "subnet5",
+          "name": "#{{ subnet5Name }}",
           "addressPrefix": "#{{ subnet5AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
@@ -64,7 +64,7 @@
           "routeTable": { "id": "#{{ subnet5RouteTableResourceId }}" }
         },
         {
-          "name": "subnet6",
+          "name": "#{{ subnet6Name }}",
           "addressPrefix": "#{{ subnet6AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
@@ -73,7 +73,7 @@
           "routeTable": { "id": "#{{ subnet6RouteTableResourceId }}" }
         },
         {
-          "name": "subnet7",
+          "name": "#{{ subnet7Name }}",
           "addressPrefix": "#{{ subnet7AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",

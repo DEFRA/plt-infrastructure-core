@@ -111,6 +111,8 @@ param role string
   'RT'    // Route Table
   'STO'   // Storage Account
   'SUB'   // Azure Subnet
+  'SU'    // Subnet (abbreviated)
+  'PEP'   // Private Endpoint
   'VNT'   // Virtual Network
   'WAF'   // Azure WAF Policy
 ])

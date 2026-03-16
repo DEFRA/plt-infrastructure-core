@@ -14,7 +14,7 @@
     "subnets": {
       "value": [
         {
-          "name": "subnet1",
+          "name": "#{{ subnet1Name }}",
           "addressPrefix": "#{{ subnet1AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
@@ -28,7 +28,7 @@
           "routeTable": { "id": "#{{ subnet1RouteTableResourceId }}" }
         },
         {
-          "name": "subnet2",
+          "name": "#{{ subnet2Name }}",
           "addressPrefix": "#{{ subnet2AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
@@ -37,7 +37,7 @@
           "routeTable": { "id": "#{{ subnet2RouteTableResourceId }}" }
         },
         {
-          "name": "subnet3",
+          "name": "#{{ subnet3Name }}",
           "addressPrefix": "#{{ subnet3AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
