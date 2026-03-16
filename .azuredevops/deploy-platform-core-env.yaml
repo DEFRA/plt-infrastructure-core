@@ -431,7 +431,7 @@ extends:
                       type: AzurePowerShell
                       azurePowerShellVersion: LatestVersion
                       azurePowerShellUseCore: true
-                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                      serviceConnectionVariableName: 'privateDnsServiceConnection'
                       inlineScript: |
                         $ip = "$(documentIntelligencePrivateEndpointIp)"
                         $fqdn = "$(documentIntelligenceResourceName).cognitiveservices.azure.com"

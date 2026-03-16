@@ -20,12 +20,20 @@ Function Get-RegionToResourceGroupMappingTable {
 }
 
 Function Get-PrivateDnsZoneMappingTable {
+    $domainPrivateDnsZoneMappingTable = @{}
+    # Well-known Azure private link zones (may not be returned by Get-AzPrivateDnsZone depending on subscription scope)
+    $domainPrivateDnsZoneMappingTable["vault.azure.net"] = "privatelink.vaultcore.azure.net"
+    $domainPrivateDnsZoneMappingTable["cognitiveservices.azure.com"] = "privatelink.cognitiveservices.azure.com"
+
     $privateDnsZones = Get-AzPrivateDnsZone
     $uniquePrivateDnsZonesNames = $privateDnsZones.Name | Sort-Object -Unique
 
     foreach ($zoneName in $uniquePrivateDnsZonesNames) {
         if ($zoneName -eq 'privatelink.vaultcore.azure.net') {
             $domainPrivateDnsZoneMappingTable["vault.azure.net"] = "privatelink.vaultcore.azure.net"
+        }
+        elseif ($zoneName -eq 'privatelink.cognitiveservices.azure.com') {
+            $domainPrivateDnsZoneMappingTable["cognitiveservices.azure.com"] = "privatelink.cognitiveservices.azure.com"
         }
         else {
             $nameWithoutPrivatelink = $zoneName -replace "privatelink.", ''
