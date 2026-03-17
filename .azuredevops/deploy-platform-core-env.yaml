@@ -408,7 +408,8 @@ extends:
                       $v1 = (Get-Item -Path "Env:SUBNET${i}ROUTETABLE" -ErrorAction SilentlyContinue).Value
                       $v2 = (Get-Item -Path "Env:subnet${i}RouteTable" -ErrorAction SilentlyContinue).Value
                       $v3 = [Environment]::GetEnvironmentVariable("subnet${i}routetable", 'Process')
-                      $v4 = (Get-ChildItem Env: | Where-Object { $_.Name -match "subnet.*$i.*route" } | Select-Object -First 1).Value
+                      # Match subnetNRouteTable only; exclude subnetNRouteTableResourceId (placeholder has full resource ID string)
+                      $v4 = (Get-ChildItem Env: | Where-Object { $_.Name -match "^(?i)SUBNET${i}ROUTETABLE$" } | Select-Object -First 1).Value
                       $rt = $v1; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v2 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v3 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = $v4 }; if ([string]::IsNullOrWhiteSpace($rt)) { $rt = '1' }
                       $id = ''
                       if ([int]$rt -gt 0) {
