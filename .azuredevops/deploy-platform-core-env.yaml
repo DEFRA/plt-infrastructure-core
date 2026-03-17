@@ -389,11 +389,25 @@ extends:
                       }
                       Write-Host "##vso[task.setvariable variable=subnet${i}RouteTableResourceId]$id"
                     }
+              - name: replace-vnet-tokens
+                type: replaceTokensOnly
+                replaceTokenPathsString: 'resources/network/vnet/$(subnetLayout)'
               - name: virtual-network
                 path: resources/network/vnet
                 parameterFilePath: resources/network/vnet/$(subnetLayout)
                 resourceGroupName: $(virtualNetworkResourceGroup)
                 preDeployScriptsList:
+                    - displayName: "Debug - Output VNet token variables before replace"
+                      type: PowerShell
+                      inlineScript: |
+                        Write-Host "=== VNet token variables (for replace-tokens) ==="
+                        $vars = @('subnet1Name','subnet2Name','subnet3Name','subnet4Name','subnet5Name','subnet6Name','subnet7Name','subnet1RouteTableResourceId','subnet2RouteTableResourceId','subnet3RouteTableResourceId','subnet4RouteTableResourceId','subnet5RouteTableResourceId','subnet6RouteTableResourceId','subnet7RouteTableResourceId')
+                        foreach ($v in $vars) {
+                          $val = [Environment]::GetEnvironmentVariable($v, 'Process')
+                          if ([string]::IsNullOrEmpty($val)) { $val = [Environment]::GetEnvironmentVariable($v.ToUpperInvariant(), 'Process') }
+                          Write-Host "  $v = $(if ($val) { $val.Substring(0, [Math]::Min(80, $val.Length)) + $(if ($val.Length -gt 80) { '...' } else { '' }) } else { '(empty)' })"
+                        }
+                        Write-Host "=== end VNet token variables ==="
                     - displayName: "Resolve network join group object ID"
                       type: AzurePowerShell
                       serviceConnectionVariableName: 'ssvServiceConnection'
