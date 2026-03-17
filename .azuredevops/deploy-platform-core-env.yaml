@@ -66,6 +66,36 @@ variables:
   # infraResourceGroupName from set-resource-names; placeholder for Validate job; overridden in Deploy.
   - name: infraResourceGroupName
     value: 'ValidationPlaceholderRG'
+  # Subnet names from set-resource-names; placeholders for Validate job; overridden in Deploy.
+  - name: subnet1Name
+    value: 'ValidationPlaceholderSubnet01'
+  - name: subnet2Name
+    value: 'ValidationPlaceholderSubnet02'
+  - name: subnet3Name
+    value: 'ValidationPlaceholderSubnet03'
+  - name: subnet4Name
+    value: 'ValidationPlaceholderSubnet04'
+  - name: subnet5Name
+    value: 'ValidationPlaceholderSubnet05'
+  - name: subnet6Name
+    value: 'ValidationPlaceholderSubnet06'
+  - name: subnet7Name
+    value: 'ValidationPlaceholderSubnet07'
+  # Route table resource IDs from set-subnet-route-table-resource-ids; placeholders for Validate job; overridden in Deploy.
+  - name: subnet1RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet2RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet3RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet4RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet5RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet6RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet7RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
   # servicesResourceGroup (APP RG) set by create-platform-resource-groups when APP role is created. Placeholder for Validate job.
   - name: servicesResourceGroup
     value: 'ValidationPlaceholderRG'
