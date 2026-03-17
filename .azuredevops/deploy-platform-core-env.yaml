@@ -397,6 +397,40 @@ extends:
                 parameterFilePath: resources/network/vnet/$(subnetLayout)
                 resourceGroupName: $(virtualNetworkResourceGroup)
                 preDeployScriptsList:
+                    - displayName: "Validate VNet token variables (subnet names, route table IDs)"
+                      type: PowerShell
+                      inlineScript: |
+                        $layout = "$(subnetLayout)"
+                        $base = "$(Pipeline.Workspace)/s/self"
+                        if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)/self" }
+                        if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)" }
+                        $vnetPath = Join-Path $base "resources/network/vnet/$layout/virtual-network.parameters.json"
+                        if (-not (Test-Path $vnetPath)) { $vnetPath = Join-Path $base "self/resources/network/vnet/$layout/virtual-network.parameters.json" }
+                        $subnetCount = 0
+                        if (Test-Path $vnetPath) {
+                          $content = Get-Content -Raw $vnetPath
+                          $subnetCount = [regex]::Matches($content, 'subnet\d+AddressPrefix').Count
+                        }
+                        $err = 0
+                        for ($i = 1; $i -le $subnetCount; $i++) {
+                          $name = [Environment]::GetEnvironmentVariable("subnet${i}Name", 'Process')
+                          if ([string]::IsNullOrWhiteSpace($name)) { $name = [Environment]::GetEnvironmentVariable("SUBNET${i}NAME", 'Process') }
+                          if ([string]::IsNullOrWhiteSpace($name)) {
+                            Write-Host "##vso[task.logissue type=error]subnet${i}Name is empty. Ensure set-resource-names runs and get-names outputs subnet names. Check config has subnet${i}NameSuffix."
+                            $err = 1
+                          }
+                          $rtId = [Environment]::GetEnvironmentVariable("subnet${i}RouteTableResourceId", 'Process')
+                          if ([string]::IsNullOrWhiteSpace($rtId)) { $rtId = [Environment]::GetEnvironmentVariable("SUBNET${i}ROUTETABLERESOURCEID", 'Process') }
+                          if ([string]::IsNullOrWhiteSpace($rtId)) {
+                            Write-Host "##vso[task.logissue type=error]subnet${i}RouteTableResourceId is empty. Ensure set-subnet-route-table-resource-ids runs after deploy-route-tables."
+                            $err = 1
+                          }
+                        }
+                        if ($err -eq 1) {
+                          Write-Host "##vso[task.logissue type=error]VNet token validation failed. Empty subnet names or route table IDs will cause ARM validation errors. Fix variable flow (set-resource-names, replace-vnet-tokens, set-subnet-route-table-resource-ids) or check pipeline runs in same job."
+                          exit 1
+                        }
+                        Write-Host "VNet token validation passed: all subnet names and route table IDs are set."
                     - displayName: "Debug - Output VNet token variables before replace"
                       type: PowerShell
                       inlineScript: |
