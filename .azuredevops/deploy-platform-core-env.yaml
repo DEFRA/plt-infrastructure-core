@@ -13,6 +13,7 @@ parameters:
     displayName: "Instance (config folder name, e.g. 01)"
     type: string
     default: '01'
+  # Derived in config, however has to be supplied to allow the regional config to work. Validation step confirms config matches supplied values.
   - name: environmentName
     displayName: "Environment name for config path (e.g. snd1). Must match config/regional/{environment}-{region}.yaml and config."
     type: string
@@ -47,12 +48,10 @@ variables:
     value: ${{ parameters.applicationID }}
   - name: instance
     value: ${{ parameters.instance }}
-  # virtualNetworkResourceGroup will be set by the create-virtual-network-resource-group script deployment
   # For validation, use a placeholder value (will be overridden by script with actual resource group name)
   - name: virtualNetworkResourceGroup
     value: 'ValidationPlaceholderRG'
-  # virtualNetworkName will be set by the create-virtual-network-resource-group script deployment
-  # For token replacement, use a placeholder value (will be overridden by script with actual virtual network name)
+  # For validation use a placeholder value (will be overridden by script with actual virtual network name)
   - name: virtualNetworkName
     value: 'ValidationPlaceholderVNet'
   - name: routeTableName
@@ -102,8 +101,6 @@ variables:
   # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
   - name: firewallVirtualApplianceIp
     value: ''
-  # addressPrefixes, dnsServers, environment, resourceLockEnabled, location, subType, deploymentEnvInstance, regionCode, instanceNumber come from config (variable files)
-  # subnets: from layout in filePathsForTransform (framework token replacement); preDeploy reads transformed layout and sets this
   - name: subnets
     value: '[]'
   - name: networkJoinGroupObjectId
@@ -111,7 +108,7 @@ variables:
   # Platform resource group roles to create (in addition to INF). INF is always created first. Comma-separated, e.g. EXP,APP. Set in config (variable files).
   - name: platformResourceGroups
     value: ''
-  # subscriptionName, location (primary region), documentIntelligenceSku from config (loaded below)
+  # if no SKU then Document Intelligence is not deployed.
   - name: documentIntelligenceSku
     value: ''
   - template: /config/common.yaml@PltConfig
@@ -141,7 +138,6 @@ extends:
     instance: ${{ parameters.instance }}
     additionalRepositories:
       - PltConfig
-    # Load config into deployment job so script steps (set-resource-names, create-platform-resource-groups) have subType, serviceCode, location, etc.
     regionalVariableFiles:
       - /config/common.yaml@PltConfig
       - /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
@@ -185,6 +181,24 @@ extends:
                   fi
                   if [ $err -eq 1 ]; then exit 1; fi
                   echo "Config validation passed: parameters match config."
+              - name: validate-additionalDnsConfig-json
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: bash
+                inlineScript: |
+                  set -euo pipefail
+                  sku_lower=$(echo "$(documentIntelligenceSku)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+                  if [ -z "$sku_lower" ] || [ "$sku_lower" = "none" ]; then
+                    echo "Document Intelligence not configured (documentIntelligenceSku=$(documentIntelligenceSku)); skipping additionalDnsConfig validation."
+                    exit 0
+                  fi
+                  raw='$(additionalDnsConfig)'
+                  if [ -z "$raw" ] || [ "$raw" = '[]' ]; then
+                    echo "additionalDnsConfig empty/blank; skipping validation."
+                    exit 0
+                  fi
+                  export RAW="$raw"
+                  python3 -c "import os, json; json.loads(os.environ['RAW'])"
         - name: setup
           dependsOnGroupedDeployments:
             - validate_config
@@ -545,39 +559,7 @@ extends:
                   path: resources/ai/document-intelligence
                   parameterFilePath: resources/ai/document-intelligence
                   resourceGroupName: $(servicesResourceGroup)
-                  postDeployScriptsList:
-                    - displayName: 'Output Document Intelligence private endpoint IP for DNS'
-                      type: AzureCLI
-                      azureCLIScriptType: pscore
-                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                      inlineScript: |
-                        $rg = "$(servicesResourceGroup)"
-                        $deploymentName = az deployment group list -g $rg --query "sort_by([?starts_with(name, 'ai-document-intelligence')], &properties.timestamp)[-1].name" -o tsv
-                        if (-not $deploymentName) { Write-Host "No ai-document-intelligence deployment found in $rg"; exit 0 }
-                        $ip = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.privateEndpointIpAddress.value" -o tsv
-                        Write-Host "Document Intelligence Private Endpoint IP (for subsequent DNS update): $ip"
-                        if (-not [string]::IsNullOrWhiteSpace($ip)) { Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateEndpointIp]$ip" }
-                    - displayName: 'Set Document Intelligence private endpoint DNS A record'
-                      type: AzurePowerShell
-                      azurePowerShellVersion: LatestVersion
-                      azurePowerShellUseCore: true
-                      serviceConnectionVariableName: 'privateDnsServiceConnection'
-                      inlineScript: |
-                        $ip = "$(documentIntelligencePrivateEndpointIp)"
-                        $fqdn = "$(documentIntelligenceResourceName).cognitiveservices.azure.com"
-                        $region = "$(location)".ToLowerInvariant()
-                        if ([string]::IsNullOrWhiteSpace($ip)) {
-                          Write-Host "Document Intelligence DNS record skipped: no private endpoint IP"
-                          exit 0
-                        }
-
-                        $dnsEntries = @([PSCustomObject]@{ Fqdn = $fqdn; IpAddress = @($ip); Region = $region })
-                        $env:PRIVATEENDPOINTDNSRECORDSJSON = ($dnsEntries | ConvertTo-Json -Depth 10)
-                        $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = '$(regionToDnsResourcegroupMappingTable)'
-                        $scriptPath = Join-Path "$(Pipeline.Workspace)" "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
-                        if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path "$(Build.SourcesDirectory)" "self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
-                        if (-not (Test-Path $scriptPath)) { throw "Set-PrivateDnsRecordSet.ps1 not found" }
-                        & $scriptPath -Ttl 300
+                  preDeployScriptsList:
                     - displayName: 'Set additional DNS A records from additionalDnsConfig'
                       type: AzurePowerShell
                       azurePowerShellVersion: LatestVersion
@@ -586,8 +568,8 @@ extends:
                       inlineScript: |
                         $region = "$(location)".ToLowerInvariant()
 
-                        # Use here-string so JSON quotes in additionalDnsConfig don't break the PowerShell script.
-                        $additionalRaw = @'$(additionalDnsConfig)'@
+                        # Use single-quoted PowerShell string so embedded JSON double-quotes don't break the script.
+                        $additionalRaw = '$(additionalDnsConfig)'
                         if ([string]::IsNullOrWhiteSpace($additionalRaw) -or $additionalRaw -eq '[]') {
                           Write-Host "No additionalDnsConfig entries to set."
                           exit 0
@@ -621,6 +603,39 @@ extends:
                           exit 0
                         }
 
+                        $env:PRIVATEENDPOINTDNSRECORDSJSON = ($dnsEntries | ConvertTo-Json -Depth 10)
+                        $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = '$(regionToDnsResourcegroupMappingTable)'
+                        $scriptPath = Join-Path "$(Pipeline.Workspace)" "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
+                        if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path "$(Build.SourcesDirectory)" "self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
+                        if (-not (Test-Path $scriptPath)) { throw "Set-PrivateDnsRecordSet.ps1 not found" }
+                        & $scriptPath -Ttl 300
+                  postDeployScriptsList:
+                    - displayName: 'Output Document Intelligence private endpoint IP for DNS'
+                      type: AzureCLI
+                      azureCLIScriptType: pscore
+                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                      inlineScript: |
+                        $rg = "$(servicesResourceGroup)"
+                        $deploymentName = az deployment group list -g $rg --query "sort_by([?starts_with(name, 'ai-document-intelligence')], &properties.timestamp)[-1].name" -o tsv
+                        if (-not $deploymentName) { Write-Host "No ai-document-intelligence deployment found in $rg"; exit 0 }
+                        $ip = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.privateEndpointIpAddress.value" -o tsv
+                        Write-Host "Document Intelligence Private Endpoint IP (for subsequent DNS update): $ip"
+                        if (-not [string]::IsNullOrWhiteSpace($ip)) { Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateEndpointIp]$ip" }
+                    - displayName: 'Set Document Intelligence private endpoint DNS A record'
+                      type: AzurePowerShell
+                      azurePowerShellVersion: LatestVersion
+                      azurePowerShellUseCore: true
+                      serviceConnectionVariableName: 'privateDnsServiceConnection'
+                      inlineScript: |
+                        $ip = "$(documentIntelligencePrivateEndpointIp)"
+                        $fqdn = "$(documentIntelligenceResourceName).cognitiveservices.azure.com"
+                        $region = "$(location)".ToLowerInvariant()
+                        if ([string]::IsNullOrWhiteSpace($ip)) {
+                          Write-Host "Document Intelligence DNS record skipped: no private endpoint IP"
+                          exit 0
+                        }
+
+                        $dnsEntries = @([PSCustomObject]@{ Fqdn = $fqdn; IpAddress = @($ip); Region = $region })
                         $env:PRIVATEENDPOINTDNSRECORDSJSON = ($dnsEntries | ConvertTo-Json -Depth 10)
                         $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = '$(regionToDnsResourcegroupMappingTable)'
                         $scriptPath = Join-Path "$(Pipeline.Workspace)" "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
