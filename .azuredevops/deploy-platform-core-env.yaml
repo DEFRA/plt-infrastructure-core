@@ -586,7 +586,8 @@ extends:
                       inlineScript: |
                         $region = "$(location)".ToLowerInvariant()
 
-                        $additionalRaw = "$(additionalDnsConfig)"
+                        # Use here-string so JSON quotes in additionalDnsConfig don't break the PowerShell script.
+                        $additionalRaw = @'$(additionalDnsConfig)'@
                         if ([string]::IsNullOrWhiteSpace($additionalRaw) -or $additionalRaw -eq '[]') {
                           Write-Host "No additionalDnsConfig entries to set."
                           exit 0
