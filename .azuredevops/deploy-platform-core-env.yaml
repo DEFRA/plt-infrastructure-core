@@ -68,6 +68,36 @@ variables:
   # servicesResourceGroup (APP RG) set by create-platform-resource-groups when APP role is created. Placeholder for Validate job.
   - name: servicesResourceGroup
     value: 'ValidationPlaceholderRG'
+  # Subnet names from set-resource-names; placeholders for Validate job; overridden in Deploy.
+  - name: subnet1Name
+    value: 'ValidationPlaceholderSubnet01'
+  - name: subnet2Name
+    value: 'ValidationPlaceholderSubnet02'
+  - name: subnet3Name
+    value: 'ValidationPlaceholderSubnet03'
+  - name: subnet4Name
+    value: 'ValidationPlaceholderSubnet04'
+  - name: subnet5Name
+    value: 'ValidationPlaceholderSubnet05'
+  - name: subnet6Name
+    value: 'ValidationPlaceholderSubnet06'
+  - name: subnet7Name
+    value: 'ValidationPlaceholderSubnet07'
+  # Route table resource IDs from set-subnet-route-table-resource-ids; placeholders for Validate job; overridden in Deploy.
+  - name: subnet1RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet2RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet3RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet4RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet5RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet6RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+  - name: subnet7RouteTableResourceId
+    value: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
   # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
   - name: firewallVirtualApplianceIp
     value: ''
@@ -197,47 +227,6 @@ extends:
                   echo "##vso[task.setvariable variable=applicationID]$applicationIDUpper"
                   echo "##vso[task.setvariable variable=applicationIDLower]$applicationIDLower"
                   echo "Normalized applicationID to $applicationIDUpper, applicationIDLower to $applicationIDLower"
-              - name: set-vnet-validation-placeholders
-                type: 'script'
-                scriptType: AzureCLI
-                azureCLIScriptType: pscore
-                serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                inlineScript: |
-                  $ErrorActionPreference = 'Stop'
-
-                  $layout = "$(subnetLayout)"
-
-                  $base = "$(Pipeline.Workspace)/s/self"
-                  if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)" }
-                  if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)/self" }
-
-                  $vnetParamsPath = Join-Path $base "resources/network/vnet/$layout/virtual-network.parameters.json"
-                  if (-not (Test-Path $vnetParamsPath)) {
-                    $vnetParamsPath = Join-Path $base "self/resources/network/vnet/$layout/virtual-network.parameters.json"
-                  }
-                  if (-not (Test-Path $vnetParamsPath)) {
-                    throw "Could not find virtual-network.parameters.json for subnetLayout=$layout at $vnetParamsPath"
-                  }
-
-                  $content = Get-Content -LiteralPath $vnetParamsPath -Raw -Encoding UTF8
-                  $matches = [regex]::Matches($content, 'subnet(\d+)Name')
-                  $indexes = @($matches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
-
-                  if ($indexes.Count -eq 0) {
-                    throw "No subnet placeholders found in $vnetParamsPath"
-                  }
-
-                  $placeholderRtId = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
-
-                  foreach ($idx in $indexes) {
-                    $i = [int]$idx
-                    $n = '{0:D2}' -f $i
-                    $subnetNameVar = "subnet${i}Name"
-                    $subnetRtVar = "subnet${i}RouteTableResourceId"
-
-                    Write-Host "##vso[task.setvariable variable=$subnetNameVar]ValidationPlaceholderSubnet$n"
-                    Write-Host "##vso[task.setvariable variable=$subnetRtVar]$placeholderRtId"
-                  }
         - name: network
           dependsOnGroupedDeployments:
             - setup
