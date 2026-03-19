@@ -197,55 +197,51 @@ extends:
                   echo "##vso[task.setvariable variable=applicationID]$applicationIDUpper"
                   echo "##vso[task.setvariable variable=applicationIDLower]$applicationIDLower"
                   echo "Normalized applicationID to $applicationIDUpper, applicationIDLower to $applicationIDLower"
-        - name: network
-          dependsOnGroupedDeployments:
-            - setup
-          deployments:
               - name: set-vnet-validation-placeholders
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
                 inlineScript: |
-                    $ErrorActionPreference = 'Stop'
+                  $ErrorActionPreference = 'Stop'
 
-                    $layout = "$(subnetLayout)"
+                  $layout = "$(subnetLayout)"
 
-                    # Prefer repo checkout path used elsewhere in this pipeline.
-                    $base = "$(Pipeline.Workspace)/s/self"
-                    if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)" }
-                    if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)/self" }
+                  $base = "$(Pipeline.Workspace)/s/self"
+                  if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)" }
+                  if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)/self" }
 
-                    $vnetParamsPath = Join-Path $base "resources/network/vnet/$layout/virtual-network.parameters.json"
-                    if (-not (Test-Path $vnetParamsPath)) {
-                      $vnetParamsPath = Join-Path $base "self/resources/network/vnet/$layout/virtual-network.parameters.json"
-                    }
+                  $vnetParamsPath = Join-Path $base "resources/network/vnet/$layout/virtual-network.parameters.json"
+                  if (-not (Test-Path $vnetParamsPath)) {
+                    $vnetParamsPath = Join-Path $base "self/resources/network/vnet/$layout/virtual-network.parameters.json"
+                  }
+                  if (-not (Test-Path $vnetParamsPath)) {
+                    throw "Could not find virtual-network.parameters.json for subnetLayout=$layout at $vnetParamsPath"
+                  }
 
-                    if (-not (Test-Path $vnetParamsPath)) {
-                      throw "Could not find virtual-network.parameters.json for subnetLayout=$layout at $vnetParamsPath"
-                    }
+                  $content = Get-Content -LiteralPath $vnetParamsPath -Raw -Encoding UTF8
+                  $matches = [regex]::Matches($content, 'subnet(\d+)Name')
+                  $indexes = @($matches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 
-                    $content = Get-Content -LiteralPath $vnetParamsPath -Raw -Encoding UTF8
-                    $matches = [regex]::Matches($content, 'subnet(\d+)Name')
-                    $indexes = @($matches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+                  if ($indexes.Count -eq 0) {
+                    throw "No subnet placeholders found in $vnetParamsPath"
+                  }
 
-                    if ($indexes.Count -eq 0) {
-                      throw "No subnet placeholders found in $vnetParamsPath"
-                    }
+                  $placeholderRtId = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
 
-                    $placeholderRtId = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+                  foreach ($idx in $indexes) {
+                    $i = [int]$idx
+                    $n = '{0:D2}' -f $i
+                    $subnetNameVar = "subnet${i}Name"
+                    $subnetRtVar = "subnet${i}RouteTableResourceId"
 
-                    foreach ($idx in $indexes) {
-                      $i = [int]$idx
-                      $n = '{0:D2}' -f $i
-
-                      $subnetNameVar = "subnet${i}Name"
-                      $subnetRtVar = "subnet${i}RouteTableResourceId"
-
-                      # Always set placeholders first. Later steps (set-resource-names / set-subnet-route-table-resource-ids) will overwrite for Deploy.
-                      Write-Host "##vso[task.setvariable variable=$subnetNameVar]ValidationPlaceholderSubnet$n"
-                      Write-Host "##vso[task.setvariable variable=$subnetRtVar]$placeholderRtId"
-                    }
+                    Write-Host "##vso[task.setvariable variable=$subnetNameVar]ValidationPlaceholderSubnet$n"
+                    Write-Host "##vso[task.setvariable variable=$subnetRtVar]$placeholderRtId"
+                  }
+        - name: network
+          dependsOnGroupedDeployments:
+            - setup
+          deployments:
               - name: set-resource-names
                 type: 'script'
                 scriptType: AzureCLI
