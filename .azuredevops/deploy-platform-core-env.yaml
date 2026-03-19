@@ -169,41 +169,6 @@ extends:
                   fi
                   export RAW="$raw"
                   python3 -c "import os, json; json.loads(os.environ['RAW'])"
-              - name: set-vnet-validation-placeholders
-                type: 'script'
-                scriptType: AzureCLI
-                azureCLIScriptType: bash
-                inlineScript: |
-                  set -euo pipefail
-
-                  layout="$(subnetLayout)"
-                  # Prefer repo checkout path used elsewhere in this pipeline.
-                  base="$(Pipeline.Workspace)/s/self"
-                  vnetParamsFile="$base/resources/network/vnet/$layout/virtual-network.parameters.json"
-
-                  if [ ! -f "$vnetParamsFile" ]; then
-                    # Fallback for different agent layouts.
-                    vnetParamsFile="$(Build.SourcesDirectory)/self/resources/network/vnet/$layout/virtual-network.parameters.json"
-                  fi
-
-                  if [ ! -f "$vnetParamsFile" ]; then
-                    echo "Could not find virtual-network.parameters.json for subnetLayout=$layout at $vnetParamsFile"
-                    exit 1
-                  fi
-
-                  subnetIndexes=$(python3 -c "import re; txt=open('$vnetParamsFile','r',encoding='utf-8').read(); nums=sorted({int(x) for x in re.findall(r'subnet(\\\\d+)Name', txt)}); print(' '.join(map(str, nums)))")
-                  if [ -z "$subnetIndexes" ]; then
-                    echo "No subnet placeholders found in $vnetParamsFile"
-                    exit 1
-                  fi
-
-                  placeholderRtId='/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
-                  for i in $subnetIndexes; do
-                    # subnet name placeholder: ValidationPlaceholderSubnet01, ValidationPlaceholderSubnet02, ...
-                    printf -v n '%02d' "$i"
-                    echo "##vso[task.setvariable variable=subnet${i}Name]ValidationPlaceholderSubnet${n}"
-                    echo "##vso[task.setvariable variable=subnet${i}RouteTableResourceId]$placeholderRtId"
-                  done
         - name: setup
           dependsOnGroupedDeployments:
             - validate_config
@@ -236,6 +201,51 @@ extends:
           dependsOnGroupedDeployments:
             - setup
           deployments:
+              - name: set-vnet-validation-placeholders
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: pscore
+                serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                inlineScript: |
+                    $ErrorActionPreference = 'Stop'
+
+                    $layout = "$(subnetLayout)"
+
+                    # Prefer repo checkout path used elsewhere in this pipeline.
+                    $base = "$(Pipeline.Workspace)/s/self"
+                    if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)" }
+                    if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)/self" }
+
+                    $vnetParamsPath = Join-Path $base "resources/network/vnet/$layout/virtual-network.parameters.json"
+                    if (-not (Test-Path $vnetParamsPath)) {
+                      $vnetParamsPath = Join-Path $base "self/resources/network/vnet/$layout/virtual-network.parameters.json"
+                    }
+
+                    if (-not (Test-Path $vnetParamsPath)) {
+                      throw "Could not find virtual-network.parameters.json for subnetLayout=$layout at $vnetParamsPath"
+                    }
+
+                    $content = Get-Content -LiteralPath $vnetParamsPath -Raw -Encoding UTF8
+                    $matches = [regex]::Matches($content, 'subnet(\d+)Name')
+                    $indexes = @($matches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+
+                    if ($indexes.Count -eq 0) {
+                      throw "No subnet placeholders found in $vnetParamsPath"
+                    }
+
+                    $placeholderRtId = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ValidationPlaceholderRG/providers/Microsoft.Network/routeTables/ValidationPlaceholderRT'
+
+                    foreach ($idx in $indexes) {
+                      $i = [int]$idx
+                      $n = '{0:D2}' -f $i
+
+                      $subnetNameVar = "subnet${i}Name"
+                      $subnetRtVar = "subnet${i}RouteTableResourceId"
+
+                      # Always set placeholders first. Later steps (set-resource-names / set-subnet-route-table-resource-ids) will overwrite for Deploy.
+                      Write-Host "##vso[task.setvariable variable=$subnetNameVar]ValidationPlaceholderSubnet$n"
+                      Write-Host "##vso[task.setvariable variable=$subnetRtVar]$placeholderRtId"
+                    }
               - name: set-resource-names
                 type: 'script'
                 scriptType: AzureCLI
