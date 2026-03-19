@@ -239,7 +239,7 @@ extends:
                       regionCode = @{ value = "$(regionCode)" }
                       instanceNumber = @{ value = "$(instanceNumber)" }
                     }
-                    # Subnet name configs: build from subnet1NameSuffix, subnet2NameSuffix, etc. (config provides suffix per subnet)
+                    # Subnet name configs: always use resType = 'SUB' (naming convention consistent across all subnets)
                     $layout = "$(subnetLayout)"
                     $vnetParamsPath = Join-Path $root "resources/network/vnet/$layout/virtual-network.parameters.json"
                     if (-not (Test-Path $vnetParamsPath)) { $vnetParamsPath = Join-Path $root "self/resources/network/vnet/$layout/virtual-network.parameters.json" }
@@ -248,12 +248,8 @@ extends:
                       $vnetContent = Get-Content -Raw $vnetParamsPath
                       $subnetCount = [regex]::Matches($vnetContent, 'subnet\d+AddressPrefix').Count
                       for ($i = 1; $i -le $subnetCount; $i++) {
-                        $suffixVar = "subnet${i}NameSuffix"
-                        $suffix = (Get-Item -Path "Env:$suffixVar" -ErrorAction SilentlyContinue).Value
-                        if ([string]::IsNullOrWhiteSpace($suffix)) { $suffix = [Environment]::GetEnvironmentVariable($suffixVar, 'Process') }
-                        if ([string]::IsNullOrWhiteSpace($suffix)) { $suffix = "SUB" }
                         $instNum = '{0:D2}' -f $i
-                        $subnetConfigs += @{ resType = $suffix; instanceNumber = $instNum }
+                        $subnetConfigs += @{ resType = 'SUB'; instanceNumber = $instNum }
                       }
                     }
                     if ($subnetConfigs.Count -gt 0) {
@@ -561,7 +557,7 @@ extends:
                         $ip = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.privateEndpointIpAddress.value" -o tsv
                         Write-Host "Document Intelligence Private Endpoint IP (for subsequent DNS update): $ip"
                         if (-not [string]::IsNullOrWhiteSpace($ip)) { Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateEndpointIp]$ip" }
-                    - displayName: 'Set Document Intelligence private endpoint DNS record'
+                    - displayName: 'Set Document Intelligence private endpoint DNS A record'
                       type: AzurePowerShell
                       azurePowerShellVersion: LatestVersion
                       azurePowerShellUseCore: true
@@ -570,8 +566,61 @@ extends:
                         $ip = "$(documentIntelligencePrivateEndpointIp)"
                         $fqdn = "$(documentIntelligenceResourceName).cognitiveservices.azure.com"
                         $region = "$(location)".ToLowerInvariant()
-                        if ([string]::IsNullOrWhiteSpace($ip)) { Write-Host "Skipping DNS record: no private endpoint IP"; exit 0 }
-                        $env:PRIVATEENDPOINTDNSRECORDSJSON = @([PSCustomObject]@{ Fqdn = $fqdn; IpAddress = @($ip); Region = $region }) | ConvertTo-Json
+                        if ([string]::IsNullOrWhiteSpace($ip)) {
+                          Write-Host "Document Intelligence DNS record skipped: no private endpoint IP"
+                          exit 0
+                        }
+
+                        $dnsEntries = @([PSCustomObject]@{ Fqdn = $fqdn; IpAddress = @($ip); Region = $region })
+                        $env:PRIVATEENDPOINTDNSRECORDSJSON = ($dnsEntries | ConvertTo-Json -Depth 10)
+                        $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = '$(regionToDnsResourcegroupMappingTable)'
+                        $scriptPath = Join-Path "$(Pipeline.Workspace)" "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
+                        if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path "$(Build.SourcesDirectory)" "self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
+                        if (-not (Test-Path $scriptPath)) { throw "Set-PrivateDnsRecordSet.ps1 not found" }
+                        & $scriptPath -Ttl 300
+                    - displayName: 'Set additional DNS A records from additionalDnsConfig'
+                      type: AzurePowerShell
+                      azurePowerShellVersion: LatestVersion
+                      azurePowerShellUseCore: true
+                      serviceConnectionVariableName: 'privateDnsServiceConnection'
+                      inlineScript: |
+                        $region = "$(location)".ToLowerInvariant()
+
+                        $additionalRaw = "$(additionalDnsConfig)"
+                        if ([string]::IsNullOrWhiteSpace($additionalRaw) -or $additionalRaw -eq '[]') {
+                          Write-Host "No additionalDnsConfig entries to set."
+                          exit 0
+                        }
+
+                        $additionalParsed = $additionalRaw | ConvertFrom-Json
+                        if ($null -eq $additionalParsed) {
+                          Write-Host "additionalDnsConfig parsed to null; skipping."
+                          exit 0
+                        }
+
+                        $additionalItems = if ($additionalParsed -is [System.Array]) { $additionalParsed } else { @($additionalParsed) }
+                        $dnsEntries = @()
+
+                        foreach ($entry in $additionalItems) {
+                          # Allow config entries to omit Region (we know the pipeline location at runtime).
+                          if ($null -eq $entry.Region -or [string]::IsNullOrWhiteSpace($entry.Region)) {
+                            $entry.Region = $region
+                          }
+
+                          # PowerShell JSON parsing may yield IpAddress as a single value; normalize to array.
+                          if ($null -ne $entry.IpAddress -and -not ($entry.IpAddress -is [System.Array])) {
+                            $entry.IpAddress = @($entry.IpAddress)
+                          }
+
+                          $dnsEntries += $entry
+                        }
+
+                        if ($dnsEntries.Count -eq 0) {
+                          Write-Host "No additional DNS entries after normalization; skipping."
+                          exit 0
+                        }
+
+                        $env:PRIVATEENDPOINTDNSRECORDSJSON = ($dnsEntries | ConvertTo-Json -Depth 10)
                         $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = '$(regionToDnsResourcegroupMappingTable)'
                         $scriptPath = Join-Path "$(Pipeline.Workspace)" "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
                         if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path "$(Build.SourcesDirectory)" "self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
