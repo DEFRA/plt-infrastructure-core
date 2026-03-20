@@ -19,9 +19,6 @@ param deploymentEnvInstance string
 @description('Required. Region code (1 digit, e.g. 4 for UK South, 0 for Europe North).')
 param regionCode string
 
-@description('Required. Instance number within the region (2 digits, 00-99).')
-param instanceNumber string
-
 @description('Required. Base route table name prefix used to construct per-subnet route table resource IDs.')
 param routeTableName string
 

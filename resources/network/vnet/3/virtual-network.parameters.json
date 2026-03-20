@@ -23,9 +23,6 @@
     "regionCode": {
       "value": "#{{ regionCode }}"
     },
-    "instanceNumber": {
-      "value": "#{{ instanceNumber }}"
-    },
     "subnets": {
       "value": [
         {
