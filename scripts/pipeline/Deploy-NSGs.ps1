@@ -104,7 +104,7 @@ foreach ($layout in $toDeploy) {
   $transformedFile = Join-Path $paramDir "network-security-group.transformed.parameters.json"
 
   if (-not (Test-Path $paramFile)) {
-    throw "NSG parameter file not found for layout $layout: $paramFile"
+    throw "NSG parameter file not found for layout ${layout}: $paramFile"
   }
 
   # Always generate transformed parameters so `nsgResourceName` is correct for this deployment.
