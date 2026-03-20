@@ -11,7 +11,7 @@
         "nsgList": {
             "value": [
                 {
-                    "name": "#{{ subType }}#{{ serviceCode }}NETNSG#{{ deploymentEnvInstance }}#{{ regionCode }}#{{ instanceNumber }}",
+                    "name": "#{{ nsgResourceName }}",
                     "purpose": "PEP NSG",
                     "securityRules": [
                         
@@ -42,7 +42,7 @@
                                 "sourceAddressPrefix": "VirtualNetwork",
                                 "destinationAddressPrefix": "VirtualNetwork",
                                 "access": "Allow",
-                                "priority": 2000,
+                                "priority": 2010,
                                 "direction": "Outbound",
                                 "sourcePortRanges": [],
                                 "destinationPortRanges": [],

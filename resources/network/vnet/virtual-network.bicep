@@ -98,6 +98,8 @@ resource subnetAssociations 'Microsoft.Network/virtualNetworks/subnets@2022-07-0
     // routeTableNumber may arrive as an Integer (JSON literal) or string (from token replacement).
     // Avoid `empty()` because it doesn't support Integer types; treat null/blank as default to 1.
     routeTable: contains(subnets[i], 'routeTable') && subnets[i].routeTable != null ? (((subnets[i].routeTable.routeTableNumber == null || string(subnets[i].routeTable.routeTableNumber) == '') ? 1 : int(string(subnets[i].routeTable.routeTableNumber))) > 0 ? { id: resourceId('Microsoft.Network/routeTables', '${routeTableName}${padLeft(string((subnets[i].routeTable.routeTableNumber == null || string(subnets[i].routeTable.routeTableNumber) == '') ? 1 : int(string(subnets[i].routeTable.routeTableNumber))), 2, '0')}') } : null) : null
+    // Default to NSG layout 1 when omitted/blank. If explicitly set to 0, no NSG is attached.
+    networkSecurityGroup: (((subnets[i].nsgLayout == null || string(subnets[i].nsgLayout) == '') ? 1 : int(string(subnets[i].nsgLayout))) > 0) ? { id: resourceId('Microsoft.Network/networkSecurityGroups', '${subType}${svc}NETNSG${deploymentEnvInstance}${regionCode}${padLeft(string((subnets[i].nsgLayout == null || string(subnets[i].nsgLayout) == '') ? 1 : int(string(subnets[i].nsgLayout))), 2, '0')}') } : null
     delegations: subnetDelegations[i]
   }
   dependsOn: [ virtualNetwork ]

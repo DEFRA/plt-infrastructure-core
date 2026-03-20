@@ -11,7 +11,7 @@
         "nsgList": {
             "value": [
                 {
-                    "name": "#{{ subType }}#{{ serviceCode }}NETNSG#{{ deploymentEnvInstance }}#{{ regionCode }}#{{ instanceNumber }}",
+                    "name": "#{{ nsgResourceName }}",
                     "purpose": "PEP NSG",
                     "securityRules": [
                         

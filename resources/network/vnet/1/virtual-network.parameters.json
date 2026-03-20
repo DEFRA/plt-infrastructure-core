@@ -36,6 +36,7 @@
               "properties": { "serviceName": "Microsoft.ContainerInstance/containerGroups" }
             }
           ],
+          "nsgLayout": "#{{ subnet1NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet1RouteTable }}" }
         },
         {
@@ -44,6 +45,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
+          "nsgLayout": "#{{ subnet2NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet2RouteTable }}" }
         },
         {
@@ -52,6 +54,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
+          "nsgLayout": "#{{ subnet3NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet3RouteTable }}" }
         },
         {
@@ -60,6 +63,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
+          "nsgLayout": "#{{ subnet4NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet4RouteTable }}" }
         },
         {
@@ -68,6 +72,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
+          "nsgLayout": "#{{ subnet5NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet5RouteTable }}" }
         },
         {
@@ -76,6 +81,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
+          "nsgLayout": "#{{ subnet6NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet6RouteTable }}" }
         },
         {
@@ -84,6 +90,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
+          "nsgLayout": "#{{ subnet7NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet7RouteTable }}" }
         }
       ]

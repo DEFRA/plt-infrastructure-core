@@ -367,6 +367,18 @@ extends:
                       -Location "$(location)" `
                       -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)" `
                       -SubnetLayout "$(subnetLayout)"
+              - name: deploy-nsgs
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: pscore
+                serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                inlineScript: |
+                    # Deploy only the NSG layouts referenced by subnetNsgLayout in core.yaml.
+                    & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-NSGs.ps1" `
+                      -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
+                      -ResourceGroupName "$(virtualNetworkResourceGroup)" `
+                      -Location "$(location)" `
+                      -SubnetLayout "$(subnetLayout)"
               - name: replace-vnet-tokens
                 type: replaceTokensOnly
                 replaceTokenPathsString: 'resources/network/vnet/$(subnetLayout)'

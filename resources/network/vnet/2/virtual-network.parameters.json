@@ -36,6 +36,7 @@
               "properties": { "serviceName": "Microsoft.ContainerInstance/containerGroups" }
             }
           ],
+          "nsgLayout": "#{{ subnet1NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet1RouteTable }}" }
         },
         {
@@ -44,6 +45,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
+          "nsgLayout": "#{{ subnet2NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet2RouteTable }}" }
         },
         {
@@ -52,6 +54,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
+          "nsgLayout": "#{{ subnet3NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet3RouteTable }}" }
         }
       ]
