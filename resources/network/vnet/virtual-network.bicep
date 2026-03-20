@@ -86,11 +86,6 @@ module virtualNetwork 'br/SharedDefraRegistry:network.virtual-network:0.4.2' = {
 // Apply each subnet from JSON (including routeTable when defined inline); batchSize(1) to avoid Azure 429
 var subnetDelegations = [for i in range(0, length(subnets)): contains(subnets[i], 'delegations') && length(subnets[i].delegations) > 0 ? subnets[i].delegations : []]
 
-// Build routeTable property for each subnet.
-// Contract used by our VNet parameter files:
-//   { "routeTable": { "routeTableNumber": "<0|1|2|3>" } }
-// Where `0` means "no route table".
-var subnetRouteTables = [for i in range(0, length(subnets)): contains(subnets[i], 'routeTable') && subnets[i].routeTable != null ? (((empty(subnets[i].routeTable.routeTableNumber) ? 1 : int(subnets[i].routeTable.routeTableNumber)) > 0) ? { id: resourceId('Microsoft.Network/routeTables', '${routeTableName}${padLeft(string(empty(subnets[i].routeTable.routeTableNumber) ? 1 : int(subnets[i].routeTable.routeTableNumber)), 2, '0')}') } : null) : null]
 @sys.batchSize(1)
 resource subnetAssociations 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = [for i in range(0, length(subnets)): {
   parent: vnetExisting
@@ -100,7 +95,9 @@ resource subnetAssociations 'Microsoft.Network/virtualNetworks/subnets@2022-07-0
     privateEndpointNetworkPolicies: subnets[i].privateEndpointNetworkPolicies ?? 'Enabled'
     privateLinkServiceNetworkPolicies: subnets[i].privateLinkServiceNetworkPolicies ?? 'Enabled'
     serviceEndpoints: subnets[i].serviceEndpoints ?? []
-    routeTable: subnetRouteTables[i]
+    // routeTableNumber may arrive as an Integer (JSON literal) or string (from token replacement).
+    // Avoid `empty()` because it doesn't support Integer types; treat null/blank as default to 1.
+    routeTable: contains(subnets[i], 'routeTable') && subnets[i].routeTable != null ? (((subnets[i].routeTable.routeTableNumber == null ? 1 : int(subnets[i].routeTable.routeTableNumber)) > 0) ? { id: resourceId('Microsoft.Network/routeTables', '${routeTableName}${padLeft(string(subnets[i].routeTable.routeTableNumber == null ? 1 : int(subnets[i].routeTable.routeTableNumber)), 2, '0')}') } : null) : null
     delegations: subnetDelegations[i]
   }
   dependsOn: [ virtualNetwork ]
