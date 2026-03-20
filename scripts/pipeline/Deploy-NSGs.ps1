@@ -12,7 +12,11 @@ param(
   [string]$BuildSourcesDirectory,
   [string]$ResourceGroupName,
   [string]$SubnetLayout = '1',
-  [string]$Location = ''
+  [string]$Location = '',
+  [string]$SubType = '',
+  [string]$ServiceCode = '',
+  [string]$DeploymentEnvInstance = '',
+  [string]$RegionCode = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,10 +88,10 @@ if ($toDeploy.Count -eq 0) {
 
 Write-Host "NSG layouts to deploy: $($toDeploy -join ', ')"
 
-$subType = Get-EnvValue 'subType'
-$serviceCode = Get-EnvValue 'serviceCode'
-$deploymentEnvInstance = Get-EnvValue 'deploymentEnvInstance'
-$regionCode = Get-EnvValue 'regionCode'
+$subType = if (-not [string]::IsNullOrWhiteSpace($SubType)) { $SubType } else { Get-EnvValue 'subType' }
+$serviceCode = if (-not [string]::IsNullOrWhiteSpace($ServiceCode)) { $ServiceCode } else { Get-EnvValue 'serviceCode' }
+$deploymentEnvInstance = if (-not [string]::IsNullOrWhiteSpace($DeploymentEnvInstance)) { $DeploymentEnvInstance } else { Get-EnvValue 'deploymentEnvInstance' }
+$regionCode = if (-not [string]::IsNullOrWhiteSpace($RegionCode)) { $RegionCode } else { Get-EnvValue 'regionCode' }
 $locationForNamingDeployment = if (-not [string]::IsNullOrWhiteSpace($Location)) { $Location } else { Get-EnvValue 'location' }
 
 if ([string]::IsNullOrWhiteSpace($locationForNamingDeployment)) {

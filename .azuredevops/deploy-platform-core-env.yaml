@@ -378,6 +378,10 @@ extends:
                       -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
                       -ResourceGroupName "$(virtualNetworkResourceGroup)" `
                       -Location "$(location)" `
+                      -SubType "$(subType)" `
+                      -ServiceCode "$(serviceCode)" `
+                      -DeploymentEnvInstance "$(deploymentEnvInstance)" `
+                      -RegionCode "$(regionCode)" `
                       -SubnetLayout "$(subnetLayout)"
               - name: replace-vnet-tokens
                 type: replaceTokensOnly
