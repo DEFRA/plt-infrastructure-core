@@ -87,9 +87,10 @@ module virtualNetwork 'br/SharedDefraRegistry:network.virtual-network:0.4.2' = {
 var subnetDelegations = [for i in range(0, length(subnets)): contains(subnets[i], 'delegations') && length(subnets[i].delegations) > 0 ? subnets[i].delegations : []]
 
 // Build routeTable property for each subnet.
-// - older contract: `{ "routeTable": { "id": "<fullResourceId>" } }`
-// - new contract:    `{ "routeTable": { "routeTableNumber": "<0|1|2|3>" } }`
-var subnetRouteTables = [for i in range(0, length(subnets)): contains(subnets[i], 'routeTable') && subnets[i].routeTable != null ? (!empty(subnets[i].routeTable.id) ? subnets[i].routeTable : (contains(subnets[i].routeTable, 'routeTableNumber') ? ((empty(subnets[i].routeTable.routeTableNumber) ? 1 : int(subnets[i].routeTable.routeTableNumber)) > 0 ? { id: resourceId('Microsoft.Network/routeTables', concat(routeTableName, padLeft((empty(subnets[i].routeTable.routeTableNumber) ? '1' : string(int(subnets[i].routeTable.routeTableNumber))), 2, '0'))) } : null) : null)) : null]
+// Contract used by our VNet parameter files:
+//   { "routeTable": { "routeTableNumber": "<0|1|2|3>" } }
+// Where `0` means "no route table".
+var subnetRouteTables = [for i in range(0, length(subnets)): contains(subnets[i], 'routeTable') && subnets[i].routeTable != null ? (((empty(subnets[i].routeTable.routeTableNumber) ? 1 : int(subnets[i].routeTable.routeTableNumber)) > 0) ? { id: resourceId('Microsoft.Network/routeTables', '${routeTableName}${padLeft(string(empty(subnets[i].routeTable.routeTableNumber) ? 1 : int(subnets[i].routeTable.routeTableNumber)), 2, '0')}') } : null) : null]
 @sys.batchSize(1)
 resource subnetAssociations 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = [for i in range(0, length(subnets)): {
   parent: vnetExisting
