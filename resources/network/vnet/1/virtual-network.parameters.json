@@ -36,7 +36,7 @@
               "properties": { "serviceName": "Microsoft.ContainerInstance/containerGroups" }
             }
           ],
-          "routeTable": { "routeTableNumber": 1 }
+          "routeTable": { "routeTableNumber": "#{{ subnet1RouteTable }}" }
         },
         {
           "addressPrefix": "#{{ subnet2AddressPrefix }}",
@@ -44,7 +44,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "routeTableNumber": 1 }
+          "routeTable": { "routeTableNumber": "#{{ subnet2RouteTable }}" }
         },
         {
           "addressPrefix": "#{{ subnet3AddressPrefix }}",
@@ -52,7 +52,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "routeTableNumber": 1 }
+          "routeTable": { "routeTableNumber": "#{{ subnet3RouteTable }}" }
         },
         {
           "addressPrefix": "#{{ subnet4AddressPrefix }}",
@@ -60,7 +60,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "routeTableNumber": 1 }
+          "routeTable": { "routeTableNumber": "#{{ subnet4RouteTable }}" }
         },
         {
           "addressPrefix": "#{{ subnet5AddressPrefix }}",
@@ -68,7 +68,7 @@
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "routeTableNumber": 1 }
+          "routeTable": { "routeTableNumber": "#{{ subnet5RouteTable }}" }
         },
         {
           "addressPrefix": "#{{ subnet6AddressPrefix }}",

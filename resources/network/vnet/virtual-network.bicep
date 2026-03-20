@@ -97,7 +97,7 @@ resource subnetAssociations 'Microsoft.Network/virtualNetworks/subnets@2022-07-0
     serviceEndpoints: subnets[i].serviceEndpoints ?? []
     // routeTableNumber may arrive as an Integer (JSON literal) or string (from token replacement).
     // Avoid `empty()` because it doesn't support Integer types; treat null/blank as default to 1.
-    routeTable: contains(subnets[i], 'routeTable') && subnets[i].routeTable != null ? (((subnets[i].routeTable.routeTableNumber == null ? 1 : int(subnets[i].routeTable.routeTableNumber)) > 0) ? { id: resourceId('Microsoft.Network/routeTables', '${routeTableName}${padLeft(string(subnets[i].routeTable.routeTableNumber == null ? 1 : int(subnets[i].routeTable.routeTableNumber)), 2, '0')}') } : null) : null
+    routeTable: contains(subnets[i], 'routeTable') && subnets[i].routeTable != null ? (((subnets[i].routeTable.routeTableNumber == null || string(subnets[i].routeTable.routeTableNumber) == '') ? 1 : int(string(subnets[i].routeTable.routeTableNumber))) > 0 ? { id: resourceId('Microsoft.Network/routeTables', '${routeTableName}${padLeft(string((subnets[i].routeTable.routeTableNumber == null || string(subnets[i].routeTable.routeTableNumber) == '') ? 1 : int(string(subnets[i].routeTable.routeTableNumber))), 2, '0')}') } : null) : null
     delegations: subnetDelegations[i]
   }
   dependsOn: [ virtualNetwork ]
