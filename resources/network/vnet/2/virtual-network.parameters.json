@@ -11,10 +11,24 @@
     "dnsServers": {
       "value": #{{ noescape(dnsServers) }}
     },
+    "routeTableName": {
+      "value": "#{{ routeTableName }}"
+    },
+    "svc": {
+      "value": "#{{ serviceCode }}"
+    },
+    "deploymentEnvInstance": {
+      "value": "#{{ deploymentEnvInstance }}"
+    },
+    "regionCode": {
+      "value": "#{{ regionCode }}"
+    },
+    "instanceNumber": {
+      "value": "#{{ instanceNumber }}"
+    },
     "subnets": {
       "value": [
         {
-          "name": "#{{ subnet1Name }}",
           "addressPrefix": "#{{ subnet1AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
@@ -25,25 +39,23 @@
               "properties": { "serviceName": "Microsoft.ContainerInstance/containerGroups" }
             }
           ],
-          "routeTable": { "id": "#{{ subnet1RouteTableResourceId }}" }
+          "routeTable": { "routeTableNumber": 1 }
         },
         {
-          "name": "#{{ subnet2Name }}",
           "addressPrefix": "#{{ subnet2AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "id": "#{{ subnet2RouteTableResourceId }}" }
+          "routeTable": { "routeTableNumber": 1 }
         },
         {
-          "name": "#{{ subnet3Name }}",
           "addressPrefix": "#{{ subnet3AddressPrefix }}",
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [],
-          "routeTable": { "id": "#{{ subnet3RouteTableResourceId }}" }
+          "routeTable": { "routeTableNumber": 1 }
         }
       ]
     },

@@ -10,9 +10,21 @@ param dnsServers array = []
 @description('Required. The subnets object.')
 param subnets array
 
-@allowed([
-  'uksouth'
-])
+@description('Required. Service code (3 characters) for naming, e.g. AIE, AAD.')
+param svc string
+
+@description('Required. Deployment Environment instance number (1 digit, 0-9).')
+param deploymentEnvInstance string
+
+@description('Required. Region code (1 digit, e.g. 4 for UK South, 0 for Europe North).')
+param regionCode string
+
+@description('Required. Instance number within the region (2 digits, 00-99).')
+param instanceNumber string
+
+@description('Required. Base route table name prefix used to construct per-subnet route table resource IDs.')
+param routeTableName string
+
 @description('Required. The Azure region where the resources will be deployed (lowercase short name, e.g. uksouth).')
 param location string
 
@@ -40,9 +52,19 @@ var commonTags = {
 }
 var tags = union(loadJsonContent('../../default-tags.json'), commonTags)
 
-// Route tables are deployed from numbered templates (route-table/1/, 2/, 3/) by the pipeline. Subnets reference them inline (subnetNRouteTableResourceId from config).
+// Compute subnet names deterministically so Validate jobs don't require subnet{n}Name token placeholders.
+// Naming convention used by subnetNaming in `get-names.bicep`:
+//   <subType><svc><role:NET><resType:SUB><deploymentEnvInstance><regionCode><subnetInstanceNumber(2 digits)>
+var subnetInstanceNumbers = [for i in range(0, length(subnets)): padLeft(string(i + 1), 2, '0')]
+var subnetNames = [for i in range(0, length(subnets)): '${subType}${svc}NETSUB${deploymentEnvInstance}${regionCode}${subnetInstanceNumbers[i]}']
+
+// Route tables are deployed from numbered templates (route-table/1/, 2/, 3/) by the pipeline.
+// Subnets reference them inline either as:
+//  - older contract: `{ "routeTable": { "id": "<fullResourceId>" } }`, or
+//  - new contract: `{ "routeTable": { "routeTableNumber": "<0|1|2|3>" } }`.
+// The new contract lets Validate avoid routeTableResourceId placeholders; we construct the ID from `routeTableName` + the suffix.
 var subnetsForVNet = [for i in range(0, length(subnets)): {
-  name: subnets[i].name
+  name: subnetNames[i]
   addressPrefix: subnets[i].addressPrefix
   privateEndpointNetworkPolicies: subnets[i].privateEndpointNetworkPolicies ?? 'Enabled'
   privateLinkServiceNetworkPolicies: subnets[i].privateLinkServiceNetworkPolicies ?? 'Enabled'
@@ -66,16 +88,21 @@ module virtualNetwork 'br/SharedDefraRegistry:network.virtual-network:0.4.2' = {
 
 // Apply each subnet from JSON (including routeTable when defined inline); batchSize(1) to avoid Azure 429
 var subnetDelegations = [for i in range(0, length(subnets)): contains(subnets[i], 'delegations') && length(subnets[i].delegations) > 0 ? subnets[i].delegations : []]
+
+// Build routeTable property for each subnet.
+// - older contract: `{ "routeTable": { "id": "<fullResourceId>" } }`
+// - new contract:    `{ "routeTable": { "routeTableNumber": "<0|1|2|3>" } }`
+var subnetRouteTables = [for i in range(0, length(subnets)): contains(subnets[i], 'routeTable') && subnets[i].routeTable != null ? (!empty(subnets[i].routeTable.id) ? subnets[i].routeTable : (contains(subnets[i].routeTable, 'routeTableNumber') ? ((empty(subnets[i].routeTable.routeTableNumber) ? 1 : int(subnets[i].routeTable.routeTableNumber)) > 0 ? { id: resourceId('Microsoft.Network/routeTables', concat(routeTableName, padLeft((empty(subnets[i].routeTable.routeTableNumber) ? '1' : string(int(subnets[i].routeTable.routeTableNumber))), 2, '0'))) } : null) : null)) : null]
 @sys.batchSize(1)
 resource subnetAssociations 'Microsoft.Network/virtualNetworks/subnets@2022-07-01' = [for i in range(0, length(subnets)): {
   parent: vnetExisting
-  name: subnets[i].name
+  name: subnetNames[i]
   properties: {
     addressPrefix: subnets[i].addressPrefix
     privateEndpointNetworkPolicies: subnets[i].privateEndpointNetworkPolicies ?? 'Enabled'
     privateLinkServiceNetworkPolicies: subnets[i].privateLinkServiceNetworkPolicies ?? 'Enabled'
     serviceEndpoints: subnets[i].serviceEndpoints ?? []
-    routeTable: contains(subnets[i], 'routeTable') && subnets[i].routeTable != null && !empty(subnets[i].routeTable.id) ? subnets[i].routeTable : null
+    routeTable: subnetRouteTables[i]
     delegations: subnetDelegations[i]
   }
   dependsOn: [ virtualNetwork ]
