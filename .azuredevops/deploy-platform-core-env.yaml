@@ -134,41 +134,16 @@ extends:
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
-                inlineScript: |
-                  set -e
-                  err=0
-                  exp_env=$(echo "$(expectedEnvironment)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
-                  act_env=$(echo "$(environment)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
-                  if [ -n "$exp_env" ] && [ -n "$act_env" ] && [ "$act_env" != "$exp_env" ]; then
-                    echo "##vso[task.logissue type=error]Environment mismatch: pipeline parameter (environmentName=$exp_env) does not match config (environment=$(environment)). Update pipeline parameters or config so they match."
-                    err=1
-                  fi
-                  exp_loc=$(echo "$(expectedLocation)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
-                  act_loc=$(echo "$(location)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
-                  if [ -n "$exp_loc" ] && [ "$act_loc" != "$exp_loc" ]; then
-                    echo "##vso[task.logissue type=error]Location mismatch: pipeline parameter (location=$exp_loc) does not match config (location=$(location)). Update pipeline parameters or config so they match."
-                    err=1
-                  fi
-                  if [ $err -eq 1 ]; then exit 1; fi
-                  echo "Config validation passed: parameters match config."
+                scriptPath: scripts/pipeline/Validate-Params-Match-Config.sh
+                scriptArguments: >
+                  "$(expectedEnvironment)" "$(environment)" "$(expectedLocation)" "$(location)"
               - name: validate-additionalDnsConfig-json
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
-                inlineScript: |
-                  set -euo pipefail
-                  sku_lower=$(echo "$(documentIntelligenceSku)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
-                  if [ -z "$sku_lower" ] || [ "$sku_lower" = "none" ]; then
-                    echo "Document Intelligence not configured (documentIntelligenceSku=$(documentIntelligenceSku)); skipping additionalDnsConfig validation."
-                    exit 0
-                  fi
-                  raw='$(additionalDnsConfig)'
-                  if [ -z "$raw" ] || [ "$raw" = '[]' ]; then
-                    echo "additionalDnsConfig empty/blank; skipping validation."
-                    exit 0
-                  fi
-                  export RAW="$raw"
-                  python3 -c "import os, json; json.loads(os.environ['RAW'])"
+                scriptPath: scripts/pipeline/Validate-AdditionalDnsConfigJson.sh
+                scriptArguments: >
+                  "$(documentIntelligenceSku)" '$(additionalDnsConfig)'
         - name: setup
           dependsOnGroupedDeployments:
             - validate_config
@@ -177,26 +152,20 @@ extends:
                 type: 'script'
                 scriptType: AzurePowerShell
                 serviceConnectionVariableName: 'ssvServiceConnection'
-                inlineScript: |
-                  $manifestPath = "$(Pipeline.Workspace)/s/PltConfig/config/$(applicationID)/$(instance)/aad-group.json"
-                  if (-not (Test-Path $manifestPath)) { Write-Host "No aad-group.json at $manifestPath; skipping Create AAD Groups."; exit 0 }
-                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Create-AADGroups.ps1" `
-                    -AADGroupsJsonManifestPath $manifestPath `
-                    -ClientId $(entraSPClientId) `
-                    -TenantId $(tenantId) `
-                    -ClientSecret $(entraSPToken)
-                  if ($LASTEXITCODE -ne 0) { throw "Create-AADGroups failed" }
+                scriptPath: scripts/pipeline/Invoke-CreateAadGroups.ps1
+                scriptArguments: >
+                  -ManifestPath "$(Pipeline.Workspace)/s/PltConfig/config/$(applicationID)/$(instance)/aad-group.json"
+                  -ScriptPath "$(Pipeline.Workspace)/s/self/scripts/pipeline/Create-AADGroups.ps1"
+                  -ClientId "$(entraSPClientId)"
+                  -TenantId "$(tenantId)"
+                  -ClientSecret "$(entraSPToken)"
               - name: variable-setup
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
-                inlineScript: |
-                  appId="$(applicationID)"
-                  applicationIDUpper=$(echo "$appId" | tr '[:lower:]' '[:upper:]')
-                  applicationIDLower=$(echo "$appId" | tr '[:upper:]' '[:lower:]')
-                  echo "##vso[task.setvariable variable=applicationID]$applicationIDUpper"
-                  echo "##vso[task.setvariable variable=applicationIDLower]$applicationIDLower"
-                  echo "Normalized applicationID to $applicationIDUpper, applicationIDLower to $applicationIDLower"
+                scriptPath: scripts/pipeline/Normalize-ApplicationId.sh
+                scriptArguments: >
+                  "$(applicationID)"
         - name: network
           dependsOnGroupedDeployments:
             - setup
@@ -206,150 +175,34 @@ extends:
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                inlineScript: |
-                    $ErrorActionPreference = 'Stop'
-                    $root = "$(Pipeline.Workspace)/s/self"
-                    if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)" }
-                    if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)/self" }
-                    $namingFile = Join-Path $root "resources/naming-convention/get-names.bicep"
-                    if (-not (Test-Path $namingFile)) { throw "get-names.bicep not found at $namingFile" }
-                    $location = "$(location)"
-                    $namingDeploymentName = "get-names-infra-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
-                    $params = @{
-                      subType = @{ value = "$(subType)" }
-                      svc = @{ value = "$(serviceCode)" }
-                      role = @{ value = "INF" }
-                      deploymentEnvInstance = @{ value = "$(deploymentEnvInstance)" }
-                      regionCode = @{ value = "$(regionCode)" }
-                      instanceNumber = @{ value = "$(instanceNumber)" }
-                    }
-                    # Subnet name configs: always use resType = 'SUB' (naming convention consistent across all subnets)
-                    $layout = "$(subnetLayout)"
-                    $vnetParamsPath = Join-Path $root "resources/network/vnet/$layout/virtual-network.parameters.json"
-                    if (-not (Test-Path $vnetParamsPath)) { $vnetParamsPath = Join-Path $root "self/resources/network/vnet/$layout/virtual-network.parameters.json" }
-                    $subnetConfigs = @()
-                    if (Test-Path $vnetParamsPath) {
-                      $vnetContent = Get-Content -Raw $vnetParamsPath
-                      $subnetCount = [regex]::Matches($vnetContent, 'subnet\d+AddressPrefix').Count
-                      for ($i = 1; $i -le $subnetCount; $i++) {
-                        $instNum = '{0:D2}' -f $i
-                        $subnetConfigs += @{ resType = 'SUB'; instanceNumber = $instNum }
-                      }
-                    }
-                    if ($subnetConfigs.Count -gt 0) {
-                      $params['subnetNameConfigs'] = @{ value = $subnetConfigs }
-                      Write-Host "=== set-resource-names DEBUG: subnet configs ($($subnetConfigs.Count) subnets) ==="
-                      $subnetConfigs | ForEach-Object { Write-Host "  resType=$($_.resType), instanceNumber=$($_.instanceNumber)" }
-                      Write-Host "=== end subnet configs ==="
-                    }
-                    # Suffix from config (e.g. adiPrivateLinkZoneSuffix); resType from pipeline (we know we need ADI for Doc Intelligence)
-                    if (-not [string]::IsNullOrWhiteSpace("$(adiPrivateLinkZoneSuffix)")) {
-                      $params['privateLinkZoneSuffix'] = @{ value = "$(adiPrivateLinkZoneSuffix)" }
-                      $params['privateLinkZoneResType'] = @{ value = 'ADI' }
-                    }
-                    $tempDir = if ($env:TEMP) { $env:TEMP } elseif ($env:AGENT_TEMPDIRECTORY) { $env:AGENT_TEMPDIRECTORY } else { '/tmp' }
-                    $paramsPath = Join-Path $tempDir "get-names-params-$(Get-Date -Format 'yyyyMMddHHmmss').json"
-                    @{ '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'; contentVersion = '1.0.0.0'; parameters = $params } | ConvertTo-Json -Depth 4 | Set-Content -Path $paramsPath -Encoding utf8
-                    Write-Host "=== set-resource-names DEBUG: parameters file ==="
-                    Write-Host "paramsPath=$paramsPath"
-                    Get-Content -Raw $paramsPath | Write-Host
-                    Write-Host "=== end parameters file ==="
-                    az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $paramsPath --output none
-                    if ($LASTEXITCODE -ne 0) { throw "set-resource-names: get-names (INF) failed" }
-                    $rgName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
-                    $vnetName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.virtualNetworkName.value" -o tsv
-                    $rtName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.routeTableName.value" -o tsv
-                    $subnetNamesJson = az deployment sub show --name $namingDeploymentName --query "properties.outputs.subnetNames.value" -o json 2>$null
-                    $zoneName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneName.value" -o tsv 2>$null
-                    $privateLinkResourceName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneResourceName.value" -o tsv 2>$null
-                    if (-not $rgName) { throw "set-resource-names: could not get resourceGroupName" }
-                    Write-Host "##vso[task.setvariable variable=infraResourceGroupName]$rgName"
-                    Write-Host "##vso[task.setvariable variable=virtualNetworkName]$vnetName"
-                    Write-Host "##vso[task.setvariable variable=routeTableName]$rtName"
-                    if (-not [string]::IsNullOrWhiteSpace($subnetNamesJson) -and $subnetNamesJson -ne '[]') {
-                      $subnetNames = $subnetNamesJson | ConvertFrom-Json
-                      Write-Host "=== set-resource-names DEBUG: subnet names ==="
-                      for ($i = 0; $i -lt $subnetNames.Count; $i++) {
-                        $n = $i + 1
-                        Write-Host "  subnet${n}Name=$($subnetNames[$i])"
-                        Write-Host "##vso[task.setvariable variable=subnet${n}Name]$($subnetNames[$i])"
-                      }
-                      Write-Host "=== end subnet names ==="
-                    }
-                    if (-not [string]::IsNullOrWhiteSpace($zoneName)) {
-                      Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateLinkZoneName]$zoneName"
-                    }
-                    # Map generic output to Doc Intelligence variable (this pipeline deploys Doc Intelligence)
-                    if (-not [string]::IsNullOrWhiteSpace($privateLinkResourceName)) {
-                      Write-Host "##vso[task.setvariable variable=documentIntelligenceResourceName]$privateLinkResourceName"
-                    }
-                    Write-Host "Set resource names: infraResourceGroupName=$rgName, virtualNetworkName=$vnetName, routeTableName=$rtName"
+                scriptPath: scripts/pipeline/Set-ResourceNames.ps1
+                scriptArguments: >
+                  -RootPath "$(Pipeline.Workspace)/s/self"
+                  -Location "$(location)"
+                  -SubType "$(subType)"
+                  -ServiceCode "$(serviceCode)"
+                  -DeploymentEnvInstance "$(deploymentEnvInstance)"
+                  -RegionCode "$(regionCode)"
+                  -InstanceNumber "$(instanceNumber)"
+                  -SubnetLayout "$(subnetLayout)"
+                  -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)"
               - name: create-platform-resource-groups
                 type: 'script'
                 scriptType: AzureCLI
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
                 azureCLIScriptType: pscore
-                inlineScript: |
-                    $ErrorActionPreference = 'Stop'
-                    $tempDir = if ($env:TEMP) { $env:TEMP } elseif ($env:AGENT_TEMPDIRECTORY) { $env:AGENT_TEMPDIRECTORY } else { '/tmp' }
-                    $root = "$(Pipeline.Workspace)/s/self"
-                    if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)" }
-                    if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)/self" }
-                    $subType = "$(subType)"
-                    $location = "$(location)"
-                    $adGroupObjectId = "$(adGroupObjectId)"
-                    if (-not $subType -or -not $location -or -not $adGroupObjectId) {
-                      throw 'Required config (variable file) values missing: subType, location, adGroupObjectId. Set these in plt-config (e.g. config/aie/01/core.yaml and config/regional/snd1-uksouth.yaml).'
-                    }
-                    $namingFile = Join-Path $root "resources/naming-convention/get-names.bicep"
-                    if (-not (Test-Path $namingFile)) { $namingFile = Join-Path $root "self/resources/naming-convention/get-names.bicep" }
-                    $bicepFile = Join-Path $root "resources/resource-group/resource-group-with-rbac.bicep"
-                    if (-not (Test-Path $bicepFile)) { $bicepFile = Join-Path $root "self/resources/resource-group/resource-group-with-rbac.bicep" }
-                    $roles = @('INF') + (("$(platformResourceGroups)" -split ',').Trim() | Where-Object { $_ })
-                    foreach ($Role in $roles) {
-                      $resourceGroupName = $null
-                      if ($Role -eq 'INF' -and -not [string]::IsNullOrWhiteSpace("$(infraResourceGroupName)")) {
-                        $resourceGroupName = "$(infraResourceGroupName)"
-                        Write-Host "Using pre-set infraResourceGroupName for INF: $resourceGroupName"
-                      } else {
-                        $namingDeploymentName = "get-names-rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
-                        Write-Host "Getting resource group name for role $Role..."
-                        $namingParams = @{
-                          subType = @{ value = "$(subType)" }
-                          svc = @{ value = "$(serviceCode)" }
-                          role = @{ value = $Role }
-                          deploymentEnvInstance = @{ value = "$(deploymentEnvInstance)" }
-                          regionCode = @{ value = "$(regionCode)" }
-                          instanceNumber = @{ value = "$(instanceNumber)" }
-                        }
-                        $namingParamsPath = Join-Path $tempDir "get-names-rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss').json"
-                        @{ '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'; contentVersion = '1.0.0.0'; parameters = $namingParams } | ConvertTo-Json -Depth 4 | Set-Content -Path $namingParamsPath -Encoding utf8
-                        az deployment sub create --name $namingDeploymentName --location $location --template-file $namingFile --parameters $namingParamsPath --output none
-                        if ($LASTEXITCODE -ne 0) { throw "Naming convention deployment failed for role $Role" }
-                        $resourceGroupName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
-                      }
-                      if (-not $resourceGroupName) { throw "Could not get resourceGroupName for role $Role" }
-                      $rgDeploymentName = "rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
-                      Write-Host "Deploying resource group: $resourceGroupName"
-                      $rgParams = @{
-                        name = @{ value = $resourceGroupName }
-                        location = @{ value = $location }
-                        subType = @{ value = $subType }
-                        adGroupObjectId = @{ value = $adGroupObjectId }
-                        resourceGroupRole = @{ value = $Role }
-                      }
-                      $rgParamsPath = Join-Path $tempDir "rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss').json"
-                      @{ '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'; contentVersion = '1.0.0.0'; parameters = $rgParams } | ConvertTo-Json -Depth 4 | Set-Content -Path $rgParamsPath -Encoding utf8
-                      az deployment sub create --name $rgDeploymentName --location $location --template-file $bicepFile --parameters $rgParamsPath --output none
-                      if ($LASTEXITCODE -ne 0) { throw "Resource group deployment failed for role $Role" }
-                      $resourceGroupNameOutput = az deployment sub show --name $rgDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
-                      if ($Role -eq 'INF') {
-                        Write-Host "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput"
-                      }
-                      if ($Role -eq 'APP') {
-                        Write-Host "##vso[task.setvariable variable=servicesResourceGroup]$resourceGroupNameOutput"
-                      }
-                    }
+                scriptPath: scripts/pipeline/Create-PlatformResourceGroups.ps1
+                scriptArguments: >
+                  -RootPath "$(Pipeline.Workspace)/s/self"
+                  -SubType "$(subType)"
+                  -Location "$(location)"
+                  -AdGroupObjectId "$(adGroupObjectId)"
+                  -ServiceCode "$(serviceCode)"
+                  -DeploymentEnvInstance "$(deploymentEnvInstance)"
+                  -RegionCode "$(regionCode)"
+                  -InstanceNumber "$(instanceNumber)"
+                  -PlatformResourceGroups "$(platformResourceGroups)"
+                  -InfraResourceGroupName "$(infraResourceGroupName)"
               - name: route-table-tokens
                 type: replaceTokensOnly
                 replaceTokenPathsString: 'resources/network/route-table/1;resources/network/route-table/2;resources/network/route-table/3'
@@ -358,31 +211,29 @@ extends:
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                inlineScript: |
-                    # Deploy route table 1 (default) always; deploy 2, 3, ... when referenced in config (subnetNRouteTable). Subnet count derived from VNet template (subnetLayout).
-                    & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-RouteTables.ps1" `
-                      -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
-                      -ResourceGroupName "$(virtualNetworkResourceGroup)" `
-                      -RouteTableName "$(routeTableName)" `
-                      -Location "$(location)" `
-                      -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)" `
-                      -SubnetLayout "$(subnetLayout)"
+                scriptPath: scripts/pipeline/Deploy-RouteTables.ps1
+                scriptArguments: >
+                  -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self"
+                  -ResourceGroupName "$(virtualNetworkResourceGroup)"
+                  -RouteTableName "$(routeTableName)"
+                  -Location "$(location)"
+                  -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)"
+                  -SubnetLayout "$(subnetLayout)"
               - name: deploy-nsgs
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                inlineScript: |
-                    # Deploy only the NSG layouts referenced by subnetNsgLayout in core.yaml.
-                    & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-NSGs.ps1" `
-                      -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
-                      -ResourceGroupName "$(virtualNetworkResourceGroup)" `
-                      -Location "$(location)" `
-                      -SubType "$(subType)" `
-                      -ServiceCode "$(serviceCode)" `
-                      -DeploymentEnvInstance "$(deploymentEnvInstance)" `
-                      -RegionCode "$(regionCode)" `
-                      -SubnetLayout "$(subnetLayout)"
+                scriptPath: scripts/pipeline/Deploy-NSGs.ps1
+                scriptArguments: >
+                  -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self"
+                  -ResourceGroupName "$(virtualNetworkResourceGroup)"
+                  -Location "$(location)"
+                  -SubType "$(subType)"
+                  -ServiceCode "$(serviceCode)"
+                  -DeploymentEnvInstance "$(deploymentEnvInstance)"
+                  -RegionCode "$(regionCode)"
+                  -SubnetLayout "$(subnetLayout)"
               - name: replace-vnet-tokens
                 type: replaceTokensOnly
                 replaceTokenPathsString: 'resources/network/vnet/$(subnetLayout)'
@@ -394,21 +245,9 @@ extends:
                     - displayName: "Resolve network join group object ID"
                       type: AzurePowerShell
                       serviceConnectionVariableName: 'ssvServiceConnection'
-                      inlineScript: |
-                        $groupName = '$(networkJoinGroupName)'
-                        if ([string]::IsNullOrWhiteSpace($groupName)) {
-                          Write-Host "networkJoinGroupName not set; skipping network join role assignment."
-                          Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]"
-                        } else {
-                          try {
-                            $group = Get-AzADGroup -DisplayName $groupName
-                            Write-Host "Resolved group '$groupName' to object ID: $($group.Id)"
-                            Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]$($group.Id)"
-                          } catch {
-                            Write-Host "##vso[task.logissue type=warning]Could not resolve AD group '$groupName': $_"
-                            Write-Host "##vso[task.setvariable variable=networkJoinGroupObjectId]"
-                          }
-                        }
+                      scriptPath: scripts/pipeline/Resolve-NetworkJoinGroup.ps1
+                      scriptArguments: >
+                        -GroupName "$(networkJoinGroupName)"
                 postDeployScriptsList:
                     - displayName: "Link the VNet to Hub"
                       scriptPath: scripts/pipeline/Trigger-VNetPeering.ps1
@@ -420,30 +259,6 @@ extends:
                         -SubscriptionName $(subscriptionName)
                         -TenantId $(tenantId)
                         -PeerToSec $false
-                    - displayName: "Debug - Output transformed parameter file"
-                      type: PowerShell
-                      inlineScript: |
-                        $base = "$(Pipeline.Workspace)/s/self"
-                        if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)/self" }
-                        if (-not (Test-Path (Join-Path $base "resources"))) { $base = "$(Build.SourcesDirectory)" }
-                        $transformedFile = Join-Path $base "resources/network/vnet/$(subnetLayout)/virtual-network.transformed.parameters.json"
-                        if (-not (Test-Path $transformedFile)) { $transformedFile = Join-Path $base "self/resources/network/vnet/$(subnetLayout)/virtual-network.transformed.parameters.json" }
-                        if (Test-Path $transformedFile) {
-                          Write-Host "=== Transformed Parameter File Contents ==="
-                          Get-Content $transformedFile | Write-Host
-                          Write-Host "=== End of Transformed Parameter File ==="
-                          
-                          # Try to parse as JSON to show any syntax errors
-                          try {
-                            $json = Get-Content $transformedFile -Raw | ConvertFrom-Json
-                            Write-Host "✓ JSON is valid"
-                          } catch {
-                            Write-Host "✗ JSON parsing error: $_"
-                            Write-Host "Error details: $($_.Exception.Message)"
-                          }
-                        } else {
-                          Write-Host "Transformed file not found. Tried: $transformedFile"
-                        }
               # Private DNS zone creation (ai-document-intelligence-zone) omitted: corporate policy prevents creation in certain subscriptions. Use existing zone and add DNS lookup later. Module kept under resources/network/private-dns-zone for other scenarios.
               - ${{ if and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none')) }}:
                 - name: ai-document-intelligence
@@ -456,81 +271,32 @@ extends:
                       azurePowerShellVersion: LatestVersion
                       azurePowerShellUseCore: true
                       serviceConnectionVariableName: 'privateDnsServiceConnection'
-                      inlineScript: |
-                        $region = "$(location)".ToLowerInvariant()
-
-                        # Use single-quoted PowerShell string so embedded JSON double-quotes don't break the script.
-                        $additionalRaw = '$(additionalDnsConfig)'
-                        if ([string]::IsNullOrWhiteSpace($additionalRaw) -or $additionalRaw -eq '[]') {
-                          Write-Host "No additionalDnsConfig entries to set."
-                          exit 0
-                        }
-
-                        $additionalParsed = $additionalRaw | ConvertFrom-Json
-                        if ($null -eq $additionalParsed) {
-                          Write-Host "additionalDnsConfig parsed to null; skipping."
-                          exit 0
-                        }
-
-                        $additionalItems = if ($additionalParsed -is [System.Array]) { $additionalParsed } else { @($additionalParsed) }
-                        $dnsEntries = @()
-
-                        foreach ($entry in $additionalItems) {
-                          # Allow config entries to omit Region (we know the pipeline location at runtime).
-                          if ($null -eq $entry.Region -or [string]::IsNullOrWhiteSpace($entry.Region)) {
-                            $entry.Region = $region
-                          }
-
-                          # PowerShell JSON parsing may yield IpAddress as a single value; normalize to array.
-                          if ($null -ne $entry.IpAddress -and -not ($entry.IpAddress -is [System.Array])) {
-                            $entry.IpAddress = @($entry.IpAddress)
-                          }
-
-                          $dnsEntries += $entry
-                        }
-
-                        if ($dnsEntries.Count -eq 0) {
-                          Write-Host "No additional DNS entries after normalization; skipping."
-                          exit 0
-                        }
-
-                        $env:PRIVATEENDPOINTDNSRECORDSJSON = ($dnsEntries | ConvertTo-Json -Depth 10)
-                        $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = '$(regionToDnsResourcegroupMappingTable)'
-                        $scriptPath = Join-Path "$(Pipeline.Workspace)" "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
-                        if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path "$(Build.SourcesDirectory)" "self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
-                        if (-not (Test-Path $scriptPath)) { throw "Set-PrivateDnsRecordSet.ps1 not found" }
-                        & $scriptPath -Ttl 300
+                      scriptPath: scripts/pipeline/Set-AdditionalDnsRecords.ps1
+                      scriptArguments: >
+                        -Location "$(location)"
+                        -AdditionalDnsConfig '$(additionalDnsConfig)'
+                        -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+                        -PipelineWorkspace "$(Pipeline.Workspace)"
+                        -BuildSourcesDirectory "$(Build.SourcesDirectory)"
                   postDeployScriptsList:
                     - displayName: 'Output Document Intelligence private endpoint IP for DNS'
                       type: AzureCLI
                       azureCLIScriptType: pscore
                       serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                      inlineScript: |
-                        $rg = "$(servicesResourceGroup)"
-                        $deploymentName = az deployment group list -g $rg --query "sort_by([?starts_with(name, 'ai-document-intelligence')], &properties.timestamp)[-1].name" -o tsv
-                        if (-not $deploymentName) { Write-Host "No ai-document-intelligence deployment found in $rg"; exit 0 }
-                        $ip = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.privateEndpointIpAddress.value" -o tsv
-                        Write-Host "Document Intelligence Private Endpoint IP (for subsequent DNS update): $ip"
-                        if (-not [string]::IsNullOrWhiteSpace($ip)) { Write-Host "##vso[task.setvariable variable=documentIntelligencePrivateEndpointIp]$ip" }
+                      scriptPath: scripts/pipeline/Output-DocumentIntelligencePrivateEndpointIp.ps1
+                      scriptArguments: >
+                        -ResourceGroupName "$(servicesResourceGroup)"
                     - displayName: 'Set Document Intelligence private endpoint DNS A record'
                       type: AzurePowerShell
                       azurePowerShellVersion: LatestVersion
                       azurePowerShellUseCore: true
                       serviceConnectionVariableName: 'privateDnsServiceConnection'
-                      inlineScript: |
-                        $ip = "$(documentIntelligencePrivateEndpointIp)"
-                        $fqdn = "$(documentIntelligenceResourceName).cognitiveservices.azure.com"
-                        $region = "$(location)".ToLowerInvariant()
-                        if ([string]::IsNullOrWhiteSpace($ip)) {
-                          Write-Host "Document Intelligence DNS record skipped: no private endpoint IP"
-                          exit 0
-                        }
-
-                        $dnsEntries = @([PSCustomObject]@{ Fqdn = $fqdn; IpAddress = @($ip); Region = $region })
-                        $env:PRIVATEENDPOINTDNSRECORDSJSON = ($dnsEntries | ConvertTo-Json -Depth 10)
-                        $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = '$(regionToDnsResourcegroupMappingTable)'
-                        $scriptPath = Join-Path "$(Pipeline.Workspace)" "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
-                        if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path "$(Build.SourcesDirectory)" "self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
-                        if (-not (Test-Path $scriptPath)) { throw "Set-PrivateDnsRecordSet.ps1 not found" }
-                        & $scriptPath -Ttl 300
+                      scriptPath: scripts/pipeline/Set-DocumentIntelligenceDnsRecord.ps1
+                      scriptArguments: >
+                        -PrivateEndpointIp "$(documentIntelligencePrivateEndpointIp)"
+                        -DocumentIntelligenceResourceName "$(documentIntelligenceResourceName)"
+                        -Location "$(location)"
+                        -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+                        -PipelineWorkspace "$(Pipeline.Workspace)"
+                        -BuildSourcesDirectory "$(Build.SourcesDirectory)"
 

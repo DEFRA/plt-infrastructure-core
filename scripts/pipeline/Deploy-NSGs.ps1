@@ -122,7 +122,7 @@ foreach ($layout in $toDeploy) {
   # Pattern:
   #   <subType><svc><role=NET><resType=NSG><deploymentEnvInstance><regionCode><instanceNumber>
   $root = $BuildSourcesDirectory
-  if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$(Build.SourcesDirectory)" }
+  if (-not (Test-Path (Join-Path $root "resources"))) { $root = Join-Path $BuildSourcesDirectory "self" }
   if (-not (Test-Path (Join-Path $root "resources"))) { $root = "$BuildSourcesDirectory/self" }
   $namingFile = Join-Path $root "resources/naming-convention/naming-convention.bicep"
   if (-not (Test-Path $namingFile)) { $namingFile = Join-Path $root "self/resources/naming-convention/naming-convention.bicep" }
