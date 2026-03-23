@@ -105,7 +105,9 @@ if ([string]::IsNullOrWhiteSpace($subType) -or [string]::IsNullOrWhiteSpace($ser
 foreach ($layout in $toDeploy) {
   $paramDir = Join-Path $nsgPath $layout
   $paramFile = Join-Path $paramDir "network-security-group.parameters.json"
-  $transformedFile = Join-Path $paramDir "network-security-group.transformed.parameters.json"
+  # Replace-Tokens.ps1 writes: <originalBaseName>.transformed.parameters.json
+  # For "network-security-group.parameters.json" the BaseName is "network-security-group.parameters".
+  $transformedFile = Join-Path $paramDir "network-security-group.parameters.transformed.parameters.json"
 
   if (-not (Test-Path $paramFile)) {
     throw "NSG parameter file not found for layout ${layout}: $paramFile"
@@ -159,6 +161,20 @@ foreach ($layout in $toDeploy) {
 
   & $replaceTokensScript -Paths $paramDir
   if ($LASTEXITCODE -ne 0) { throw "Replace-Tokens failed for NSG layout $layout" }
+
+  if (-not (Test-Path $transformedFile)) {
+    throw "Expected transformed parameter file not found for layout ${layout}: $transformedFile"
+  }
+
+  # Fail fast if the transformed file isn't valid JSON (az will otherwise just say it can't parse parameters).
+  try {
+    $null = (Get-Content -LiteralPath $transformedFile -Raw | ConvertFrom-Json)
+  } catch {
+    Write-Host "=== DEBUG: invalid transformed JSON: $transformedFile ==="
+    Get-Content -LiteralPath $transformedFile | Select-Object -First 80 | ForEach-Object { Write-Host $_ }
+    Write-Host "=== END DEBUG ==="
+    throw "Transformed NSG parameters JSON is invalid for layout ${layout}."
+  }
 
   $suffix = $layout.ToString("00")
   $deploymentName = "nsg-${suffix}-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
