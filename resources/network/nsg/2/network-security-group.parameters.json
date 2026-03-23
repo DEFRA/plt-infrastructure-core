@@ -42,13 +42,31 @@
                                 "sourceAddressPrefix": "VirtualNetwork",
                                 "destinationAddressPrefix": "VirtualNetwork",
                                 "access": "Allow",
-                                "priority": 2010,
+                                "priority": 2000,
                                 "direction": "Outbound",
                                 "sourcePortRanges": [],
                                 "destinationPortRanges": [],
                                 "sourceAddressPrefixes": [],
                                 "destinationAddressPrefixes": [],
                                 "description": "Allow Any Outbound From VNet to VNet"
+                            }
+                        },
+                        {
+                            "name": "AllowAzureLoadBalancerInbound",
+                            "properties": {
+                                "protocol": "*",
+                                "sourcePortRange": "*",
+                                "destinationPortRange": "*",
+                                "sourceAddressPrefix": "AzureLoadBalancer",
+                                "destinationAddressPrefix": "VirtualNetwork",
+                                "access": "Allow",
+                                "priority": 2500,
+                                "direction": "Inbound",
+                                "sourcePortRanges": [],
+                                "destinationPortRanges": [],
+                                "sourceAddressPrefixes": [],
+                                "destinationAddressPrefixes": [],
+                                "description": "Allow inbound from AzureLoadBalancer service tag to subnet"
                             }
                         },
                         {
