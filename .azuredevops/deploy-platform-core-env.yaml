@@ -116,7 +116,7 @@ extends:
       - /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
       - /config/regional/{environment}-{region}.yaml@PltConfig
     environments:
-      - name: snd1
+      - name: ${{ parameters.environmentName }}
         serviceConnection: $(subscriptionName)
         deploymentBranches:
           - 'refs/heads/main'
