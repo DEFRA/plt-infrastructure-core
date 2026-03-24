@@ -24,11 +24,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-function Write-PltDebug {
-  param([string]$Message)
-  Write-Host "[Create-PlatformResourceGroups] DEBUG: $Message"
-}
-
 $tempDir = if ($env:TEMP) { $env:TEMP } elseif ($env:AGENT_TEMPDIRECTORY) { $env:AGENT_TEMPDIRECTORY } else { '/tmp' }
 $root = $RootPath
 if (-not (Test-Path (Join-Path $root "resources"))) { $root = Join-Path $RootPath "self" }
@@ -42,44 +37,22 @@ if (-not $SubType -or -not $Location) {
 $resolvedAdGroupObjectId = ''
 if (-not [string]::IsNullOrWhiteSpace($AppRgContributorObjectId)) {
   $resolvedAdGroupObjectId = $AppRgContributorObjectId.Trim()
-  Write-PltDebug "Using AppRgContributorObjectId from pipeline (SSV Get-AzADGroup resolve): $resolvedAdGroupObjectId"
 }
 elseif (-not [string]::IsNullOrWhiteSpace($AdGroupObjectId)) {
   $resolvedAdGroupObjectId = $AdGroupObjectId.Trim()
-  Write-PltDebug "Using AdGroupObjectId parameter: $resolvedAdGroupObjectId"
 }
 elseif (-not [string]::IsNullOrWhiteSpace($AppRgContributor)) {
-  $acctJson = az account show -o json 2>$null | ConvertFrom-Json
-  Write-PltDebug "Azure CLI context: tenant=$($acctJson.tenantId) subscription=$($acctJson.id) name=$($acctJson.name) identity=$($acctJson.user.name)"
-  Write-PltDebug "Resolving AppRgContributor (display name) via Azure CLI fallback: '$AppRgContributor'"
-
-  # `az ad group list --display-name` is prefix-based and often misses exact names. Prefer OData exact match.
+  # `az ad group list --display-name` is prefix-based; try OData exact match, then Graph.
   $nameEscaped = $AppRgContributor -replace "'", "''"
   $resolvedAdGroupObjectId = az ad group list --filter "displayName eq '$nameEscaped'" --query "[0].id" -o tsv 2>$null
   if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
-    Write-PltDebug "Attempt 1 (az ad group list --filter exact displayName): no match"
-  } else {
-    Write-PltDebug "Attempt 1 (az ad group list --filter exact displayName): objectId=$resolvedAdGroupObjectId"
-  }
-  if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
     $resolvedAdGroupObjectId = az ad group list --display-name "$AppRgContributor" --query "[0].id" -o tsv 2>$null
-    if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
-      Write-PltDebug "Attempt 2 (az ad group list --display-name prefix): no match"
-    } else {
-      Write-PltDebug "Attempt 2 (az ad group list --display-name prefix): objectId=$resolvedAdGroupObjectId"
-    }
   }
   if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
     $filterParam = "displayName eq '$nameEscaped'"
     $encoded = [uri]::EscapeDataString($filterParam)
     $graphUrl = "https://graph.microsoft.com/v1.0/groups?`$filter=$encoded"
-    Write-PltDebug "Attempt 3 (Microsoft Graph groups `$filter): $filterParam"
     $resolvedAdGroupObjectId = az rest --method GET --url $graphUrl --headers "ConsistencyLevel=eventual" --query "value[0].id" -o tsv 2>$null
-    if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
-      Write-PltDebug "Attempt 3 (Microsoft Graph): no match (check Graph permissions and exact display name)"
-    } else {
-      Write-PltDebug "Attempt 3 (Microsoft Graph): objectId=$resolvedAdGroupObjectId"
-    }
   }
   if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
     throw @"
@@ -91,7 +64,6 @@ Prefer running resolve-app-rg-contributor-group (Get-AzADGroup + SSV). If using 
 if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
   throw 'Required config missing: appRgContributor + pipeline resolve, or adGroupObjectId (fallback).'
 }
-Write-PltDebug "Using Entra group object id for RBAC: $resolvedAdGroupObjectId"
 
 $namingFile = Join-Path $root "resources/naming-convention/get-names.bicep"
 if (-not (Test-Path $namingFile)) { $namingFile = Join-Path $root "self/resources/naming-convention/get-names.bicep" }
