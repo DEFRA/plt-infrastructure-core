@@ -84,6 +84,9 @@ variables:
   # if no SKU then Document Intelligence is not deployed.
   - name: documentIntelligenceSku
     value: ''
+  # Optional JSON array for extra private DNS A records when DI is enabled. Default empty; instance core.yaml may override.
+  - name: additionalDnsConfig
+    value: ''
   - template: /config/common.yaml@PltConfig
   - template: /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
   # Regional config: path uses compile-time parameters so template resolves; must match config (validated below)
