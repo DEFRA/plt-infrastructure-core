@@ -144,6 +144,16 @@ extends:
                 inlineScript: |
                   bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-AdditionalDnsConfigJson.sh" "$(documentIntelligenceSku)" '$(additionalDnsConfig)'
               # Setup after validation
+              - name: variable-setup
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: bash
+                inlineScript: |
+                  bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Normalize-ApplicationId.sh" "$(applicationID)"
+        - name: landing_zone
+          dependsOnGroupedDeployments:
+            - validate_and_setup
+          deployments:
               - name: create-aad-groups
                 type: 'script'
                 scriptType: AzurePowerShell
@@ -155,16 +165,6 @@ extends:
                     -ClientId "$(entraSPClientId)" `
                     -TenantId "$(tenantId)" `
                     -ClientSecret "$(entraSPToken)"
-              - name: variable-setup
-                type: 'script'
-                scriptType: AzureCLI
-                azureCLIScriptType: bash
-                inlineScript: |
-                  bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Normalize-ApplicationId.sh" "$(applicationID)"
-        - name: landing_zone
-          dependsOnGroupedDeployments:
-            - validate_and_setup
-          deployments:
               - name: set-resource-names
                 type: 'script'
                 scriptType: AzureCLI
