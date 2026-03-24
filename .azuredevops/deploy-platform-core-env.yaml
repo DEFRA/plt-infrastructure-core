@@ -191,6 +191,7 @@ extends:
                     -RootPath "$(Pipeline.Workspace)/s/self" `
                     -SubType "$(subType)" `
                     -Location "$(location)" `
+                    -AppRgContributor "$(appRgContributor)" `
                     -AdGroupObjectId "$(adGroupObjectId)" `
                     -ServiceCode "$(serviceCode)" `
                     -DeploymentEnvInstance "$(deploymentEnvInstance)" `

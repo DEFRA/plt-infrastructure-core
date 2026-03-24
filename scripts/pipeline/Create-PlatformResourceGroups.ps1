@@ -10,7 +10,8 @@ param(
   [Parameter(Mandatory = $true)][string]$RootPath,
   [Parameter(Mandatory = $true)][string]$SubType,
   [Parameter(Mandatory = $true)][string]$Location,
-  [Parameter(Mandatory = $true)][string]$AdGroupObjectId,
+  [string]$AppRgContributor = '',
+  [string]$AdGroupObjectId = '',
   [Parameter(Mandatory = $true)][string]$ServiceCode,
   [Parameter(Mandatory = $true)][string]$DeploymentEnvInstance,
   [Parameter(Mandatory = $true)][string]$RegionCode,
@@ -25,8 +26,20 @@ $tempDir = if ($env:TEMP) { $env:TEMP } elseif ($env:AGENT_TEMPDIRECTORY) { $env
 $root = $RootPath
 if (-not (Test-Path (Join-Path $root "resources"))) { $root = Join-Path $RootPath "self" }
 
-if (-not $SubType -or -not $Location -or -not $AdGroupObjectId) {
-  throw 'Required config values missing: subType, location, adGroupObjectId.'
+if (-not $SubType -or -not $Location) {
+  throw 'Required config values missing: subType, location.'
+}
+
+# Prefer group-name driven config (appRgContributor). Keep adGroupObjectId as compatibility fallback.
+$resolvedAdGroupObjectId = $AdGroupObjectId
+if (-not [string]::IsNullOrWhiteSpace($AppRgContributor)) {
+  $resolvedAdGroupObjectId = az ad group list --display-name "$AppRgContributor" --query "[0].id" -o tsv 2>$null
+  if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
+    throw "Could not resolve appRgContributor group '$AppRgContributor' to an Entra object ID."
+  }
+}
+if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
+  throw 'Required config missing: appRgContributor (preferred) or adGroupObjectId (fallback).'
 }
 
 $namingFile = Join-Path $root "resources/naming-convention/get-names.bicep"
@@ -62,7 +75,7 @@ foreach ($Role in $roles) {
     name = @{ value = $resourceGroupName }
     location = @{ value = $Location }
     subType = @{ value = $SubType }
-    adGroupObjectId = @{ value = $AdGroupObjectId }
+    adGroupObjectId = @{ value = $resolvedAdGroupObjectId }
     resourceGroupRole = @{ value = $Role }
   }
   $rgParamsPath = Join-Path $tempDir "rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss').json"
