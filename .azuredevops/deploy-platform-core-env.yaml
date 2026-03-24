@@ -128,25 +128,23 @@ extends:
       **/infra/core/env/open-ai/aad-groups/openaiaccessgroup.json
       **/infra/core/env/search-service/aad-groups/searchserviceaccessgroup.json
     groupedDeployments:
-        - name: validate_config
+        - name: validate_and_setup
           deployments:
-              - name: validate-params-match-config
+              # Validate first
+              - name: validate_params_match_config
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
                 inlineScript: |
                   bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.sh" "$(expectedEnvironment)" "$(environment)" "$(expectedLocation)" "$(location)"
-              - name: validate-additionalDnsConfig-json
+              - name: validate_additional_dns_config_json
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
                 inlineScript: |
                   bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-AdditionalDnsConfigJson.sh" "$(documentIntelligenceSku)" '$(additionalDnsConfig)'
-        - name: setup
-          dependsOnGroupedDeployments:
-            - validate_config
-          deployments:
-              - name: create-aad-groups
+              # Setup after validation
+              - name: create_aad_groups
                 type: 'script'
                 scriptType: AzurePowerShell
                 serviceConnectionVariableName: 'ssvServiceConnection'
@@ -157,17 +155,17 @@ extends:
                     -ClientId "$(entraSPClientId)" `
                     -TenantId "$(tenantId)" `
                     -ClientSecret "$(entraSPToken)"
-              - name: variable-setup
+              - name: variable_setup
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
                 inlineScript: |
                   bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Normalize-ApplicationId.sh" "$(applicationID)"
-        - name: network
+        - name: landing_zone
           dependsOnGroupedDeployments:
-            - setup
+            - validate_and_setup
           deployments:
-              - name: set-resource-names
+              - name: set_resource_names
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
@@ -183,7 +181,7 @@ extends:
                     -InstanceNumber "$(instanceNumber)" `
                     -SubnetLayout "$(subnetLayout)" `
                     -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)"
-              - name: create-platform-resource-groups
+              - name: create_platform_resource_groups
                 type: 'script'
                 scriptType: AzureCLI
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
@@ -200,10 +198,10 @@ extends:
                     -InstanceNumber "$(instanceNumber)" `
                     -PlatformResourceGroups "$(platformResourceGroups)" `
                     -InfraResourceGroupName "$(infraResourceGroupName)"
-              - name: route-table-tokens
+              - name: route_table_tokens
                 type: replaceTokensOnly
                 replaceTokenPathsString: 'resources/network/route-table/1;resources/network/route-table/2;resources/network/route-table/3'
-              - name: deploy-route-tables
+              - name: deploy_route_tables
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
@@ -216,7 +214,7 @@ extends:
                     -Location "$(location)" `
                     -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)" `
                     -SubnetLayout "$(subnetLayout)"
-              - name: deploy-nsgs
+              - name: deploy_nsgs
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
@@ -231,7 +229,7 @@ extends:
                     -DeploymentEnvInstance "$(deploymentEnvInstance)" `
                     -RegionCode "$(regionCode)" `
                     -SubnetLayout "$(subnetLayout)"
-              - name: replace-vnet-tokens
+              - name: replace_vnet_tokens
                 type: replaceTokensOnly
                 replaceTokenPathsString: 'resources/network/vnet/$(subnetLayout)'
               - name: virtual-network
@@ -258,7 +256,7 @@ extends:
                         -PeerToSec $false
               # Private DNS zone creation (ai-document-intelligence-zone) omitted: corporate policy prevents creation in certain subscriptions. Use existing zone and add DNS lookup later. Module kept under resources/network/private-dns-zone for other scenarios.
               - ${{ if and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none')) }}:
-                - name: ai-document-intelligence
+                - name: ai_document_intelligence
                   path: resources/ai/document-intelligence
                   parameterFilePath: resources/ai/document-intelligence
                   resourceGroupName: $(servicesResourceGroup)
