@@ -192,7 +192,6 @@ extends:
                     -SubType "$(subType)" `
                     -Location "$(location)" `
                     -AppRgContributor "$(appRgContributor)" `
-                    -AdGroupObjectId "$(adGroupObjectId)" `
                     -ServiceCode "$(serviceCode)" `
                     -DeploymentEnvInstance "$(deploymentEnvInstance)" `
                     -RegionCode "$(regionCode)" `
