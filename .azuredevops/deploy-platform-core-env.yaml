@@ -131,20 +131,20 @@ extends:
         - name: validate_and_setup
           deployments:
               # Validate first
-              - name: validate_params_match_config
+              - name: validate-params-match-config
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
                 inlineScript: |
                   bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.sh" "$(expectedEnvironment)" "$(environment)" "$(expectedLocation)" "$(location)"
-              - name: validate_additional_dns_config_json
+              - name: validate-additional-dns-config-json
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
                 inlineScript: |
                   bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-AdditionalDnsConfigJson.sh" "$(documentIntelligenceSku)" '$(additionalDnsConfig)'
               # Setup after validation
-              - name: create_aad_groups
+              - name: create-aad-groups
                 type: 'script'
                 scriptType: AzurePowerShell
                 serviceConnectionVariableName: 'ssvServiceConnection'
@@ -155,7 +155,7 @@ extends:
                     -ClientId "$(entraSPClientId)" `
                     -TenantId "$(tenantId)" `
                     -ClientSecret "$(entraSPToken)"
-              - name: variable_setup
+              - name: variable-setup
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
@@ -165,7 +165,7 @@ extends:
           dependsOnGroupedDeployments:
             - validate_and_setup
           deployments:
-              - name: set_resource_names
+              - name: set-resource-names
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
@@ -181,7 +181,7 @@ extends:
                     -InstanceNumber "$(instanceNumber)" `
                     -SubnetLayout "$(subnetLayout)" `
                     -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)"
-              - name: create_platform_resource_groups
+              - name: create-platform-resource-groups
                 type: 'script'
                 scriptType: AzureCLI
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
@@ -198,10 +198,10 @@ extends:
                     -InstanceNumber "$(instanceNumber)" `
                     -PlatformResourceGroups "$(platformResourceGroups)" `
                     -InfraResourceGroupName "$(infraResourceGroupName)"
-              - name: route_table_tokens
+              - name: route-table-tokens
                 type: replaceTokensOnly
                 replaceTokenPathsString: 'resources/network/route-table/1;resources/network/route-table/2;resources/network/route-table/3'
-              - name: deploy_route_tables
+              - name: deploy-route-tables
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
@@ -214,7 +214,7 @@ extends:
                     -Location "$(location)" `
                     -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)" `
                     -SubnetLayout "$(subnetLayout)"
-              - name: deploy_nsgs
+              - name: deploy-nsgs
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
@@ -229,7 +229,7 @@ extends:
                     -DeploymentEnvInstance "$(deploymentEnvInstance)" `
                     -RegionCode "$(regionCode)" `
                     -SubnetLayout "$(subnetLayout)"
-              - name: replace_vnet_tokens
+              - name: replace-vnet-tokens
                 type: replaceTokensOnly
                 replaceTokenPathsString: 'resources/network/vnet/$(subnetLayout)'
               - name: virtual-network
