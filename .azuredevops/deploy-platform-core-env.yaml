@@ -75,6 +75,9 @@ variables:
     value: '[]'
   - name: networkJoinGroupObjectId
     value: ''
+  # Set by resolve-app-rg-contributor-group (Get-AzADGroup + SSV); used by create-platform-resource-groups.
+  - name: appRgContributorObjectId
+    value: ''
   # Platform resource group roles to create (in addition to INF). INF is always created first. Comma-separated, e.g. EXP,APP. Set in config (variable files).
   - name: platformResourceGroups
     value: ''
@@ -181,6 +184,16 @@ extends:
                     -InstanceNumber "$(instanceNumber)" `
                     -SubnetLayout "$(subnetLayout)" `
                     -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)"
+              # Same pattern as VNet pre-deploy Resolve-NetworkJoinGroup: Get-AzADGroup + SSV (ARM CLI SP often cannot read directory).
+              - name: resolve-app-rg-contributor-group
+                type: 'script'
+                scriptType: AzurePowerShell
+                serviceConnectionVariableName: 'ssvServiceConnection'
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Resolve-EntraGroupByDisplayName.ps1" `
+                    -GroupName "$(appRgContributor)" `
+                    -OutputVariableName 'appRgContributorObjectId' `
+                    -IfNotFound 'Error'
               - name: create-platform-resource-groups
                 type: 'script'
                 scriptType: AzureCLI
@@ -192,6 +205,7 @@ extends:
                     -SubType "$(subType)" `
                     -Location "$(location)" `
                     -AppRgContributor "$(appRgContributor)" `
+                    -AppRgContributorObjectId "$(appRgContributorObjectId)" `
                     -ServiceCode "$(serviceCode)" `
                     -DeploymentEnvInstance "$(deploymentEnvInstance)" `
                     -RegionCode "$(regionCode)" `

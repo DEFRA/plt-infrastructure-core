@@ -11,6 +11,8 @@ param(
   [Parameter(Mandatory = $true)][string]$SubType,
   [Parameter(Mandatory = $true)][string]$Location,
   [string]$AppRgContributor = '',
+  # Set by resolve-app-rg-contributor-group (Get-AzADGroup + SSV); preferred over ARM-only az ad lookup.
+  [string]$AppRgContributorObjectId = '',
   [string]$AdGroupObjectId = '',
   [Parameter(Mandatory = $true)][string]$ServiceCode,
   [Parameter(Mandatory = $true)][string]$DeploymentEnvInstance,
@@ -35,12 +37,21 @@ if (-not $SubType -or -not $Location) {
   throw 'Required config values missing: subType, location.'
 }
 
-# Prefer group-name driven config (appRgContributor). Keep adGroupObjectId as compatibility fallback.
-$resolvedAdGroupObjectId = $AdGroupObjectId
-if (-not [string]::IsNullOrWhiteSpace($AppRgContributor)) {
+# Prefer object id from resolve-app-rg-contributor-group (Get-AzADGroup + SSV, same as networkJoinGroupName).
+# ARM-only Azure CLI often lacks Graph directory read. Then legacy adGroupObjectId; then az/Graph fallback for display name.
+$resolvedAdGroupObjectId = ''
+if (-not [string]::IsNullOrWhiteSpace($AppRgContributorObjectId)) {
+  $resolvedAdGroupObjectId = $AppRgContributorObjectId.Trim()
+  Write-PltDebug "Using AppRgContributorObjectId from pipeline (SSV Get-AzADGroup resolve): $resolvedAdGroupObjectId"
+}
+elseif (-not [string]::IsNullOrWhiteSpace($AdGroupObjectId)) {
+  $resolvedAdGroupObjectId = $AdGroupObjectId.Trim()
+  Write-PltDebug "Using AdGroupObjectId parameter: $resolvedAdGroupObjectId"
+}
+elseif (-not [string]::IsNullOrWhiteSpace($AppRgContributor)) {
   $acctJson = az account show -o json 2>$null | ConvertFrom-Json
   Write-PltDebug "Azure CLI context: tenant=$($acctJson.tenantId) subscription=$($acctJson.id) name=$($acctJson.name) identity=$($acctJson.user.name)"
-  Write-PltDebug "Resolving AppRgContributor (display name): '$AppRgContributor'"
+  Write-PltDebug "Resolving AppRgContributor (display name) via Azure CLI fallback: '$AppRgContributor'"
 
   # `az ad group list --display-name` is prefix-based and often misses exact names. Prefer OData exact match.
   $nameEscaped = $AppRgContributor -replace "'", "''"
@@ -59,11 +70,9 @@ if (-not [string]::IsNullOrWhiteSpace($AppRgContributor)) {
     }
   }
   if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
-    # Microsoft Graph (same token as az); helps when Azure AD list API behaves differently.
     $filterParam = "displayName eq '$nameEscaped'"
     $encoded = [uri]::EscapeDataString($filterParam)
     $graphUrl = "https://graph.microsoft.com/v1.0/groups?`$filter=$encoded"
-    # Graph often requires this header when filtering on displayName.
     Write-PltDebug "Attempt 3 (Microsoft Graph groups `$filter): $filterParam"
     $resolvedAdGroupObjectId = az rest --method GET --url $graphUrl --headers "ConsistencyLevel=eventual" --query "value[0].id" -o tsv 2>$null
     if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
@@ -75,14 +84,14 @@ if (-not [string]::IsNullOrWhiteSpace($AppRgContributor)) {
   if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
     throw @"
 Could not resolve appRgContributor group '$AppRgContributor' to an Entra object ID.
-Check: exact display name in Entra, and that the pipeline identity has Directory.Read.All (or Group.Read.All) on the tenant.
+Prefer running resolve-app-rg-contributor-group (Get-AzADGroup + SSV). If using CLI only, check exact display name and Directory.Read.All (or Group.Read.All) on the ARM identity.
 "@
   }
 }
 if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
-  throw 'Required config missing: appRgContributor (preferred) or adGroupObjectId (fallback).'
+  throw 'Required config missing: appRgContributor + pipeline resolve, or adGroupObjectId (fallback).'
 }
-Write-PltDebug "Using resolved Entra group object id for RBAC: $resolvedAdGroupObjectId"
+Write-PltDebug "Using Entra group object id for RBAC: $resolvedAdGroupObjectId"
 
 $namingFile = Join-Path $root "resources/naming-convention/get-names.bicep"
 if (-not (Test-Path $namingFile)) { $namingFile = Join-Path $root "self/resources/naming-convention/get-names.bicep" }
