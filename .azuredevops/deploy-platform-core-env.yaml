@@ -134,16 +134,14 @@ extends:
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
-                scriptPath: scripts/pipeline/Validate-Params-Match-Config.sh
-                scriptArguments: >
-                  "$(expectedEnvironment)" "$(environment)" "$(expectedLocation)" "$(location)"
+                inlineScript: |
+                  bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.sh" "$(expectedEnvironment)" "$(environment)" "$(expectedLocation)" "$(location)"
               - name: validate-additionalDnsConfig-json
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
-                scriptPath: scripts/pipeline/Validate-AdditionalDnsConfigJson.sh
-                scriptArguments: >
-                  "$(documentIntelligenceSku)" '$(additionalDnsConfig)'
+                inlineScript: |
+                  bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-AdditionalDnsConfigJson.sh" "$(documentIntelligenceSku)" '$(additionalDnsConfig)'
         - name: setup
           dependsOnGroupedDeployments:
             - validate_config
@@ -152,20 +150,19 @@ extends:
                 type: 'script'
                 scriptType: AzurePowerShell
                 serviceConnectionVariableName: 'ssvServiceConnection'
-                scriptPath: scripts/pipeline/Invoke-CreateAadGroups.ps1
-                scriptArguments: >
-                  -ManifestPath "$(Pipeline.Workspace)/s/PltConfig/config/$(applicationID)/$(instance)/aad-group.json"
-                  -ScriptPath "$(Pipeline.Workspace)/s/self/scripts/pipeline/Create-AADGroups.ps1"
-                  -ClientId "$(entraSPClientId)"
-                  -TenantId "$(tenantId)"
-                  -ClientSecret "$(entraSPToken)"
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Invoke-CreateAadGroups.ps1" `
+                    -ManifestPath "$(Pipeline.Workspace)/s/PltConfig/config/$(applicationID)/$(instance)/aad-group.json" `
+                    -ScriptPath "$(Pipeline.Workspace)/s/self/scripts/pipeline/Create-AADGroups.ps1" `
+                    -ClientId "$(entraSPClientId)" `
+                    -TenantId "$(tenantId)" `
+                    -ClientSecret "$(entraSPToken)"
               - name: variable-setup
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
-                scriptPath: scripts/pipeline/Normalize-ApplicationId.sh
-                scriptArguments: >
-                  "$(applicationID)"
+                inlineScript: |
+                  bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Normalize-ApplicationId.sh" "$(applicationID)"
         - name: network
           dependsOnGroupedDeployments:
             - setup
@@ -175,34 +172,34 @@ extends:
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                scriptPath: scripts/pipeline/Set-ResourceNames.ps1
-                scriptArguments: >
-                  -RootPath "$(Pipeline.Workspace)/s/self"
-                  -Location "$(location)"
-                  -SubType "$(subType)"
-                  -ServiceCode "$(serviceCode)"
-                  -DeploymentEnvInstance "$(deploymentEnvInstance)"
-                  -RegionCode "$(regionCode)"
-                  -InstanceNumber "$(instanceNumber)"
-                  -SubnetLayout "$(subnetLayout)"
-                  -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)"
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Set-ResourceNames.ps1" `
+                    -RootPath "$(Pipeline.Workspace)/s/self" `
+                    -Location "$(location)" `
+                    -SubType "$(subType)" `
+                    -ServiceCode "$(serviceCode)" `
+                    -DeploymentEnvInstance "$(deploymentEnvInstance)" `
+                    -RegionCode "$(regionCode)" `
+                    -InstanceNumber "$(instanceNumber)" `
+                    -SubnetLayout "$(subnetLayout)" `
+                    -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)"
               - name: create-platform-resource-groups
                 type: 'script'
                 scriptType: AzureCLI
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
                 azureCLIScriptType: pscore
-                scriptPath: scripts/pipeline/Create-PlatformResourceGroups.ps1
-                scriptArguments: >
-                  -RootPath "$(Pipeline.Workspace)/s/self"
-                  -SubType "$(subType)"
-                  -Location "$(location)"
-                  -AdGroupObjectId "$(adGroupObjectId)"
-                  -ServiceCode "$(serviceCode)"
-                  -DeploymentEnvInstance "$(deploymentEnvInstance)"
-                  -RegionCode "$(regionCode)"
-                  -InstanceNumber "$(instanceNumber)"
-                  -PlatformResourceGroups "$(platformResourceGroups)"
-                  -InfraResourceGroupName "$(infraResourceGroupName)"
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Create-PlatformResourceGroups.ps1" `
+                    -RootPath "$(Pipeline.Workspace)/s/self" `
+                    -SubType "$(subType)" `
+                    -Location "$(location)" `
+                    -AdGroupObjectId "$(adGroupObjectId)" `
+                    -ServiceCode "$(serviceCode)" `
+                    -DeploymentEnvInstance "$(deploymentEnvInstance)" `
+                    -RegionCode "$(regionCode)" `
+                    -InstanceNumber "$(instanceNumber)" `
+                    -PlatformResourceGroups "$(platformResourceGroups)" `
+                    -InfraResourceGroupName "$(infraResourceGroupName)"
               - name: route-table-tokens
                 type: replaceTokensOnly
                 replaceTokenPathsString: 'resources/network/route-table/1;resources/network/route-table/2;resources/network/route-table/3'
@@ -211,29 +208,29 @@ extends:
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                scriptPath: scripts/pipeline/Deploy-RouteTables.ps1
-                scriptArguments: >
-                  -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self"
-                  -ResourceGroupName "$(virtualNetworkResourceGroup)"
-                  -RouteTableName "$(routeTableName)"
-                  -Location "$(location)"
-                  -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)"
-                  -SubnetLayout "$(subnetLayout)"
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-RouteTables.ps1" `
+                    -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
+                    -ResourceGroupName "$(virtualNetworkResourceGroup)" `
+                    -RouteTableName "$(routeTableName)" `
+                    -Location "$(location)" `
+                    -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)" `
+                    -SubnetLayout "$(subnetLayout)"
               - name: deploy-nsgs
                 type: 'script'
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
                 serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                scriptPath: scripts/pipeline/Deploy-NSGs.ps1
-                scriptArguments: >
-                  -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self"
-                  -ResourceGroupName "$(virtualNetworkResourceGroup)"
-                  -Location "$(location)"
-                  -SubType "$(subType)"
-                  -ServiceCode "$(serviceCode)"
-                  -DeploymentEnvInstance "$(deploymentEnvInstance)"
-                  -RegionCode "$(regionCode)"
-                  -SubnetLayout "$(subnetLayout)"
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-NSGs.ps1" `
+                    -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
+                    -ResourceGroupName "$(virtualNetworkResourceGroup)" `
+                    -Location "$(location)" `
+                    -SubType "$(subType)" `
+                    -ServiceCode "$(serviceCode)" `
+                    -DeploymentEnvInstance "$(deploymentEnvInstance)" `
+                    -RegionCode "$(regionCode)" `
+                    -SubnetLayout "$(subnetLayout)"
               - name: replace-vnet-tokens
                 type: replaceTokensOnly
                 replaceTokenPathsString: 'resources/network/vnet/$(subnetLayout)'
