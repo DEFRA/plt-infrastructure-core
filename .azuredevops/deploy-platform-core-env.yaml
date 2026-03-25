@@ -48,14 +48,14 @@ variables:
     value: ${{ parameters.applicationID }}
   - name: instance
     value: ${{ parameters.instance }}
-  # Default empty: these are set later (or computed by scripts). Avoid placeholder names leaking into real deployments.
+  # Validation requires non-empty RG/name values before set-resource-names runs; these are overridden in deployment flow.
   - name: virtualNetworkResourceGroup
-    value: ''
-  # Default empty: set by set-resource-names.
+    value: 'ValidationPlaceholderRG'
+  # Validation requires a non-empty VNet name; overridden by set-resource-names.
   - name: virtualNetworkName
-    value: ''
+    value: 'ValidationPlaceholderVNet'
   - name: routeTableName
-    value: ''
+    value: 'ValidationPlaceholderRT'
   # Private link zone name from set-resource-names (e.g. for Document Intelligence).
   - name: documentIntelligencePrivateLinkZoneName
     value: ''
