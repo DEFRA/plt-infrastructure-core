@@ -4,8 +4,8 @@
     "parameters": {
         "storageAccount": {
             "value": {
-                "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_storageaccount }}#{{ environmentId }}#{{ regionCode }}01",
-                "privateEndpointName": "#{{ infraResourceNamePrefix }}#{{ nc_resource_privateendpoint }}#{{ environmentId }}#{{ regionCode }}05",
+                "name": "#{{ infraResourceNamePrefix }}#{{ nc_resource_storageaccount }}#{{ deploymentEnvInstance }}#{{ regionCode }}01",
+                "privateEndpointName": "#{{ infraResourceNamePrefix }}#{{ nc_resource_privateendpoint }}#{{ deploymentEnvInstance }}#{{ regionCode }}05",
                 "skuName": "Standard_ZRS"
             }    
         },
@@ -13,7 +13,7 @@
             "value": {
               "name": "#{{ virtualNetworkName }}",
               "resourceGroup": "#{{ virtualNetworkResourceGroup }}",
-              "subnetPrivateEndpoints": "#{{ networkResourceNamePrefix }}#{{ nc_resource_subnet }}#{{ environmentId }}#{{ regionCode }}98"
+              "subnetPrivateEndpoints": "#{{ networkResourceNamePrefix }}#{{ nc_resource_subnet }}#{{ deploymentEnvInstance }}#{{ regionCode }}98"
             }
         },
 "subType": {

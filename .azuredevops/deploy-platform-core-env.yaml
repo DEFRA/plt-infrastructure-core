@@ -48,26 +48,26 @@ variables:
     value: ${{ parameters.applicationID }}
   - name: instance
     value: ${{ parameters.instance }}
-  # For validation, use a placeholder value (will be overridden by script with actual resource group name)
+  # Default empty: these are set later (or computed by scripts). Avoid placeholder names leaking into real deployments.
   - name: virtualNetworkResourceGroup
-    value: 'ValidationPlaceholderRG'
-  # For validation use a placeholder value (will be overridden by script with actual virtual network name)
+    value: ''
+  # Default empty: set by set-resource-names.
   - name: virtualNetworkName
-    value: 'ValidationPlaceholderVNet'
+    value: ''
   - name: routeTableName
-    value: 'ValidationPlaceholderRT'
-  # Private link zone name from set-resource-names (e.g. for Document Intelligence). Placeholder for Validate job; overridden in Deploy.
+    value: ''
+  # Private link zone name from set-resource-names (e.g. for Document Intelligence).
   - name: documentIntelligencePrivateLinkZoneName
-    value: 'ValidationPlaceholderZone'
-  # Document Intelligence resource name from set-resource-names (derived from get-names). Placeholder for Validate job; overridden in Deploy.
+    value: ''
+  # Document Intelligence resource name from set-resource-names (derived from get-names).
   - name: documentIntelligenceResourceName
-    value: 'ValidationPlaceholderDI'
-  # infraResourceGroupName from set-resource-names; placeholder for Validate job; overridden in Deploy.
+    value: ''
+  # infraResourceGroupName from set-resource-names.
   - name: infraResourceGroupName
-    value: 'ValidationPlaceholderRG'
-  # servicesResourceGroup (APP RG) set by create-platform-resource-groups when APP role is created. Placeholder for Validate job.
+    value: ''
+  # servicesResourceGroup (APP RG) set by create-platform-resource-groups when APP role is created.
   - name: servicesResourceGroup
-    value: 'ValidationPlaceholderRG'
+    value: ''
   # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
   - name: firewallVirtualApplianceIp
     value: ''
@@ -142,7 +142,7 @@ extends:
                 scriptType: AzureCLI
                 azureCLIScriptType: bash
                 inlineScript: |
-                  bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.sh" "$(expectedEnvironment)" "$(environment)" "$(expectedLocation)" "$(location)"
+                  bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.sh" "$(expectedEnvironment)" "$(subType)" "$(deploymentEnvInstance)" "$(expectedLocation)" "$(location)"
               - name: validate-additional-dns-config-json
                 type: 'script'
                 scriptType: AzureCLI
