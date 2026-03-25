@@ -59,15 +59,18 @@ variables:
   # Private link zone name from set-resource-names (e.g. for Document Intelligence).
   - name: documentIntelligencePrivateLinkZoneName
     value: ''
-  # Document Intelligence resource name from set-resource-names (derived from get-names).
+  # Validation needs a non-empty DI name before set-resource-names runs; overridden later.
   - name: documentIntelligenceResourceName
-    value: ''
+    value: 'ValidationPlaceholderDI'
   # infraResourceGroupName from set-resource-names.
   - name: infraResourceGroupName
     value: ''
-  # servicesResourceGroup (APP RG) set by create-platform-resource-groups when APP role is created.
+  # Validation needs a non-empty RG target for AI DI module; overridden when APP RG is created.
   - name: servicesResourceGroup
-    value: ''
+    value: 'ValidationPlaceholderRG'
+  # Validation needs a non-empty subnet token for AI DI private endpoint module; overridden by set-resource-names.
+  - name: subnet3Name
+    value: 'ValidationPlaceholderSUB'
   # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
   - name: firewallVirtualApplianceIp
     value: ''
