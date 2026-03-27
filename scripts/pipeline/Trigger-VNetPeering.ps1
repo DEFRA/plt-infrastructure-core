@@ -53,15 +53,9 @@ if ($enableDebug) {
 }
 
 Write-Host "${functionName} started at $($startTime.ToString('u'))"
-Write-Debug "${functionName}:VirtualNetworkName=$VirtualNetworkName"
-Write-Debug "${functionName}:SubscriptionName=$SubscriptionName"
-Write-Debug "${functionName}:TenantId=$TenantId"
-Write-Debug "${functionName}:WorkingDirectory=$WorkingDirectory"
-Write-Debug "${functionName}:PeerToSec=$PeerToSec"
 
 try {
     [System.IO.DirectoryInfo]$moduleDir = Join-Path -Path $WorkingDirectory -ChildPath "scripts/modules/ado"
-    Write-Debug "${functionName}:moduleDir.FullName=$($moduleDir.FullName)"
     Import-Module $moduleDir.FullName -Force
 
     [object]$runPipelineRequestBodyWithDefaultConfig = '{
@@ -93,7 +87,6 @@ finally {
 
     Write-Host "${functionName} finished at $($endTime.ToString('u')) (duration $($duration -f 'g')) with exit code $exitCode"
     if ($setHostExitCode) {
-        Write-Debug "${functionName}:Setting host exit code"
         $host.SetShouldExit($exitCode)
     }
     exit $exitCode

@@ -48,15 +48,12 @@ $ErrorActionPreference = "Continue"
 $InformationPreference = "Continue"
 
 Write-Host "${functionName} started at $($startTime.ToString('u'))"
-Write-Debug "${functionName}:AADGroupsJsonManifestPath=$AADGroupsJsonManifestPath"
-Write-Debug "${functionName}:WorkingDirectory=$WorkingDirectory"
 
 try {
     # ------------------------------------------------------------
     # Load AD-groups module
     # ------------------------------------------------------------
     $adGroupsModuleDir = Join-Path -Path $PSScriptRoot -ChildPath "../Powershell/aad-groups"
-    Write-Debug "${functionName}:moduleDir=$adGroupsModuleDir"
     Import-Module $adGroupsModuleDir -Force
 
     # ------------------------------------------------------------

@@ -3,6 +3,8 @@
   Replaces #{{ tokenName }} tokens in parameter files with pipeline variable values.
   Run with workingDirectory set to the repo root (e.g. $(Pipeline.Workspace)/s/self) so paths resolve correctly.
   Same pattern as qetza Replace Tokens task (custom prefix #{{ suffix }}).
+  Similar logic to that avaialble in ad-pipeline-common, which cannot be used here because it uses the qetza Replace Tokens task
+  which is not available in the self repository.
 #>
 param(
   [Parameter(Mandatory = $true)]

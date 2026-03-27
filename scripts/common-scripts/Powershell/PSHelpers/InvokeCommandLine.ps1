@@ -26,16 +26,12 @@
         )
     
         [string]$functionName = $MyInvocation.MyCommand
-        Write-Debug "${functionName}:Entered"
-        Write-Debug "${functionName}:IsSensitive=$IsSensitive"
-        Write-Debug "${functionName}:IgnoreErrorCode=$IgnoreErrorCode"
-        Write-Debug "${functionName}:ReturnExitCode=$ReturnExitCode"
     
         if ($IsSensitive) {
-            Write-Debug "${functionName}:Command=<hidden>"
+            
         } 
         else {
-            Write-Debug "${functionName}:Command=$Command"
+            
         }
     
         [string]$errorMessage = ""
@@ -46,27 +42,21 @@
         $output = Invoke-Expression -Command $Command -ErrorVariable errorMessage -WarningVariable warningMessage -OutVariable outputMessage -InformationVariable informationMessage 
         [int]$errCode = $LASTEXITCODE
     
-        Write-Debug "${functionName}:output="
-        $output | Write-Debug
-        Write-Debug "${functionName}:errCode=$errCode"
+        
     
         if (-not [string]::IsNullOrWhiteSpace($outputMessage)) { 
-            Write-Debug "${functionName}:outputMessage=$outputMessage"
             Write-Verbose $outputMessage 
         }
     
         if (-not [string]::IsNullOrWhiteSpace($informationMessage)) { 
-            Write-Debug "${functionName}:informationMessage=$informationMessage"
             Write-Verbose $informationMessage 
         }
     
         if (-not [string]::IsNullOrWhiteSpace($warningMessage)) {
-            Write-Debug "${functionName}:warningMessage=$warningMessage"
             Write-Warning $warningMessage 
         }
     
         if (-not [string]::IsNullOrWhiteSpace($errorMessage)) {
-            Write-Debug "${functionName}:errorMessage=$errorMessage"
             Write-Verbose $errorMessage
             Write-Error $errorMessage
             throw "$errorMessage"
@@ -82,5 +72,5 @@
         elseif (-not $NoOutput) {
             Write-Output $output
         }
-        Write-Debug "${functionName}:Exited"
+        
     }

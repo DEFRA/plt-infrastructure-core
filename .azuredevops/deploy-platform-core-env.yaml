@@ -143,22 +143,22 @@ extends:
               - name: validate-params-match-config
                 type: 'script'
                 scriptType: AzureCLI
-                azureCLIScriptType: bash
+                azureCLIScriptType: pscore
                 inlineScript: |
-                  bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.sh" "$(expectedEnvironment)" "$(subType)" "$(deploymentEnvInstance)" "$(expectedLocation)" "$(location)"
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.ps1" "$(expectedEnvironment)" "$(subType)" "$(deploymentEnvInstance)" "$(expectedLocation)" "$(location)"
               - name: validate-additional-dns-config-json
                 type: 'script'
                 scriptType: AzureCLI
-                azureCLIScriptType: bash
+                azureCLIScriptType: pscore
                 inlineScript: |
-                  bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-AdditionalDnsConfigJson.sh" "$(documentIntelligenceSku)" '$(additionalDnsConfig)'
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-AdditionalDnsConfigJson.ps1" "$(documentIntelligenceSku)" '$(additionalDnsConfig)'
               # Setup after validation
               - name: variable-setup
                 type: 'script'
                 scriptType: AzureCLI
-                azureCLIScriptType: bash
+                azureCLIScriptType: pscore
                 inlineScript: |
-                  bash "$(Pipeline.Workspace)/s/self/scripts/pipeline/Normalize-ApplicationId.sh" "$(applicationID)"
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Normalise-ApplicationId.ps1" "$(applicationID)"
         - name: landing_zone
           dependsOnGroupedDeployments:
             - validate_and_setup
@@ -281,12 +281,12 @@ extends:
                   parameterFilePath: resources/ai/document-intelligence
                   resourceGroupName: $(servicesResourceGroup)
                   preDeployScriptsList:
-                    - displayName: 'Set additional DNS A records from additionalDnsConfig'
+                    - displayName: 'Set DNS A records from additionalDnsConfig'
                       type: AzurePowerShell
                       azurePowerShellVersion: LatestVersion
                       azurePowerShellUseCore: true
                       serviceConnectionVariableName: 'privateDnsServiceConnection'
-                      scriptPath: scripts/pipeline/Set-AdditionalDnsRecords.ps1
+                      scriptPath: scripts/pipeline/SetDnsRecords.ps1
                       scriptArguments: >
                         -Location "$(location)"
                         -AdditionalDnsConfig '$(additionalDnsConfig)'
@@ -306,10 +306,10 @@ extends:
                       azurePowerShellVersion: LatestVersion
                       azurePowerShellUseCore: true
                       serviceConnectionVariableName: 'privateDnsServiceConnection'
-                      scriptPath: scripts/pipeline/Set-DocumentIntelligenceDnsRecord.ps1
+                      scriptPath: scripts/pipeline/SetDnsRecords.ps1
                       scriptArguments: >
-                        -PrivateEndpointIp "$(documentIntelligencePrivateEndpointIp)"
-                        -DocumentIntelligenceResourceName "$(documentIntelligenceResourceName)"
+                        -Fqdn "$(documentIntelligenceResourceName).cognitiveservices.azure.com"
+                        -IpAddress "$(documentIntelligencePrivateEndpointIp)"
                         -Location "$(location)"
                         -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
                         -PipelineWorkspace "$(Pipeline.Workspace)"

@@ -11,7 +11,6 @@ param(
   [Parameter(Mandatory = $true)][string]$SubType,
   [Parameter(Mandatory = $true)][string]$Location,
   [string]$AppRgContributor = '',
-  # Set by resolve-app-rg-contributor-group (Get-AzADGroup + SSV); preferred over ARM-only az ad lookup.
   [string]$AppRgContributorObjectId = '',
   [string]$AdGroupObjectId = '',
   [Parameter(Mandatory = $true)][string]$ServiceCode,
@@ -32,8 +31,10 @@ if (-not $SubType -or -not $Location) {
   throw 'Required config values missing: subType, location.'
 }
 
-# Prefer object id from resolve-app-rg-contributor-group (Get-AzADGroup + SSV, same as networkJoinGroupName).
-# ARM-only Azure CLI often lacks Graph directory read. Then legacy adGroupObjectId; then az/Graph fallback for display name.
+# Resolve RBAC target group in priority order:
+# 1) AppRgContributorObjectId from pipeline resolve step
+# 2) legacy AdGroupObjectId
+# 3) lookup by AppRgContributor display name via az/Graph fallback
 $resolvedAdGroupObjectId = ''
 if (-not [string]::IsNullOrWhiteSpace($AppRgContributorObjectId)) {
   $resolvedAdGroupObjectId = $AppRgContributorObjectId.Trim()
@@ -42,7 +43,7 @@ elseif (-not [string]::IsNullOrWhiteSpace($AdGroupObjectId)) {
   $resolvedAdGroupObjectId = $AdGroupObjectId.Trim()
 }
 elseif (-not [string]::IsNullOrWhiteSpace($AppRgContributor)) {
-  # `az ad group list --display-name` is prefix-based; try OData exact match, then Graph.
+  # `--display-name` is prefix-based; try exact OData filter first, then Graph.
   $nameEscaped = $AppRgContributor -replace "'", "''"
   $resolvedAdGroupObjectId = az ad group list --filter "displayName eq '$nameEscaped'" --query "[0].id" -o tsv 2>$null
   if ([string]::IsNullOrWhiteSpace($resolvedAdGroupObjectId)) {
@@ -76,6 +77,7 @@ foreach ($Role in $roles) {
   if ($Role -eq 'INF' -and -not [string]::IsNullOrWhiteSpace($InfraResourceGroupName)) {
     $resourceGroupName = $InfraResourceGroupName
   } else {
+    # Derive role-specific RG name from naming convention module.
     $namingDeploymentName = "get-names-rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
     $namingParams = @{
       subType = @{ value = $SubType }
@@ -93,6 +95,7 @@ foreach ($Role in $roles) {
   }
 
   if (-not $resourceGroupName) { throw "Could not get resourceGroupName for role $Role" }
+  # Create/update RG and apply RBAC for the resolved contributor group.
   $rgDeploymentName = "rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
   $rgParams = @{
     name = @{ value = $resourceGroupName }
@@ -107,6 +110,7 @@ foreach ($Role in $roles) {
   if ($LASTEXITCODE -ne 0) { throw "Resource group deployment failed for role $Role" }
 
   $resourceGroupNameOutput = az deployment sub show --name $rgDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
+  # Export key RG names for downstream pipeline steps.
   if ($Role -eq 'INF') { Write-Host "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput" }
   if ($Role -eq 'APP') { Write-Host "##vso[task.setvariable variable=servicesResourceGroup]$resourceGroupNameOutput" }
 }

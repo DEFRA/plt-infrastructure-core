@@ -1,5 +1,7 @@
 # plt-infrastructure-core
 
+Deploys 
+
 Core “platform landing zone” infrastructure for Defra subscriptions, deployed via Azure DevOps.
 
 This repo contains the Bicep/ARM templates and pipeline scripts to create platform resource groups, networking, and shared services (as enabled per environment config).
@@ -39,8 +41,9 @@ Located under `scripts/pipeline/`:
 - `Invoke-CreateAadGroups.ps1` / `Create-AADGroups.ps1`: Creates Entra groups from the config manifest.
 - `Resolve-NetworkJoinGroup.ps1`: Resolves `networkJoinGroupName` to object id for VNet role assignment.
 - `Resolve-EntraGroupByDisplayName.ps1`: Shared helper to resolve Entra group display names to object ids (used where directory lookups are needed).
-- `Validate-Params-Match-Config.sh`: Validates pipeline `environmentName` matches config (`subType + deploymentEnvInstance`) and validates `location`.
-- `Validate-AdditionalDnsConfigJson.sh`: Validates `additionalDnsConfig` JSON when Document Intelligence is enabled.
+- `SetDnsRecords.ps1`: Unified DNS record updater for both `additionalDnsConfig` entries and Document Intelligence private endpoint DNS.
+- `Validate-Params-Match-Config.ps1`: Validates pipeline `environmentName` matches config (`subType + deploymentEnvInstance`) and validates `location`.
+- `Validate-AdditionalDnsConfigJson.ps1`: Validates `additionalDnsConfig` JSON when Document Intelligence is enabled.
 
 Shared helper scripts live under:
 
