@@ -39,7 +39,7 @@ if ($dnsEntries.Count -eq 0) {
 
 $env:PRIVATEENDPOINTDNSRECORDSJSON = ($dnsEntries | ConvertTo-Json -Depth 10)
 $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = $RegionToDnsResourcegroupMappingTable
-$scriptPath = Join-Path $PipelineWorkspace "s/self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
-if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path $BuildSourcesDirectory "self/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
+$scriptPath = Join-Path $PipelineWorkspace "s/self/scripts/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
+if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path $BuildSourcesDirectory "self/scripts/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
 if (-not (Test-Path $scriptPath)) { throw "Set-PrivateDnsRecordSet.ps1 not found" }
 & $scriptPath -Ttl 300

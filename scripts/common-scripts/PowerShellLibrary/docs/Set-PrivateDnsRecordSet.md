@@ -1,15 +1,15 @@
 ---
 
 ---
-# Get-ResourcePrivateEndPointsDnsRecordsAsJson documentation
+# Set-PrivateDnsRecordSet documentation
 
 ## Short description
 
-Get IP Addresses and their associated FQDN and location.
+Create or update A records in Private DNS Zones
 
 ## Long description
 
-The *Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1* script gets IP addresses and their associated FQDN and location by supplying a resource group and resource name and returns a JSON object to the variable PrivateDnsRecordsJson.  This PrivateDnsRecordsJson variable value is required by the *Set-PrivateDnsRecordSet.ps1* which has to be run after this script.  More details on the Set-PrivateDnsRecordSet.ps1 script can be found in [Set-PrivateDnsRecordSet.md](Set-PrivateDnsRecordSet.md).  It is also included in the YAML example at the end of this document.
+The *Set-PrivateDnsRecordSet.ps1* script creates DNS records in Private DNS Zones.  It converts the PrivateDnsRecordsJson variable which is set in the Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1 script into a Powershell object and loops through each entry and creates or updates the A record in the appropriate Private DNS Zone in the correct region.  The script also utilises two mapping tables, one to obtain the correct region resource group for Private DNS Zones which is set in common vars and another to get the public DNS and Private DNS Name which is created dynamically.  The Set-PrivateDnsRecordSet.ps1 script is dependant on the Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1 script - more details can be found in [Get-ResourcePrivateEndPointsDnsRecordsAsJson.md](Get-ResourcePrivateEndPointsDnsRecordsAsJson.md).  The YAML example at the end of this page shows how to use both scripts together, as part of a pipeline.
 
 ## PrivateDnsRecordsJson storage blob example
 
@@ -75,38 +75,24 @@ The *Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1* script gets IP addresses 
 ## Syntax
 
 ```powershell
-Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1 
- -ResourceGroupName <String> 
- -ResourceName <String> 
+Set-PrivateDnsRecordSet.ps1 
+ -Ttl <int> OPTIONAL DEFAULTS TO 60 Seconds
 ```
 
 ## Parameters
 
-### -ResourceGroupName
+### -Ttl
 
-The Resource Group containing the Resource.
+Time to live.  This is an OPTIONAL parameter and DEFAULTS to 60 Seconds
 
-### -ResourceName
+## Pipeline examples
 
-The Resource Name
+This example shows how to run the script as part of post-deployment script from the `common-infrastructure-deploy.yaml`.  The Set-PrivateDnsRecordSet.ps1 goes hand in hand with
+the Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1 script which is also detailed in the example below.  Please refer to the [Get-ResourcePrivateEndPointsDnsRecordsAsJson.md](Get-ResourcePrivateEndPointsDnsRecordsAsJson.md) file for details of the Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1
 
-## Pipeline example
+## full example
 
-This example shows how to run the script as part of post-deployment script from the `common-infrastructure-deploy.yaml`.  The Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1 goes hand in hand with
-the Set-PrivateDnsRecordSet.ps1 script which is also detailed in the example below.  Please refer to the [Set-PrivateDnsRecordSet.md](Set-PrivateDnsRecordSet.md) file for details of the Set-PrivateDnsRecordSet.ps1
-
-```yaml
-postDeployScriptsList:
-  - displayName: Resolve Private Endpoint IP Addresses
-    scriptPath: 'Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1@PipelineCommon'
-    ScriptArguments: >
-      -ResourceGroupName $(resourceGroupName)
-      -ResourceName $(resourceName  )
-```
-
-## Full Pipeline example
-
-```yaml
+```yaml full example
 
 extends:
   template: /templates/pipelines/common-infrastructure-deploy.yaml@PipelineCommon
@@ -130,23 +116,23 @@ extends:
               - displayName: Set DNS record for $(storageAccountName)
                 scriptPath: 'Set-PrivateDnsRecordSet.ps1@PipelineCommon'
                 serviceConnectionVariableName: mstAzureResourceManagerConnection
+                ScriptArguments: >
+                  -Ttl 120
 
 ```
 
 ## Post deploy script example
 
-```yaml Post deploy script example with optional Ttl parameter
+```yaml Post deploy script example without optional Ttl parameter
 
 postDeployScriptsList:
   - displayName: Resolve Private Endpoint IP for $(keyvaultName)
   scriptPath: 'Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1@PipelineCommon'
   ScriptArguments: >
-    -ResourceGroupName $(resourceGroupName)
-    -ResourceName $(keyvaultName)
+      -ResourceGroupName $(resourceGroupName)
+      -ResourceName $(keyvaultName)
   - displayName: Set DNS record for $(keyvaultName)
   scriptPath: 'Set-PrivateDnsRecordSet.ps1@PipelineCommon'
   serviceConnectionVariableName: mstAzureResourceManagerConnection
-  ScriptArguments: >
-    -Ttl 120
 
 ```
