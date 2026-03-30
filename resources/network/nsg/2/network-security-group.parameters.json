@@ -12,7 +12,7 @@
             "value": [
                 {
                     "name": "#{{ nsgResourceName }}",
-                    "purpose": "PEP NSG",
+                    "purpose": "LB Backend NSG",
                     "securityRules": [
                         
                         {
