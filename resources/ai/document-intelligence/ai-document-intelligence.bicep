@@ -30,7 +30,6 @@ var defaultTags = union(loadJsonContent('../../default-tags.json'), commonTags)
 var documentIntelligenceTags = {
   Name: aiDocumentIntelligence.name
   Purpose: 'AI Document Intelligence'
-  Tier: 'Shared'
 }
 
 // Private DNS zone creation/linking removed (blocked by policy). Private endpoint IP is output for use in a subsequent DNS update.

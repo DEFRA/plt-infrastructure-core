@@ -35,18 +35,16 @@ var customTags = {
   Environment: subType
 }
 
-var defaultTags = union(json(loadTextContent('../../../common/default-tags.json')), customTags)
+var defaultTags = union(loadJsonContent('../../default-tags.json'), customTags)
 
 var storageAccountTags = {
   Name: storageAccount.name
   Purpose: 'Storage Account'
-  Tier: 'Shared'
 }
 
 var storageAccountPrivateEndpointTags = {
   Name: storageAccount.privateEndpointName
   Purpose: 'Storage Account private endpoint'
-  Tier: 'Shared'
 }
 
 module storageAccounts 'br/SharedDefraRegistry:storage.storage-account:0.5.3' = {

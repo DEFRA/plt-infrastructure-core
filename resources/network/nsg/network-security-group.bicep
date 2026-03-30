@@ -17,7 +17,6 @@ var commonTags = {
   Location: location
   CreatedDate: createdDate
   Environment: subType 
-  Tier: 'Shared'
 }
 var tags = union(loadJsonContent('../../default-tags.json'), commonTags)
 

@@ -22,7 +22,6 @@ var customTags = {
   Environment: subType
   Name: logAnalytics.name
   Purpose: 'Log Analytics Workspace'
-  Tier: 'Shared'
 }
 
 var tags = union(loadJsonContent('../../default-tags.json'), customTags)
