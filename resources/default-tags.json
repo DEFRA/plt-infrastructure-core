@@ -1,4 +1,5 @@
 {
     "ServiceName": "#{{ serviceCode }}",
-    "ServiceCode": "#{{ serviceCode }}"
+    "ServiceCode": "#{{ serviceCode }}",
+    "Version": "#{{ Build.SourceBranchName }}"
 }
