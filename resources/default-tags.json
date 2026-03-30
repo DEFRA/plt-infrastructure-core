@@ -1,4 +1,4 @@
 {
-    "ServiceName": "ADP",
-    "ServiceCode" :"ADP"
+    "ServiceName": "#{{ serviceCode }}",
+    "ServiceCode": "#{{ serviceCode }}"
 }

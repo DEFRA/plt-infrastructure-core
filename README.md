@@ -1,10 +1,25 @@
 # plt-infrastructure-core
 
-Deploys 
+Uses Azure DevOps to deploy, connect and configures a routable spoke network according to Defra standards into an existing subscription. 
 
-Core “platform landing zone” infrastructure for Defra subscriptions, deployed via Azure DevOps.
+The deployment takes configuration from `DEFRA/plt-config` to tune the deployment. 
 
-This repo contains the Bicep/ARM templates and pipeline scripts to create platform resource groups, networking, and shared services (as enabled per environment config).
+The following non-network resources may also be deployed according to Defra patterns:
+
+- Entra ID Groups and memberships.
+- Document Intelligence
+- DNS
+- Resource Groups and permissions.
+
+The deployment provides clear access boudaries as follows:
+
+- `Network/Infrastructure Resource Group` - Readable by application teams. Permissions allow identities to join the associated VNets (typically identity would be a seperate deployment pipeline).
+
+- `Application Resource Group(s)` - One or many Resource Groups many be deployed (using list `platformResourceGroups`). This component is responsible for deploying the Resource Groups and setting RBAC only and not managing the resources withing. Consuming Teams are able manage the resources within. 
+
+
+
+
 
 ## How it’s deployed
 

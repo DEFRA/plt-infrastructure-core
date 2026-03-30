@@ -136,6 +136,7 @@ extends:
       **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    
       **/infra/core/env/open-ai/aad-groups/openaiaccessgroup.json
       **/infra/core/env/search-service/aad-groups/searchserviceaccessgroup.json
+      **/resources/default-tags.json
     groupedDeployments:
         - name: validate_and_setup
           deployments:
