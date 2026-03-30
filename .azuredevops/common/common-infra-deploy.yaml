@@ -62,7 +62,7 @@ resources:
       name: DEFRA/ado-pipeline-common
       endpoint: DEFRA
       type: github
-      ref: refs/heads/ml/add-applicationID-support
+      ref: refs/tags/1.2.0
     # PltConfig provided by root pipeline (deploy-platform-core-env) for config variable templates
 
 extends:
