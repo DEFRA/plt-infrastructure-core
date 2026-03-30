@@ -41,7 +41,10 @@ function New-TransformedParametersFile {
     $val = Escape-JsonString -s $TokenOverrides[$key]
     $content = $content.Replace("#{{ $key }}", $val)
   }
-  $content = [regex]::Replace($content, '#\{\{\s*([\w\.]+)\s*\}\}#', {
+  # Replace tokens in either form:
+  #   "#{{ tokenName }}"   (common in repo parameter files)
+  #   "#{{ tokenName }}#"  (older convention)
+  $content = [regex]::Replace($content, '#\{\{\s*([\w\.]+)\s*\}\}#?', {
     param($m)
     $name = $m.Groups[1].Value
     $val = Get-TokenValue -Name $name -Overrides $TokenOverrides
