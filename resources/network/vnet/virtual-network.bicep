@@ -45,7 +45,7 @@ var commonTags = {
   Location: location
   CreatedDate: createdDate
   Environment: subType
-  Purpose: 'ADP-VIRTUAL-NETWORK'
+  Purpose: 'SPOKE-VIRTUAL-NETWORK'
 }
 var tags = union(loadJsonContent('../../default-tags.json'), commonTags)
 

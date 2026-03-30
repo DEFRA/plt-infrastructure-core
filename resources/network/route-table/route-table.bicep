@@ -23,7 +23,7 @@ var commonTags = {
   Location: location
   CreatedDate: createdDate
   Environment: subType
-  Purpose: 'ADP-ROUTE-TABLE'
+  Purpose: 'SPOKE-ROUTE-TABLE'
 }
 var tags = union(loadJsonContent('../../default-tags.json'), commonTags)
 
