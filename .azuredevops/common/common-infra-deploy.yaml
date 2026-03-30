@@ -63,7 +63,6 @@ resources:
       endpoint: DEFRA
       type: github
       ref: refs/tags/1.2.0
-    # PltConfig provided by root pipeline (deploy-platform-core-env) for config variable templates
 
 extends:
   template: /templates/pipelines/common-infrastructure-deploy.yaml@PipelineCommon
