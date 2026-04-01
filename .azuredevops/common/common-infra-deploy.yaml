@@ -42,14 +42,12 @@ parameters:
     type: string
     default: ''
   - name: variableFiles
-    displayName: List of variable files (merged in order; later entries override earlier)
+    displayName: Variable template paths merged in order (later overrides earlier). For instance-over-regional precedence without relying on regionalVariableFiles, pass common then regional then core in this list (e.g. compile-time paths from pipeline parameters).
     type: object
     default: 
       - /config/common.yaml@PltConfig
-      - /config/regional/{environment}-{region}.yaml@PltConfig
-      - /config/{applicationID}/{instance}/core.yaml@PltConfig
   - name: regionalVariableFiles
-    displayName: Optional extra regional templates loaded after variableFiles (per job region). Prefer leaving empty and listing regional in variableFiles so instance core.yaml wins.
+    displayName: Optional regional templates merged after variableFiles (uses {environment} and {region}). Leave empty if regional is already included in variableFiles with compile-time paths.
     type: object
     default: []
   - name: additionalRepositories

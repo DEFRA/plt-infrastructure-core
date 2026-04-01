@@ -117,6 +117,13 @@ extends:
     instance: ${{ parameters.instance }}
     additionalRepositories:
       - PltConfig
+    # Single variableFiles list (PipelineCommon 1.2.x): later entries win. Compile-time paths avoid {region} in variableFiles.
+    # regionalVariableFiles must be empty so regional is not merged again after core.
+    variableFiles:
+      - /config/common.yaml@PltConfig
+      - /config/regional/${{ parameters.environmentName }}-${{ parameters.location }}.yaml@PltConfig
+      - /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
+    regionalVariableFiles: []
     environments:
       - name: ${{ parameters.environmentName }}
         serviceConnection: $(subscriptionName)
