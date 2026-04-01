@@ -42,16 +42,16 @@ parameters:
     type: string
     default: ''
   - name: variableFiles
-    displayName: List of variable files
+    displayName: List of variable files (merged in order; later entries override earlier)
     type: object
     default: 
       - /config/common.yaml@PltConfig
+      - /config/regional/{environment}-{region}.yaml@PltConfig
       - /config/{applicationID}/{instance}/core.yaml@PltConfig
   - name: regionalVariableFiles
-    displayName: List of regional variable files
+    displayName: Optional extra regional templates loaded after variableFiles (per job region). Prefer leaving empty and listing regional in variableFiles so instance core.yaml wins.
     type: object
-    default: 
-      - /config/regional/{environment}-{region}.yaml@PltConfig
+    default: []
   - name: additionalRepositories
     displayName: Additional repositories that needs reference in the process
     type: object
