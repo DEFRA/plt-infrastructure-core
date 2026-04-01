@@ -146,7 +146,7 @@ extends:
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
                 inlineScript: |
-                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.ps1" "$(expectedEnvironment)" "$(subType)" "$(deploymentEnvInstance)" "$(expectedLocation)" "$(location)"
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.ps1" "$(expectedEnvironment)" "$(subType)" "$(deploymentEnvInstance)" "$(expectedLocation)" "$(location)" "$(coreVersion)" "$(Build.SourceBranchName)"
               - name: validate-additional-dns-config-json
                 type: 'script'
                 scriptType: AzureCLI

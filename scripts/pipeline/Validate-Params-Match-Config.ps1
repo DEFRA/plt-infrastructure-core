@@ -9,13 +9,17 @@
     3 config deploymentEnvInstance (e.g. 4)
     4 expected location (pipeline parameter)
     5 actual location (resolved from config variables)
+    6 expected coreVersion (from config variables)
+    7 actual pipeline branch/tag name (Build.SourceBranchName)
 #>
 param(
   [string]$ExpectedEnvironment = '',
   [string]$ConfigSubType = '',
   [string]$ConfigDeploymentEnvInstance = '',
   [string]$ExpectedLocation = '',
-  [string]$ActualLocation = ''
+  [string]$ActualLocation = '',
+  [string]$ExpectedCoreVersion = '',
+  [string]$ActualSourceBranchName = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -37,6 +41,15 @@ $actLoc = $ActualLocation.ToLowerInvariant().Replace(' ', '')
 # Keep location validation as a direct parameter-vs-config check.
 if (-not [string]::IsNullOrWhiteSpace($expLoc) -and $actLoc -ne $expLoc) {
   Write-Host "##vso[task.logissue type=error]Location mismatch: pipeline parameter (location=$expLoc) does not match config (location=$ActualLocation)."
+  $hasError = $true
+}
+
+if ($hasError) { exit 1 }
+
+$expCoreVer = $ExpectedCoreVersion.ToString().Trim()
+$actBranchName = $ActualSourceBranchName.ToString().Trim()
+if (-not [string]::IsNullOrWhiteSpace($expCoreVer) -and -not [string]::IsNullOrWhiteSpace($actBranchName) -and $expCoreVer -ne $actBranchName) {
+  Write-Host "##vso[task.logissue type=error]coreVersion mismatch: config (coreVersion=$expCoreVer) does not match pipeline run (Build.SourceBranchName=$actBranchName)."
   $hasError = $true
 }
 
