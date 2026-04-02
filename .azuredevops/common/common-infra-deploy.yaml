@@ -1,0 +1,127 @@
+parameters:
+  - name: projectName
+    displayName: Project name
+    type: string
+  - name: deployFromFeature
+    displayName: Deploy to Development Environment from feature branch
+    type: boolean
+    default: false
+  - name: privateAgentName
+    displayName: Private agent pool name. It is used to set a self-hosted private agent pool, while `agentImage` is used to run the pipeline on Microsoft-hosted agents
+    type: string
+    default: ''
+  - name: agentImage
+    displayName: Microsoft-hosted agent pool name. if both `agentImage` and `privateAgentName` is not supplied then it uses 'windows-latest' pool
+    type: string
+    default: ''
+  - name: keyVaultName
+    displayName: Name of the Azure Key Vault to load the secrets from
+    type: string
+    default: ''
+  - name: keyVaultSecretsFilter
+    displayName: A comma-separated list of secret names to be downloaded or * to download all secrets from the selected key vault
+    type: string
+    default: ''
+  - name: groupedDeployments
+    displayName: List of GroupedDeployments(ARM/Bicep deployments)
+    type: object
+  - name: environments
+    displayName: List of environments
+    type: object
+    default: []
+  - name: applicationID
+    displayName: Application ID
+    type: string
+    default: 'aie'
+  - name: instance
+    displayName: Instance
+    type: string
+    default: '01'
+  - name: filePathsForTransform
+    displayName: Additional files location to replace tokens
+    type: string
+    default: ''
+  - name: variableFiles
+    displayName: Variable template paths merged in order (later overrides earlier). For instance-over-regional precedence without relying on regionalVariableFiles, pass common then regional then core in this list (e.g. compile-time paths from pipeline parameters).
+    type: object
+    default: 
+      - /config/common.yaml@PltConfig
+  - name: regionalVariableFiles
+    displayName: Optional regional templates merged after variableFiles (uses {environment} and {region}). Leave empty if regional is already included in variableFiles with compile-time paths.
+    type: object
+    default: []
+  - name: additionalRepositories
+    displayName: Additional repositories that needs reference in the process
+    type: object
+    default: []
+resources:
+  repositories:
+    - repository: PipelineCommon
+      name: DEFRA/ado-pipeline-common
+      endpoint: DEFRA
+      type: github
+      ref: refs/tags/1.2.0
+
+extends:
+  template: /templates/pipelines/common-infrastructure-deploy.yaml@PipelineCommon
+  parameters:
+    deployFromFeature: ${{ parameters.deployFromFeature }}
+    privateAgentName: ${{ parameters.privateAgentName }}
+    agentImage: ${{ parameters.agentImage }}
+    repositoryRoot: $(Pipeline.Workspace)/s/self
+    filePathsForTransform: ${{ parameters.filePathsForTransform }}
+    additionalRepositories: 
+      - ${{ each repo in parameters.additionalRepositories }}:
+        - ${{ repo }}
+    variableFiles: ${{ parameters.variableFiles }}
+    regionalVariableFiles: ${{ parameters.regionalVariableFiles }}
+    applicationID: ${{ parameters.applicationID }}
+    instance: ${{ parameters.instance }}
+    groupedDeployments:
+      - ${{ each groupTemplate in parameters.groupedDeployments }}:
+        - name: ${{ groupTemplate.name }}
+          dependsOnGroupedDeployments: ${{ groupTemplate.dependsOnGroupedDeployments }}
+          deployments:
+            - ${{ each deployment in groupTemplate.deployments }}:
+              - name: ${{ deployment.name }}
+                path: ${{ deployment.path }}
+                scope: ${{ coalesce(deployment.scope,'Resource Group')}}
+                type: ${{ coalesce(deployment.type,'bicep')}}
+                templateName: ${{ deployment.templateName }}
+                deploy: ${{ deployment.deploy }}
+                scriptType: ${{ deployment.scriptType }}       
+                azurePowershellUseCore: ${{ deployment.azurePowershellUseCore }}                  
+                azureCLIScriptType: ${{ deployment.azureCLIScriptType }}   
+                useSystemAccessTokeninScript: ${{ coalesce(deployment.useSystemAccessTokeninScript, False)}}           
+                scriptArguments: ${{ deployment.scriptArguments }}
+                parameterFilePath: ${{ deployment.parameterFilePath }} 
+                scriptRepo: ${{ deployment.scriptRepo }}
+                inlineScript: ${{ deployment.inlineScript }}
+                resourceName: ${{ deployment.resourceName }}
+                resourceGroupName: ${{ deployment.resourceGroupName }}
+                preDeployScriptsList: ${{ deployment.preDeployScriptsList }}
+                serviceConnectionVariableName: ${{ deployment.serviceConnectionVariableName }}
+                postDeployServiceConnectionVariableName: ${{ deployment.postDeployServiceConnectionVariableName }}
+                replaceTokenPaths: ${{ deployment.replaceTokenPaths }}
+                replaceTokenPathsString: ${{ deployment.replaceTokenPathsString }}
+                replaceTokenTargetFiles: ${{ deployment.replaceTokenTargetFiles }}
+                postDeployScriptsList:
+                  - ? ${{ each resource in deployment.privateEndpointDnsRecordsForResources }}
+                    : - displayName: Resolve Private Endpoint IP for '${{ resource.resourceName }}'
+                        scriptPath: "PowerShellLibrary/Get-ResourcePrivateEndPointsDnsRecordsAsJson.ps1"
+                        scriptRepo: PipelineCommonScripts
+                        ScriptArguments: >
+                          -ResourceGroupName '${{ resource.resourceGroupName }}'
+                          -ResourceName '${{ resource.resourceName }}'
+
+                      - displayName: Set DNS record for '${{ resource.resourceName }}'
+                        scriptPath: "PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
+                        scriptRepo: PipelineCommonScripts
+                        serviceConnectionVariableName: "mstAzureResourceManagerConnection"
+                        ScriptArguments: >
+                          -Ttl 120
+                  - ${{ each script in deployment.postDeployScriptsList }}:
+                      - ${{ script }}
+    # Caller passes environments (no default; application pipeline defines its own).
+    environments: ${{ parameters.environments }}
+   

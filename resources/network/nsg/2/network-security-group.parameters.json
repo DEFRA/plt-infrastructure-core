@@ -1,0 +1,99 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "#{{ location }}"
+        },
+"subType": {
+            "value": "#{{ subType }}"
+          },
+        "nsgList": {
+            "value": [
+                {
+                    "name": "#{{ nsgResourceName }}",
+                    "purpose": "LB Backend NSG",
+                    "securityRules": [
+                        
+                        {
+                            "name": "AllowVNetAnyInbound",
+                            "properties": {
+                                "protocol": "*",
+                                "sourcePortRange": "*",
+                                "destinationPortRange": "*",
+                                "sourceAddressPrefix": "VirtualNetwork",
+                                "destinationAddressPrefix": "VirtualNetwork",
+                                "access": "Allow",
+                                "priority": 2000,
+                                "direction": "Inbound",
+                                "sourcePortRanges": [],
+                                "destinationPortRanges": [],
+                                "sourceAddressPrefixes": [],
+                                "destinationAddressPrefixes": [],
+                                "description": "Allow Any Inbound From VNet to VNet"
+                            }
+                        },
+                        {
+                            "name": "AllowVNetAnyOutbound",
+                            "properties": {
+                                "protocol": "*",
+                                "sourcePortRange": "*",
+                                "destinationPortRange": "*",
+                                "sourceAddressPrefix": "VirtualNetwork",
+                                "destinationAddressPrefix": "VirtualNetwork",
+                                "access": "Allow",
+                                "priority": 2000,
+                                "direction": "Outbound",
+                                "sourcePortRanges": [],
+                                "destinationPortRanges": [],
+                                "sourceAddressPrefixes": [],
+                                "destinationAddressPrefixes": [],
+                                "description": "Allow Any Outbound From VNet to VNet"
+                            }
+                        },
+                        {
+                            "name": "AllowAzureLoadBalancerInbound",
+                            "properties": {
+                                "protocol": "*",
+                                "sourcePortRange": "*",
+                                "destinationPortRange": "*",
+                                "sourceAddressPrefix": "AzureLoadBalancer",
+                                "destinationAddressPrefix": "VirtualNetwork",
+                                "access": "Allow",
+                                "priority": 2500,
+                                "direction": "Inbound",
+                                "sourcePortRanges": [],
+                                "destinationPortRanges": [],
+                                "sourceAddressPrefixes": [],
+                                "destinationAddressPrefixes": [],
+                                "description": "Allow inbound from AzureLoadBalancer service tag to subnet"
+                            }
+                        },
+                        {
+                            "name": "DenyAnyOtherInbound",
+                            "properties": {
+                                "protocol": "*",
+                                "sourcePortRange": "*",
+                                "destinationPortRange": "*",
+                                "sourceAddressPrefix": "*",
+                                "destinationAddressPrefix": "*",
+                                "access": "Deny",
+                                "priority": 4000,
+                                "direction": "Inbound",
+                                "sourcePortRanges": [],
+                                "destinationPortRanges": [],
+                                "sourceAddressPrefixes": [],
+                                "destinationAddressPrefixes": [],
+                                "description": "Deny All Other Inbound"
+                            }
+                        }
+                        
+                    ]
+                }
+            ]
+        },
+        "resourceLockEnabled": {
+            "value": "#{{ resourceLockEnabled }}"
+        }
+    }
+}

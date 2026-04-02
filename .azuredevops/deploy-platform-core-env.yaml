@@ -1,0 +1,321 @@
+name: 1.0.$(BuildID)
+
+parameters:
+  - name: deployFromFeature
+    displayName: "Deploy from Feature Branch"
+    type: boolean
+    default: false
+  - name: applicationID
+    displayName: "Application ID (config folder name, e.g. aie)"
+    type: string
+    default: 'aie'
+  - name: instance
+    displayName: "Instance (config folder name, e.g. 01)"
+    type: string
+    default: '01'
+  # Derived in config, however has to be supplied to allow the regional config to work. Validation step confirms config matches supplied values.
+  - name: environmentName
+    displayName: "Environment name for config path (e.g. snd1). Must match config/regional/{environment}-{region}.yaml and config."
+    type: string
+    default: 'snd1'
+  - name: location
+    displayName: "Primary region key for config path (e.g. uksouth). Must match config and config/regional/{environment}-{region}.yaml."
+    type: string
+    default: 'uksouth'
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - infra/core/env/*
+      - infra/common/*
+  drafts: false
+        
+trigger:
+  batch: true
+  branches:
+    include:
+      - '*'
+  paths:
+    include:
+      - infra/core/env/*
+      - infra/common/*
+     
+variables:
+  - group: entra
+  - name: applicationID
+    value: ${{ parameters.applicationID }}
+  - name: instance
+    value: ${{ parameters.instance }}
+  # Validation requires non-empty RG/name values before set-resource-names runs; these are overridden in deployment flow.
+  - name: virtualNetworkResourceGroup
+    value: 'ValidationPlaceholderRG'
+  # Validation requires a non-empty VNet name; overridden by set-resource-names.
+  - name: virtualNetworkName
+    value: 'ValidationPlaceholderVNet'
+  - name: routeTableName
+    value: 'ValidationPlaceholderRT'
+  # Private link zone name from set-resource-names (e.g. for Document Intelligence).
+  - name: documentIntelligencePrivateLinkZoneName
+    value: ''
+  # Validation needs a non-empty DI name before set-resource-names runs; overridden later.
+  - name: documentIntelligenceResourceName
+    value: 'ValidationPlaceholderDI'
+  # infraResourceGroupName from set-resource-names.
+  - name: infraResourceGroupName
+    value: ''
+  # Validation needs a non-empty RG target for AI DI module; overridden when APP RG is created.
+  - name: servicesResourceGroup
+    value: 'ValidationPlaceholderRG'
+  # Validation needs a non-empty subnet token for AI DI private endpoint module; overridden by set-resource-names.
+  - name: subnet3Name
+    value: 'ValidationPlaceholderSUB'
+  # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
+  - name: firewallVirtualApplianceIp
+    value: ''
+  - name: subnets
+    value: '[]'
+  - name: networkJoinGroupObjectId
+    value: ''
+  # Set by resolve-app-rg-contributor-group (Get-AzADGroup + SSV); used by create-platform-resource-groups.
+  - name: appRgContributorObjectId
+    value: ''
+  # Platform resource group roles to create (in addition to INF). INF is always created first. Comma-separated, e.g. EXP,APP. Set in config (variable files).
+  - name: platformResourceGroups
+    value: ''
+  # if no SKU then Document Intelligence is not deployed.
+  - name: documentIntelligenceSku
+    value: ''
+  # Optional JSON array for extra private DNS A records when DI is enabled. Default empty; instance core.yaml may override.
+  - name: additionalDnsConfig
+    value: ''
+  - template: /config/common.yaml@PltConfig
+  # Regional config: path uses compile-time parameters so template resolves; must match config (validated below)
+  - template: /config/regional/${{ parameters.environmentName }}-${{ parameters.location }}.yaml@PltConfig
+  - template: /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
+  # Expected values from parameters for config validation (same pipeline)
+  - name: expectedEnvironment
+    value: ${{ parameters.environmentName }}
+  - name: expectedLocation
+    value: ${{ parameters.location }}
+
+resources:
+  repositories:
+    - repository: PltConfig
+      name: DEFRA/plt-config
+      endpoint: DEFRA
+      type: github
+      ref: refs/heads/main
+
+extends:
+  template: /.azuredevops/common/common-infra-deploy.yaml
+  parameters:
+    projectName: $(projectName)
+    deployFromFeature: ${{ parameters.deployFromFeature }}
+    applicationID: ${{ parameters.applicationID }}
+    instance: ${{ parameters.instance }}
+    additionalRepositories:
+      - PltConfig
+    # Single variableFiles list (PipelineCommon 1.2.x): later entries win. Compile-time paths avoid {region} in variableFiles.
+    # regionalVariableFiles must be empty so regional is not merged again after core.
+    variableFiles:
+      - /config/common.yaml@PltConfig
+      - /config/regional/${{ parameters.environmentName }}-${{ parameters.location }}.yaml@PltConfig
+      - /config/${{ parameters.applicationID }}/${{ parameters.instance }}/core.yaml@PltConfig
+    regionalVariableFiles: []
+    environments:
+      - name: ${{ parameters.environmentName }}
+        serviceConnection: $(subscriptionName)
+        deploymentBranches:
+          - 'refs/heads/main'
+        developmentEnvironment: true
+        privateAgentName: 'DEFRA-COMMON-UBUNTU-SSV3'
+        # primary must be compile-time (parameters) so job names are valid; config $(location) is still used at runtime via variables
+        azureRegions:
+          primary: ${{ parameters.location }}
+    filePathsForTransform: |
+      **/core/env/app-configuration/config-data/config-data.json
+      **/infra/core/env/insights/aad-groups/monitoringpublishergroup.json    
+      **/infra/core/env/open-ai/aad-groups/openaiaccessgroup.json
+      **/infra/core/env/search-service/aad-groups/searchserviceaccessgroup.json
+      **/resources/default-tags.json
+    groupedDeployments:
+        - name: validate_and_setup
+          deployments:
+              # Validate first
+              - name: validate-params-match-config
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: pscore
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.ps1" "$(expectedEnvironment)" "$(subType)" "$(deploymentEnvInstance)" "$(expectedLocation)" "$(location)" "$(coreVersion)" "$(Build.SourceBranchName)"
+              - name: validate-additional-dns-config-json
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: pscore
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-AdditionalDnsConfigJson.ps1" "$(documentIntelligenceSku)" '$(additionalDnsConfig)'
+              # Setup after validation
+              - name: variable-setup
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: pscore
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Normalise-ApplicationId.ps1" "$(applicationID)"
+        - name: landing_zone
+          dependsOnGroupedDeployments:
+            - validate_and_setup
+          deployments:
+              - name: create-aad-groups
+                type: 'script'
+                scriptType: AzurePowerShell
+                serviceConnectionVariableName: 'ssvServiceConnection'
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Invoke-CreateAadGroups.ps1" `
+                    -ManifestPath "$(Pipeline.Workspace)/s/PltConfig/config/$(applicationID)/$(instance)/aad-group.json" `
+                    -ScriptPath "$(Pipeline.Workspace)/s/self/scripts/pipeline/Create-AADGroups.ps1" `
+                    -ClientId "$(entraSPClientId)" `
+                    -TenantId "$(tenantId)" `
+                    -ClientSecret "$(entraSPToken)"
+              - name: set-resource-names
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: pscore
+                serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Set-ResourceNames.ps1" `
+                    -RootPath "$(Pipeline.Workspace)/s/self" `
+                    -Location "$(location)" `
+                    -SubType "$(subType)" `
+                    -ServiceCode "$(serviceCode)" `
+                    -DeploymentEnvInstance "$(deploymentEnvInstance)" `
+                    -RegionCode "$(regionCode)" `
+                    -InstanceNumber "$(instanceNumber)" `
+                    -SubnetLayout "$(subnetLayout)" `
+                    -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)"
+              # Same pattern as VNet pre-deploy Resolve-NetworkJoinGroup: Get-AzADGroup + SSV (ARM CLI SP often cannot read directory).
+              - name: resolve-app-rg-contributor-group
+                type: 'script'
+                scriptType: AzurePowerShell
+                serviceConnectionVariableName: 'ssvServiceConnection'
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Resolve-EntraGroupByDisplayName.ps1" `
+                    -GroupName "$(appRgContributor)" `
+                    -OutputVariableName 'appRgContributorObjectId' `
+                    -IfNotFound 'Error'
+              - name: create-platform-resource-groups
+                type: 'script'
+                scriptType: AzureCLI
+                serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                azureCLIScriptType: pscore
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Create-PlatformResourceGroups.ps1" `
+                    -RootPath "$(Pipeline.Workspace)/s/self" `
+                    -SubType "$(subType)" `
+                    -Location "$(location)" `
+                    -AppRgContributor "$(appRgContributor)" `
+                    -AppRgContributorObjectId "$(appRgContributorObjectId)" `
+                    -ServiceCode "$(serviceCode)" `
+                    -DeploymentEnvInstance "$(deploymentEnvInstance)" `
+                    -RegionCode "$(regionCode)" `
+                    -InstanceNumber "$(instanceNumber)" `
+                    -PlatformResourceGroups "$(platformResourceGroups)" `
+                    -InfraResourceGroupName "$(infraResourceGroupName)"
+              - name: route-table-tokens
+                type: replaceTokensOnly
+                replaceTokenPathsString: 'resources/network/route-table/1;resources/network/route-table/2;resources/network/route-table/3'
+              - name: deploy-route-tables
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: pscore
+                serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-RouteTables.ps1" `
+                    -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
+                    -ResourceGroupName "$(virtualNetworkResourceGroup)" `
+                    -RouteTableName "$(routeTableName)" `
+                    -Location "$(location)" `
+                    -FirewallVirtualApplianceIp "$(firewallVirtualApplianceIp)" `
+                    -SubnetLayout "$(subnetLayout)"
+              - name: deploy-nsgs
+                type: 'script'
+                scriptType: AzureCLI
+                azureCLIScriptType: pscore
+                serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Deploy-NSGs.ps1" `
+                    -BuildSourcesDirectory "$(Pipeline.Workspace)/s/self" `
+                    -ResourceGroupName "$(virtualNetworkResourceGroup)" `
+                    -Location "$(location)" `
+                    -SubType "$(subType)" `
+                    -ServiceCode "$(serviceCode)" `
+                    -DeploymentEnvInstance "$(deploymentEnvInstance)" `
+                    -RegionCode "$(regionCode)" `
+                    -SubnetLayout "$(subnetLayout)"
+              - name: replace-vnet-tokens
+                type: replaceTokensOnly
+                replaceTokenPathsString: 'resources/network/vnet/$(subnetLayout)'
+              - name: virtual-network
+                path: resources/network/vnet
+                parameterFilePath: resources/network/vnet/$(subnetLayout)
+                resourceGroupName: $(virtualNetworkResourceGroup)
+                preDeployScriptsList:
+                    - displayName: "Resolve network join group object ID"
+                      type: AzurePowerShell
+                      serviceConnectionVariableName: 'ssvServiceConnection'
+                      scriptPath: scripts/pipeline/Resolve-NetworkJoinGroup.ps1
+                      scriptArguments: >
+                        -GroupName "$(networkJoinGroupName)"
+                postDeployScriptsList:
+                    - displayName: "Link the VNet to Hub"
+                      scriptPath: scripts/pipeline/Trigger-VNetPeering.ps1
+                      type: AzurePowerShell
+                      serviceConnectionVariableName: 'ssvServiceConnection'
+                      useSystemAccessToken: true
+                      scriptArguments: >
+                        -VirtualNetworkName $(virtualNetworkName)
+                        -SubscriptionName $(subscriptionName)
+                        -TenantId $(tenantId)
+                        -PeerToSec $false
+              # Private DNS zone creation (ai-document-intelligence-zone) omitted: corporate policy prevents creation in certain subscriptions. Use existing zone and add DNS lookup later. Module kept under resources/network/private-dns-zone for other scenarios.
+              - ${{ if and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none')) }}:
+                - name: ai-document-intelligence
+                  path: resources/ai/document-intelligence
+                  parameterFilePath: resources/ai/document-intelligence
+                  resourceGroupName: $(servicesResourceGroup)
+                  preDeployScriptsList:
+                    - displayName: 'Set DNS A records from additionalDnsConfig'
+                      type: AzurePowerShell
+                      azurePowerShellVersion: LatestVersion
+                      azurePowerShellUseCore: true
+                      serviceConnectionVariableName: 'privateDnsServiceConnection'
+                      scriptPath: scripts/pipeline/SetDnsRecords.ps1
+                      scriptArguments: >
+                        -Location "$(location)"
+                        -AdditionalDnsConfig '$(additionalDnsConfig)'
+                        -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+                        -PipelineWorkspace "$(Pipeline.Workspace)"
+                        -BuildSourcesDirectory "$(Build.SourcesDirectory)"
+                  postDeployScriptsList:
+                    - displayName: 'Output Document Intelligence private endpoint IP for DNS'
+                      type: AzureCLI
+                      azureCLIScriptType: pscore
+                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                      scriptPath: scripts/pipeline/Output-DocumentIntelligencePrivateEndpointIp.ps1
+                      scriptArguments: >
+                        -ResourceGroupName "$(servicesResourceGroup)"
+                    - displayName: 'Set Document Intelligence private endpoint DNS A record'
+                      type: AzurePowerShell
+                      azurePowerShellVersion: LatestVersion
+                      azurePowerShellUseCore: true
+                      serviceConnectionVariableName: 'privateDnsServiceConnection'
+                      scriptPath: scripts/pipeline/SetDnsRecords.ps1
+                      scriptArguments: >
+                        -Fqdn "$(documentIntelligenceResourceName).cognitiveservices.azure.com"
+                        -IpAddress "$(documentIntelligencePrivateEndpointIp)"
+                        -Location "$(location)"
+                        -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+                        -PipelineWorkspace "$(Pipeline.Workspace)"
+                        -BuildSourcesDirectory "$(Build.SourcesDirectory)"
+
