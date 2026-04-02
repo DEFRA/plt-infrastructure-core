@@ -1,8 +1,8 @@
 # plt-infrastructure-core
 
-Uses Azure DevOps to deploy, connect and configures a routable spoke network according to Defra standards into an existing subscription. 
+Uses Azure DevOps to deploy, connect, and configure a routable spoke network according to Defra standards into an existing subscription.
 
-The deployment takes configuration from `DEFRA/plt-config` to tune the deployment. 
+The deployment takes configuration from `DEFRA/plt-config` to tune the deployment.
 
 The following non-network resources may also be deployed according to Defra patterns:
 
@@ -11,11 +11,11 @@ The following non-network resources may also be deployed according to Defra patt
 - DNS
 - Resource Groups and permissions.
 
-The deployment provides clear access boudaries as follows:
+The deployment provides clear access boundaries as follows:
 
-- `Network/Infrastructure Resource Group` - Readable by application teams. Permissions allow identities to join the associated VNets (typically identity would be a seperate deployment pipeline).
+- `Network/Infrastructure Resource Group` - Readable by application teams. Permissions allow identities to join the associated VNets (typically identity would be a separate deployment pipeline).
 
-- `Application Resource Group(s)` - One or many Resource Groups many be deployed (using list `platformResourceGroups`). This component is responsible for deploying the Resource Groups and setting RBAC only and not managing the resources withing. Consuming Teams are able manage the resources within. 
+- `Application Resource Group(s)` - One or many Resource Groups may be deployed (using list `platformResourceGroups`). This component is responsible for deploying the Resource Groups and setting RBAC only, and not managing the resources within. Consuming teams are able to manage the resources within.
 
 
 ## How it’s deployed today
@@ -27,9 +27,9 @@ The deployment provides clear access boudaries as follows:
   - `instance` (e.g. `01`)
 
 
-** Environment/Location
+## Environment/Location
 
-`environmentName` (e.g. `snd4`) and `location` (e.g. `uksouth`) are used to select the regional files. These values are avaialble in config thus supplying in paramters too drives duplication. This is driven by how/when ADO resolves variable values and certain restrictions imposed by consuming the `ado-pipeline-common` framework. The target architecture is for these values to be derived and supplied by the wrapper job. For the current architecture the pipeline validates consistency in the two sources of values and aborts if differences are detected. 
+`environmentName` (e.g. `snd4`) and `location` (e.g. `uksouth`) are used to select the regional files. These values are available in config, so supplying them as pipeline parameters duplicates the source of truth. This is driven by how/when ADO resolves variable values and certain restrictions imposed by consuming the `ado-pipeline-common` framework. The target architecture is for these values to be derived and supplied by the wrapper job. For the current architecture, the pipeline validates consistency between the two sources of values and aborts if differences are detected.
 
 ## How it will be deployed in future
 
@@ -37,7 +37,7 @@ The design intention is a wrapper job to automatically identify when a file in `
 
 ## Configuration (plt-config)
 
-The pipeline loads variables from the following and in order i.e. the instance yaml file takes priority:
+The pipeline loads variables from the following, in order (later entries override earlier ones):
 
 - `plt-config/config/common.yaml`
 - `plt-config/config/regional/<environmentName>-<location>.yaml`
