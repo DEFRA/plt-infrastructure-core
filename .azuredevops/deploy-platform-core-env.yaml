@@ -106,7 +106,7 @@ resources:
       name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      ref: refs/heads/ml/initial-structure
+      ref: refs/heads/main
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
