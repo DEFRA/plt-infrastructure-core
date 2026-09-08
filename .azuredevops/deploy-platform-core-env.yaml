@@ -109,7 +109,7 @@ resources:
       name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      ref: refs/heads/main
+      ref: refs/heads/ml/archon
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
