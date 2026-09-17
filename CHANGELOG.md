@@ -2,6 +2,12 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.3.0] - 2026-09-17
+
+### Added
+
+- **Entra app registrations** — Optional instance manifest `app-registration.json` in `plt-config`. The pipeline runs the ADP `Add-AdAppRegistrations` script when the file is present and skips the step when it is not. Feature-branch runs append the branch name to the app display name (for example `-alz-dev`) via `#{{ appRegNameSuffix }}`.
+
 ## [1.2.0] - 2026-09-17
 
 ### Added

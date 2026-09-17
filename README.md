@@ -7,6 +7,7 @@ The deployment takes configuration from `DEFRA/plt-config` to tune the deploymen
 The following non-network resources may also be deployed according to Defra patterns:
 
 - Entra ID Groups and memberships.
+- Entra ID App Registrations (API permissions, optional Key Vault secrets).
 - Document Intelligence
 - DNS
 - Resource Groups and permissions.
@@ -43,6 +44,11 @@ The pipeline loads variables from the following, in order (later entries overrid
 - `plt-config/config/regional/<environmentName>-<location>.yaml`
 - `plt-config/config/<applicationID>/<instance>/core.yaml`
 
+Optional instance manifests (skipped when the file is absent):
+
+- `plt-config/config/<applicationID>/<instance>/aad-group.json`
+- `plt-config/config/<applicationID>/<instance>/app-registration.json`
+
 See [plt-config](https://github.com/DEFRA/plt-config) for the configuration file format and supported variables.
 
 ## Key scripts
@@ -51,6 +57,7 @@ Located under `scripts/pipeline/`:
 
 - `Create-PlatformResourceGroups.ps1`: Creates platform RGs and applies RBAC (Contributor) to the configured Entra group.
 - `Invoke-CreateAadGroups.ps1` / `Create-AADGroups.ps1`: Creates Entra groups from the config manifest.
+- `Invoke-AddAdAppRegistrations.ps1` / `Add-AdAppRegistrations.ps1`: Creates or updates Entra app registrations from `app-registration.json`. Skips the step when that file is not present.
 - `Resolve-NetworkJoinGroup.ps1`: Resolves `networkJoinGroupName` to object id for VNet role assignment.
 - `Resolve-EntraGroupByDisplayName.ps1`: Shared helper to resolve Entra group display names to object ids (used where directory lookups are needed).
 - `SetDnsRecords.ps1`: Unified DNS record updater for both `additionalDnsConfig` entries and Document Intelligence private endpoint DNS.
@@ -59,7 +66,20 @@ Located under `scripts/pipeline/`:
 
 Shared helper scripts live under:
 
-- `scripts/common-scripts/PowerShellLibrary/`: DNS helper scripts used by pipeline steps (e.g. `Set-PrivateDnsRecordSet.ps1`).
+- `scripts/common-scripts/PowerShellLibrary/`: DNS helpers and the ADP `Add-AdAppRegistrations.ps1` script (plus `AppReg-AdditionalFunctions.ps1`) used by pipeline steps.
+
+## App registrations
+
+Optional. Same pattern as Entra groups: drop `app-registration.json` in the instance config folder and the `create-app-registrations` step processes it; omit the file and the step succeeds without doing anything.
+
+- Manifest: `plt-config/config/<applicationID>/<instance>/app-registration.json`
+- Script: ADP `Add-AdAppRegistrations.ps1` (Graph via the **SSV** Azure PowerShell service connection, not the `entra` client-secret SP)
+- Tokens: `#{{ variableName }}` are replaced from pipeline variables. `#{{ appRegNameSuffix }}` is empty on `main` and version tags (`1.2.0`), otherwise `-<branch>` (so a run from `alz-dev` names the app `...-alz-dev`)
+- Graph delegated permissions are `requiredResourceAccess` entries with `"type": "Scope"`. Application permissions use `"type": "Role"`
+- The step stamps the app registration only; it does not grant admin consent
+- The SSV service connection identity needs Graph permission to create/update applications (typically `Application.ReadWrite.All`)
+
+See [plt-config](https://github.com/DEFRA/plt-config) for the manifest shape and the AIE/01 example (Microsoft Graph `email`, `offline_access`, `openid`, `profile`).
 
 ## Repo layout (high level)
 

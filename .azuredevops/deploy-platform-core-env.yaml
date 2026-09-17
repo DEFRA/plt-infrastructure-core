@@ -109,7 +109,7 @@ resources:
       name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      ref: refs/heads/main
+      ref: refs/heads/ml/app-reg-support
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
@@ -132,6 +132,7 @@ extends:
         serviceConnection: $(subscriptionName)
         deploymentBranches:
           - 'refs/heads/main'
+          - 'refs/heads/ml/app-reg-support'
         developmentEnvironment: true
         privateAgentName: 'DEFRA-COMMON-UBUNTU-SSV3'
         # primary must be compile-time (parameters) so job names are valid; config $(location) is still used at runtime via variables
@@ -194,6 +195,15 @@ extends:
                     -ClientId "$(entraSPClientId)" `
                     -TenantId "$(tenantId)" `
                     -ClientSecret "$(entraSPToken)"
+              - name: create-app-registrations
+                type: 'script'
+                scriptType: AzurePowerShell
+                serviceConnectionVariableName: 'ssvServiceConnection'
+                inlineScript: |
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Invoke-AddAdAppRegistrations.ps1" `
+                    -ManifestPath "$(Pipeline.Workspace)/s/PltConfig/config/$(applicationID)/$(instance)/app-registration.json" `
+                    -ScriptPath "$(Pipeline.Workspace)/s/self/scripts/common-scripts/PowerShellLibrary/Add-AdAppRegistrations.ps1" `
+                    -SourceBranchName "$(Build.SourceBranchName)"
               - name: set-resource-names
                 type: 'script'
                 scriptType: AzureCLI
