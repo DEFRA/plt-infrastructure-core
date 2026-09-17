@@ -73,11 +73,11 @@ Shared helper scripts live under:
 Optional. Same pattern as Entra groups: drop `app-registration.json` in the instance config folder and the `create-app-registrations` step processes it; omit the file and the step succeeds without doing anything.
 
 - Manifest: `plt-config/config/<applicationID>/<instance>/app-registration.json`
-- Script: ADP `Add-AdAppRegistrations.ps1` (Graph via the **SSV** Azure PowerShell service connection, not the `entra` client-secret SP)
+- Script: ADP `Add-AdAppRegistrations.ps1`. Graph uses the same **entra** SP as group creation (`entraSPClientId` / `entraSPToken`). The SSV service connection is only the AzurePowerShell task login (Key Vault/ARM if used).
 - Tokens: `#{{ variableName }}` are replaced from pipeline variables. `#{{ appRegNameSuffix }}` is empty on `main` and version tags (`1.2.0`), otherwise `-<branch>` (so a run from `alz-dev` names the app `...-alz-dev`)
 - Graph delegated permissions are `requiredResourceAccess` entries with `"type": "Scope"`. Application permissions use `"type": "Role"`
 - The step stamps the app registration only; it does not grant admin consent
-- The SSV service connection identity needs Graph permission to create/update applications (typically `Application.ReadWrite.All`)
+- The entra SP needs Graph permission to create/update applications and service principals (typically `Application.ReadWrite.All`)
 
 See [plt-config](https://github.com/DEFRA/plt-config) for the manifest shape and the AIE/01 example (Microsoft Graph `email`, `offline_access`, `openid`, `profile`).
 

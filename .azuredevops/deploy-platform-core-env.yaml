@@ -203,6 +203,9 @@ extends:
                   & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Invoke-AddAdAppRegistrations.ps1" `
                     -ManifestPath "$(Pipeline.Workspace)/s/PltConfig/config/$(applicationID)/$(instance)/app-registration.json" `
                     -ScriptPath "$(Pipeline.Workspace)/s/self/scripts/common-scripts/PowerShellLibrary/Add-AdAppRegistrations.ps1" `
+                    -ClientId "$(entraSPClientId)" `
+                    -TenantId "$(tenantId)" `
+                    -ClientSecret "$(entraSPToken)" `
                     -SourceBranchName "$(Build.SourceBranchName)"
               - name: set-resource-names
                 type: 'script'

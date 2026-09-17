@@ -179,16 +179,25 @@ Function Get-DefaultHeadersWithAccessToken {
         [Parameter(Mandatory = $True)]$AzureTokenDomainName,
         [Parameter(Mandatory = $False)]$DefaultProfile
     )
-    $resourceUrl = "https://$AzureTokenDomainName"
-    try {
-        $tokenResponse = Get-AzAccessToken -ResourceUrl $resourceUrl -DefaultProfile $DefaultProfile -ErrorAction Stop
+
+    # Graph calls use the same entra SP client-secret as Create-AADGroups when provided.
+    # ARM/Key Vault still uses the Azure PowerShell service connection context.
+    $token = $null
+    if ($AzureTokenDomainName -eq 'graph.microsoft.com' -and -not [string]::IsNullOrWhiteSpace($env:PLAT_GRAPH_ACCESS_TOKEN)) {
+        $token = $env:PLAT_GRAPH_ACCESS_TOKEN
     }
-    catch {
-        $tokenResponse = Get-AzAccessToken -Resource $resourceUrl -DefaultProfile $DefaultProfile
-    }
-    $token = $tokenResponse.Token
-    if ($token -is [SecureString]) {
-        $token = Get-SecureStringAsPlainText -SecureString $token
+    else {
+        $resourceUrl = "https://$AzureTokenDomainName"
+        try {
+            $tokenResponse = Get-AzAccessToken -ResourceUrl $resourceUrl -DefaultProfile $DefaultProfile -ErrorAction Stop
+        }
+        catch {
+            $tokenResponse = Get-AzAccessToken -Resource $resourceUrl -DefaultProfile $DefaultProfile
+        }
+        $token = $tokenResponse.Token
+        if ($token -is [SecureString]) {
+            $token = Get-SecureStringAsPlainText -SecureString $token
+        }
     }
 
     $accessTokenHeaders = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"

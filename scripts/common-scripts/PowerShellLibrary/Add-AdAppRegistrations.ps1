@@ -319,6 +319,17 @@ Function Set-AadApp {
         }    
     }
 
+    $servicePrincipals = Invoke-RestMethod -Method GET -Headers $headers -Uri $($servicePrincipalUri + $filter -f $($app.displayName))
+    if ($servicePrincipals.value.Length -eq 0) {
+        $spJson = @{}
+        $spJson.Add("appId", $application.appId)
+        if ($app.appRoles) {
+            $spJson.Add("appRoleAssignmentRequired", $True)
+        }
+        Write-Output "Creating Service Principal for '$($app.displayName)'"
+        Invoke-RestMethod -Method Post -Headers $headers -Uri $servicePrincipalUri -Body ($spJson | ConvertTo-Json -Depth 100) | Out-Null
+    }
+
     if ($app.identifierUris) {
         $app.identifierUris = $app.identifierUris -replace '{{appId}}', $application.appId
         $patchBody = @{}
