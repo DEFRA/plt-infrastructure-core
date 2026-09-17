@@ -231,6 +231,9 @@ Function Set-AadApp {
     if ($app.web) {
         $applicationJson.Add("web", $app.web)
     }
+    if ($app.spa) {
+        $applicationJson.Add("spa", $app.spa)
+    }
     if ($app.signInAudience) {
         $applicationJson.Add("signInAudience", $app.signInAudience)
     }
@@ -361,6 +364,74 @@ Function Set-AadApp {
 
         Write-Output "Updating Required Resource Access of '$($app.displayName)'"
         Invoke-RestMethod -Method Patch -Headers $headers -Uri "$applicationsUri/$($application.id)" -Body ($patchBody | ConvertTo-Json -Depth 100) | Out-Null
+    }
+
+    $ownersToEnsure = New-Object System.Collections.ArrayList
+    if ($app.owners) {
+        foreach ($owner in @($app.owners)) {
+            $ownersToEnsure.Add($owner) | Out-Null
+        }
+    }
+    Add-AppRegistrationOwners `
+        -Headers $headers `
+        -GraphApiBaseUrl $graphApiBaseUrl `
+        -GraphApiVersion $graphApiVersion `
+        -ApplicationId $application.id `
+        -Owners $ownersToEnsure `
+        -DisplayName $app.displayName `
+        -CreatorAppId $env:PLAT_GRAPH_CLIENT_ID
+}
+
+Function Add-AppRegistrationOwners {
+    Param(
+        [Parameter(Mandatory = $True)][Object]$Headers,
+        [Parameter(Mandatory = $True)][string]$GraphApiBaseUrl,
+        [Parameter(Mandatory = $True)][string]$GraphApiVersion,
+        [Parameter(Mandatory = $True)][string]$ApplicationId,
+        [Parameter(Mandatory = $False)][Object]$Owners,
+        [Parameter(Mandatory = $True)][string]$DisplayName,
+        [Parameter(Mandatory = $False)][string]$CreatorAppId
+    )
+
+    $ownersUri = "$GraphApiBaseUrl/$GraphApiVersion/applications/$ApplicationId/owners"
+    $existing = Invoke-RestMethod -Method GET -Uri $ownersUri -Headers $Headers
+    $existingIds = @($existing.value | ForEach-Object { $_.id })
+
+    $ownerRefs = New-Object System.Collections.Generic.List[object]
+
+    if (-not [string]::IsNullOrWhiteSpace($CreatorAppId)) {
+        $creatorSp = Invoke-RestMethod -Method GET -Headers $Headers -Uri "$GraphApiBaseUrl/$GraphApiVersion/servicePrincipals(appId='$CreatorAppId')"
+        $ownerRefs.Add([pscustomobject]@{ Label = "creating SP $CreatorAppId"; ObjectId = $creatorSp.id }) | Out-Null
+        Write-Output "Ensuring creating service principal '$($creatorSp.displayName)' ($CreatorAppId) is an owner of App-Registration '$DisplayName'"
+    }
+
+    foreach ($owner in @($Owners)) {
+        if ([string]::IsNullOrWhiteSpace("$owner")) { continue }
+        $ownerRef = "$owner".Trim()
+        $objectId = $null
+        if ($ownerRef -match '^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$') {
+            $objectId = $ownerRef
+        }
+        else {
+            $escaped = [uri]::EscapeDataString($ownerRef)
+            $user = Invoke-RestMethod -Method GET -Headers $Headers -Uri "$GraphApiBaseUrl/$GraphApiVersion/users/$escaped"
+            $objectId = $user.id
+        }
+        $ownerRefs.Add([pscustomobject]@{ Label = $ownerRef; ObjectId = $objectId }) | Out-Null
+    }
+
+    foreach ($ownerRef in $ownerRefs) {
+        if ($existingIds -contains $ownerRef.ObjectId) {
+            Write-Output "Owner '$($ownerRef.Label)' is already an owner of App-Registration '$DisplayName'"
+            continue
+        }
+
+        Write-Output "Adding owner '$($ownerRef.Label)' to App-Registration '$DisplayName'"
+        $ownerBody = @{
+            '@odata.id' = "$GraphApiBaseUrl/$GraphApiVersion/directoryObjects/$($ownerRef.ObjectId)"
+        } | ConvertTo-Json
+        Invoke-RestMethod -Method POST -Uri "$ownersUri/`$ref" -Body $ownerBody -Headers $Headers | Out-Null
+        $existingIds += $ownerRef.ObjectId
     }
 }
 

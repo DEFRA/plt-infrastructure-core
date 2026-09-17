@@ -5,8 +5,7 @@
 .DESCRIPTION
   Skips when app-registration.json is absent (same optional-manifest pattern as AAD groups).
   Graph is authenticated with the same entra SP client id/secret as Create-AADGroups.
-  Replaces #{{ token }} placeholders with pipeline variables. If appRegNameSuffix is not
-  already set, non-release branches get a suffix of -<branch> (e.g. -alz-dev).
+  Replaces #{{ token }} placeholders with pipeline variables.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$ManifestPath,
@@ -14,7 +13,6 @@ param(
   [Parameter(Mandatory = $true)][string]$ClientId,
   [Parameter(Mandatory = $true)][string]$TenantId,
   [Parameter(Mandatory = $true)][string]$ClientSecret,
-  [Parameter()][string]$SourceBranchName = $env:BUILD_SOURCEBRANCHNAME,
   [Parameter()][bool]$FederatedCredential = $false
 )
 
@@ -37,38 +35,11 @@ function Get-VariableValue {
   return ''
 }
 
-function Get-AppRegNameSuffix {
-  param([string]$BranchName)
-
-  $configured = Get-VariableValue -Name 'appRegNameSuffix'
-  if (-not [string]::IsNullOrWhiteSpace($configured)) {
-    return $configured
-  }
-
-  $branch = if ($null -eq $BranchName) { '' } else { $BranchName.ToString().Trim() }
-  if ([string]::IsNullOrWhiteSpace($branch) -or $branch -eq 'main' -or $branch -match '^\d+\.\d+\.\d+$') {
-    return ''
-  }
-
-  $safe = $branch -replace '[^A-Za-z0-9._-]', '-'
-  return "-$safe"
-}
-
-$script:appRegNameSuffixValue = Get-AppRegNameSuffix -BranchName $SourceBranchName
-[Environment]::SetEnvironmentVariable('appRegNameSuffix', $script:appRegNameSuffixValue, 'Process')
-[Environment]::SetEnvironmentVariable('APPREGNAMESUFFIX', $script:appRegNameSuffixValue, 'Process')
-Write-Host "##vso[task.setvariable variable=appRegNameSuffix]$($script:appRegNameSuffixValue)"
-Write-Host "appRegNameSuffix='$($script:appRegNameSuffixValue)' (branch '$SourceBranchName')"
-
 $content = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8
 $pattern = [regex]::Escape('#{{') + '\s*([\w\.]+)\s*' + [regex]::Escape('}}')
 $replaced = [regex]::Replace($content, $pattern, {
   param($m)
-  $varName = $m.Groups[1].Value
-  if ($varName -eq 'appRegNameSuffix') {
-    return $script:appRegNameSuffixValue
-  }
-  return (Get-VariableValue -Name $varName)
+  return (Get-VariableValue -Name $m.Groups[1].Value)
 })
 
 $workingCopy = Join-Path ([System.IO.Path]::GetTempPath()) ("app-registration-" + [guid]::NewGuid().ToString() + ".json")
@@ -92,6 +63,7 @@ catch {
   throw "Graph client-secret auth failed for ClientId $ClientId : $detail"
 }
 $env:PLAT_GRAPH_ACCESS_TOKEN = $tokenResponse.access_token
+$env:PLAT_GRAPH_CLIENT_ID = $ClientId
 Write-Host "Graph token acquired for ClientId $ClientId"
 
 & $ScriptPath -AppRegJsonPath $workingCopy -federatedCredential $FederatedCredential

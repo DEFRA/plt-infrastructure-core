@@ -6,7 +6,7 @@ All notable changes to this repository should be documented in this file.
 
 ### Added
 
-- **Entra app registrations** — Optional instance manifest `app-registration.json` in `plt-config`. The pipeline runs the ADP `Add-AdAppRegistrations` script when the file is present and skips the step when it is not. Graph authentication uses the same entra SP client id/secret as Entra group creation. Feature-branch runs append the branch name to the app display name (for example `-alz-dev`) via `#{{ appRegNameSuffix }}`.
+- **Entra app registrations** — Optional instance manifest `app-registration.json` in `plt-config`. The pipeline runs the ADP `Add-AdAppRegistrations` script when the file is present and skips the step when it is not. Graph authentication uses the same entra SP client id/secret as Entra group creation. Display names are tokenised from config (including `-#{{ instanceNumber }}`). Manifest `owners` are added without removing existing owners.
 
 ## [1.2.0] - 2026-09-17
 

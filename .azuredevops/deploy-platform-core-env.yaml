@@ -205,8 +205,7 @@ extends:
                     -ScriptPath "$(Pipeline.Workspace)/s/self/scripts/common-scripts/PowerShellLibrary/Add-AdAppRegistrations.ps1" `
                     -ClientId "$(entraSPClientId)" `
                     -TenantId "$(tenantId)" `
-                    -ClientSecret "$(entraSPToken)" `
-                    -SourceBranchName "$(Build.SourceBranchName)"
+                    -ClientSecret "$(entraSPToken)"
               - name: set-resource-names
                 type: 'script'
                 scriptType: AzureCLI

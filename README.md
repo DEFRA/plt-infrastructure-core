@@ -74,8 +74,9 @@ Optional. Same pattern as Entra groups: drop `app-registration.json` in the inst
 
 - Manifest: `plt-config/config/<applicationID>/<instance>/app-registration.json`
 - Script: ADP `Add-AdAppRegistrations.ps1`. Graph uses the same **entra** SP as group creation (`entraSPClientId` / `entraSPToken`). The SSV service connection is only the AzurePowerShell task login (Key Vault/ARM if used).
-- Tokens: `#{{ variableName }}` are replaced from pipeline variables. `#{{ appRegNameSuffix }}` is empty on `main` and version tags (`1.2.0`), otherwise `-<branch>` (so a run from `alz-dev` names the app `...-alz-dev`)
+- Tokens: `#{{ variableName }}` are replaced from pipeline variables. Display names typically end with `-#{{ instanceNumber }}`.
 - Graph delegated permissions are `requiredResourceAccess` entries with `"type": "Scope"`. Application permissions use `"type": "Role"`
+- Optional `owners` are added and never removed. The entra SP that creates the app is always made an owner; that cannot be omitted from the JSON.
 - The step stamps the app registration only; it does not grant admin consent
 - The entra SP needs Graph permission to create/update applications and service principals (typically `Application.ReadWrite.All`)
 
