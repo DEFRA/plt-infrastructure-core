@@ -2,7 +2,7 @@
 
 The template number (**subnetLayout** in config) selects which parameter file is used. Each folder is a self-contained VNet "template" – human-readable, no loops in code.
 
-- **1/** – 7 subnets (subnet1 ACI delegation, rest none).
+- **1/** – 7 subnets (subnet 1 ACI delegation; subnets 4 and 5 Container Apps delegation; remaining none).
   - Subnets `1`-`7` use `"routeTableNumber": "#{{ subnetNRouteTable }}"` token pattern.
   - If a given `subnetNRouteTable` is not set in `core.yaml`, token replacement results in an empty string and the VNet template defaults it to route table `1`.
 - **2/** – 3 subnets; subnets `1`-`3` use the same `"routeTableNumber": "#{{ subnetNRouteTable }}"` token pattern.

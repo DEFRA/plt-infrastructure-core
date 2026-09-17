@@ -2,6 +2,12 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.2.0] - 2026-09-17
+
+### Added
+
+- **Second Container Apps subnet** — Layout 1 now delegates **subnet 4** to **`Microsoft.App/environments`**, in addition to subnet 5. The seven-subnet template therefore provides two Container Apps–ready subnets without a separate manual delegation step.
+
 ## [1.1.0] - 2026-04-24
 
 ### Added
