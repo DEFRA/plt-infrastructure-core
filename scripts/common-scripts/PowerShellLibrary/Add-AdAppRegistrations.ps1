@@ -276,61 +276,52 @@ Function Set-AadApp {
     if ($isNewApp) {
         Write-Output "Creating Application '$($app.displayName)'"
         $application = Invoke-RestMethod -Method Post -Headers $headers -Uri $applicationsUri -Body $applicationBody
-
-        $servicePrincipals = Invoke-RestMethod -Method GET -Headers $headers -Uri $($servicePrincipalUri + $filter -f $($app.displayName))
-        if ($servicePrincipals.value.Length -eq 0) {
-            $spJson = @{}
-            $spJson.Add("appId", $application.appId)
-            if ($app.appRoles) {
-                $spJson.Add("appRoleAssignmentRequired", $True)
-            }
-
-            Write-Output "Creating Service Principal for '$($app.displayName)'"
-            $principal = Invoke-RestMethod -Method Post -Headers $headers -Uri $servicePrincipalUri -Body ($spJson | ConvertTo-Json -Depth 100)
-        }
-
-        if ($app.keyVault) {
-            foreach ($secret in $app.keyVault.secrets) {
-                New-AppRegSecretInAadAndKeyVault -headers $headers -app $app -applicationsUri $applicationsUri -application $application -principal $principal -secret $secret -DefaultProfile $ProfileForKeyVault
-            }
-        }
     }
     else {
         Write-Output "Updating Application '$($app.displayName)'"
         Invoke-RestMethod -Method Patch -Headers $headers -Uri "$applicationsUri/$($application.id)" -Body $applicationBody | Out-Null
+    }
 
-        if ($app.keyVault) {
-            Write-Output "Reading Service Principal for '$($app.displayName)'"
-            $spnReadUrl = "$servicePrincipalUri(appId='$($application.appId)')"
-            $principal = Invoke-RestMethod -Method Get -Headers $headers -Uri $spnReadUrl
+    # Application.ReadWrite.OwnedBy can only create an SP after the calling SP owns the app.
+    $ownersToEnsure = New-Object System.Collections.ArrayList
+    if ($app.owners) {
+        foreach ($owner in @($app.owners)) {
+            $ownersToEnsure.Add($owner) | Out-Null
+        }
+    }
+    Add-AppRegistrationOwners `
+        -Headers $headers `
+        -GraphApiBaseUrl $graphApiBaseUrl `
+        -GraphApiVersion $graphApiVersion `
+        -ApplicationId $application.id `
+        -Owners $ownersToEnsure `
+        -DisplayName $app.displayName `
+        -CreatorAppId $env:PLAT_GRAPH_CLIENT_ID
 
-            foreach ($secret in $app.keyVault.secrets) {          
+    $principal = Ensure-AppRegistrationServicePrincipal `
+        -Headers $headers `
+        -ServicePrincipalUri $servicePrincipalUri `
+        -Application $application `
+        -RequireAppRoleAssignment ([bool]$app.appRoles)
+
+    if ($app.keyVault) {
+        foreach ($secret in $app.keyVault.secrets) {
+            $shouldCreateSecret = $true
+            if (-not $isNewApp -and $secret.type -eq 'ClientSecret') {
                 if ($secret.clientSecretDescriptionPrefix -and $secret.clientSecretDescriptionPrefix -ne '') {
                     $secretDisplayName = "$($secret.clientSecretDescriptionPrefix) - ADO automatic"
                 }
                 else {
                     $secretDisplayName = "ADO automatic"
                 }
-        
                 $applicationSecrets = $application.passwordCredentials
                 $appRegSecretsExists = $applicationSecrets | Where-Object { ($_.displayName -eq $secretDisplayName) -or ($_.displayName -eq $secret.clientSecretDescriptionPrefix) }
- 
-                if ((-not $appRegSecretsExists) -or $secret.type -ne 'ClientSecret') {
-                    New-AppRegSecretInAadAndKeyVault -headers $headers -app $app -applicationsUri $applicationsUri -application $application -principal $principal -secret $secret -DefaultProfile $ProfileForKeyVault
-                }
-            }     
-        }    
-    }
-
-    $servicePrincipals = Invoke-RestMethod -Method GET -Headers $headers -Uri $($servicePrincipalUri + $filter -f $($app.displayName))
-    if ($servicePrincipals.value.Length -eq 0) {
-        $spJson = @{}
-        $spJson.Add("appId", $application.appId)
-        if ($app.appRoles) {
-            $spJson.Add("appRoleAssignmentRequired", $True)
+                $shouldCreateSecret = -not $appRegSecretsExists
+            }
+            if ($shouldCreateSecret) {
+                New-AppRegSecretInAadAndKeyVault -headers $headers -app $app -applicationsUri $applicationsUri -application $application -principal $principal -secret $secret -DefaultProfile $ProfileForKeyVault
+            }
         }
-        Write-Output "Creating Service Principal for '$($app.displayName)'"
-        Invoke-RestMethod -Method Post -Headers $headers -Uri $servicePrincipalUri -Body ($spJson | ConvertTo-Json -Depth 100) | Out-Null
     }
 
     if ($app.identifierUris) {
@@ -365,21 +356,80 @@ Function Set-AadApp {
         Write-Output "Updating Required Resource Access of '$($app.displayName)'"
         Invoke-RestMethod -Method Patch -Headers $headers -Uri "$applicationsUri/$($application.id)" -Body ($patchBody | ConvertTo-Json -Depth 100) | Out-Null
     }
+}
 
-    $ownersToEnsure = New-Object System.Collections.ArrayList
-    if ($app.owners) {
-        foreach ($owner in @($app.owners)) {
-            $ownersToEnsure.Add($owner) | Out-Null
+Function Get-AppRegistrationServicePrincipal {
+    Param(
+        [Parameter(Mandatory = $True)][Object]$Headers,
+        [Parameter(Mandatory = $True)][string]$ServicePrincipalUri,
+        [Parameter(Mandatory = $True)][string]$AppId
+    )
+
+    try {
+        return Invoke-RestMethod -Method Get -Headers $Headers -Uri "$ServicePrincipalUri(appId='$AppId')" -ErrorAction Stop
+    }
+    catch {
+        $status = $null
+        if ($_.Exception.Response) {
+            $status = [int]$_.Exception.Response.StatusCode
+        }
+        if ($status -eq 404) {
+            return $null
+        }
+        throw
+    }
+}
+
+Function Ensure-AppRegistrationServicePrincipal {
+    Param(
+        [Parameter(Mandatory = $True)][Object]$Headers,
+        [Parameter(Mandatory = $True)][string]$ServicePrincipalUri,
+        [Parameter(Mandatory = $True)][Object]$Application,
+        [Parameter(Mandatory = $False)][bool]$RequireAppRoleAssignment
+    )
+
+    $principal = Get-AppRegistrationServicePrincipal -Headers $Headers -ServicePrincipalUri $ServicePrincipalUri -AppId $Application.appId
+    if ($principal) {
+        Write-Output "Service Principal for '$($Application.displayName)' already exists."
+        return $principal
+    }
+
+    $spJson = @{
+        appId = $Application.appId
+    }
+    if ($RequireAppRoleAssignment) {
+        $spJson.Add("appRoleAssignmentRequired", $True)
+    }
+    $spBody = $spJson | ConvertTo-Json -Depth 100
+
+    $maxAttempts = 8
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        Write-Output "Creating Service Principal for '$($Application.displayName)' (attempt $attempt/$maxAttempts)"
+        try {
+            return Invoke-RestMethod -Method Post -Headers $Headers -Uri $ServicePrincipalUri -Body $spBody -ErrorAction Stop
+        }
+        catch {
+            $detail = $_.ErrorDetails.Message
+            if (-not $detail) { $detail = $_.Exception.Message }
+
+            $principal = Get-AppRegistrationServicePrincipal -Headers $Headers -ServicePrincipalUri $ServicePrincipalUri -AppId $Application.appId
+            if ($principal) {
+                Write-Output "Service Principal for '$($Application.displayName)' now exists."
+                return $principal
+            }
+
+            $isOwnedByReplication = $detail -match 'backing application of the service principal being created must in the local tenant'
+            if ($isOwnedByReplication -and $attempt -lt $maxAttempts) {
+                $delaySeconds = [Math]::Min(2 * $attempt, 10)
+                Write-Output "Caller ownership not yet visible to Graph; waiting ${delaySeconds}s before retry."
+                Start-Sleep -Seconds $delaySeconds
+                continue
+            }
+            throw
         }
     }
-    Add-AppRegistrationOwners `
-        -Headers $headers `
-        -GraphApiBaseUrl $graphApiBaseUrl `
-        -GraphApiVersion $graphApiVersion `
-        -ApplicationId $application.id `
-        -Owners $ownersToEnsure `
-        -DisplayName $app.displayName `
-        -CreatorAppId $env:PLAT_GRAPH_CLIENT_ID
+
+    throw "Could not create service principal for '$($Application.displayName)'."
 }
 
 Function Add-AppRegistrationOwners {
