@@ -80,7 +80,7 @@ Optional. Same pattern as Entra groups: drop `app-registration.json` in the inst
 - Admin consent is attempted for `requiredResourceAccess` (`grantAdminConsent` defaults to true). If the pipeline entra SP lacks privilege, the step **warns and continues** — the app/SP are still created. A user Cloud Application Administrator role does not apply to the SP. To automate consent, assign **Cloud Application Administrator to the entra service principal**, or give it Graph `DelegatedPermissionGrant.ReadWrite.All` (admin-consented). Otherwise grant consent in the portal on the **Enterprise application**.
 - The entra SP also needs Graph permission to create/update applications and service principals (typically `Application.ReadWrite.OwnedBy` or `Application.ReadWrite.All`)
 
-See [plt-config](https://github.com/DEFRA/plt-config) for the manifest shape and the AIE/01 example (Microsoft Graph `email`, `offline_access`, `openid`, `profile`, `User.Read`).
+See [plt-config](https://github.com/DEFRA/plt-config) for the manifest shape and Graph delegated permission ids.
 
 ## Repo layout (high level)
 
