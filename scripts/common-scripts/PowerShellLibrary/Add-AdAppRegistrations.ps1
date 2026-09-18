@@ -451,6 +451,22 @@ Function Get-GraphErrorDetail {
     return "$ErrorRecord"
 }
 
+Function Test-GraphInsufficientPrivilege {
+    Param($ErrorRecord)
+    $detail = Get-GraphErrorDetail -ErrorRecord $ErrorRecord
+    return ($detail -match 'Authorization_RequestDenied|Insufficient privileges')
+}
+
+Function Write-AdminConsentPrivilegeWarning {
+    Param(
+        [string]$DisplayName,
+        [string]$Detail
+    )
+    $msg = "Admin consent for '$DisplayName' was skipped. The pipeline entra SP cannot create oauth2PermissionGrants. Cloud Application Administrator on a user does not apply to this SP. Assign directory role Cloud Application Administrator to the entra service principal, or grant it Graph application permission DelegatedPermissionGrant.ReadWrite.All (admin-consented). Until then, grant consent on the Enterprise application in the portal. Graph: $Detail"
+    Write-Warning $msg
+    Write-Host "##vso[task.logissue type=warning]$msg"
+}
+
 Function Grant-AppRegistrationAdminConsent {
     Param(
         [Parameter(Mandatory = $True)][Object]$Headers,
@@ -503,7 +519,11 @@ Function Grant-AppRegistrationAdminConsent {
             }
             catch {
                 $detail = Get-GraphErrorDetail -ErrorRecord $_
-                throw "Failed to read oauth2PermissionGrants for '$DisplayName'. The entra SP needs DelegatedPermissionGrant.ReadWrite.All (admin-consented). Portal app owners cannot grant tenant admin consent. Graph error: $detail"
+                if (Test-GraphInsufficientPrivilege -ErrorRecord $_) {
+                    Write-AdminConsentPrivilegeWarning -DisplayName $DisplayName -Detail $detail
+                    return
+                }
+                throw "Failed to read oauth2PermissionGrants for '$DisplayName'. Graph error: $detail"
             }
 
             try {
@@ -538,7 +558,11 @@ Function Grant-AppRegistrationAdminConsent {
             }
             catch {
                 $detail = Get-GraphErrorDetail -ErrorRecord $_
-                throw "Failed to grant delegated admin consent for '$DisplayName'. The entra SP needs DelegatedPermissionGrant.ReadWrite.All (admin-consented). App owners cannot click Grant admin consent in the portal. Graph error: $detail"
+                if (Test-GraphInsufficientPrivilege -ErrorRecord $_) {
+                    Write-AdminConsentPrivilegeWarning -DisplayName $DisplayName -Detail $detail
+                    return
+                }
+                throw "Failed to grant delegated admin consent for '$DisplayName'. Graph error: $detail"
             }
         }
 
@@ -549,7 +573,11 @@ Function Grant-AppRegistrationAdminConsent {
             }
             catch {
                 $detail = Get-GraphErrorDetail -ErrorRecord $_
-                throw "Failed to read appRoleAssignments for '$DisplayName'. The entra SP needs AppRoleAssignment.ReadWrite.All (admin-consented). Graph error: $detail"
+                if (Test-GraphInsufficientPrivilege -ErrorRecord $_) {
+                    Write-AdminConsentPrivilegeWarning -DisplayName $DisplayName -Detail $detail
+                    return
+                }
+                throw "Failed to read appRoleAssignments for '$DisplayName'. Graph error: $detail"
             }
             $existingRoleIds = @($assignments.value | ForEach-Object { $_.appRoleId })
 
@@ -569,7 +597,11 @@ Function Grant-AppRegistrationAdminConsent {
                 }
                 catch {
                     $detail = Get-GraphErrorDetail -ErrorRecord $_
-                    throw "Failed to grant application admin consent for '$DisplayName'. The entra SP needs AppRoleAssignment.ReadWrite.All (admin-consented). Graph error: $detail"
+                    if (Test-GraphInsufficientPrivilege -ErrorRecord $_) {
+                        Write-AdminConsentPrivilegeWarning -DisplayName $DisplayName -Detail $detail
+                        return
+                    }
+                    throw "Failed to grant application admin consent for '$DisplayName'. Graph error: $detail"
                 }
             }
         }
