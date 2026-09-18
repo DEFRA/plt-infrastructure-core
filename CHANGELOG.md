@@ -2,7 +2,7 @@
 
 All notable changes to this repository should be documented in this file.
 
-## [1.3.0] - 2026-09-17
+## [1.3.0] - 2026-09-18
 
 ### Added
 
