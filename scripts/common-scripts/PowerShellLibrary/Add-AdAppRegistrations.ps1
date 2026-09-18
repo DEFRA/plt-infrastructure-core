@@ -356,6 +356,18 @@ Function Set-AadApp {
         Write-Output "Updating Required Resource Access of '$($app.displayName)'"
         Invoke-RestMethod -Method Patch -Headers $headers -Uri "$applicationsUri/$($application.id)" -Body ($patchBody | ConvertTo-Json -Depth 100) | Out-Null
     }
+
+    if ($app.grantAdminConsent -ne $false) {
+        $application = Invoke-RestMethod -Method GET -Headers $headers -Uri "$applicationsUri/$($application.id)"
+        Grant-AppRegistrationAdminConsent `
+            -Headers $headers `
+            -GraphApiBaseUrl $graphApiBaseUrl `
+            -GraphApiVersion $graphApiVersion `
+            -ServicePrincipalUri $servicePrincipalUri `
+            -ClientPrincipal $principal `
+            -RequiredResourceAccess $application.requiredResourceAccess `
+            -DisplayName $app.displayName
+    }
 }
 
 Function Get-AppRegistrationServicePrincipal {
@@ -430,6 +442,138 @@ Function Ensure-AppRegistrationServicePrincipal {
     }
 
     throw "Could not create service principal for '$($Application.displayName)'."
+}
+
+Function Get-GraphErrorDetail {
+    Param($ErrorRecord)
+    if ($ErrorRecord.ErrorDetails.Message) { return $ErrorRecord.ErrorDetails.Message }
+    if ($ErrorRecord.Exception.Message) { return $ErrorRecord.Exception.Message }
+    return "$ErrorRecord"
+}
+
+Function Grant-AppRegistrationAdminConsent {
+    Param(
+        [Parameter(Mandatory = $True)][Object]$Headers,
+        [Parameter(Mandatory = $True)][string]$GraphApiBaseUrl,
+        [Parameter(Mandatory = $True)][string]$GraphApiVersion,
+        [Parameter(Mandatory = $True)][string]$ServicePrincipalUri,
+        [Parameter(Mandatory = $True)][Object]$ClientPrincipal,
+        [Parameter(Mandatory = $False)][Object]$RequiredResourceAccess,
+        [Parameter(Mandatory = $True)][string]$DisplayName
+    )
+
+    if (-not $ClientPrincipal -or -not $RequiredResourceAccess) {
+        return
+    }
+
+    Write-Output "Granting admin consent for '$DisplayName'..."
+
+    foreach ($resource in @($RequiredResourceAccess)) {
+        if (-not $resource.resourceAppId) { continue }
+
+        $resourceSp = Get-AppRegistrationServicePrincipal -Headers $Headers -ServicePrincipalUri $ServicePrincipalUri -AppId $resource.resourceAppId
+        if (-not $resourceSp) {
+            throw "Cannot grant admin consent: resource service principal for appId '$($resource.resourceAppId)' was not found in the tenant."
+        }
+
+        $scopeValues = New-Object System.Collections.Generic.List[string]
+        $roleIds = New-Object System.Collections.Generic.List[string]
+        foreach ($access in @($resource.resourceAccess)) {
+            if ($access.type -eq 'Scope') {
+                $scope = @($resourceSp.oauth2PermissionScopes) | Where-Object { $_.id -eq $access.id } | Select-Object -First 1
+                if ($scope -and $scope.value) {
+                    $scopeValues.Add($scope.value) | Out-Null
+                }
+                else {
+                    Write-Warning "Unknown delegated permission id '$($access.id)' on resource '$($resource.resourceAppId)'."
+                }
+            }
+            elseif ($access.type -eq 'Role') {
+                $roleIds.Add($access.id) | Out-Null
+            }
+        }
+
+        if ($scopeValues.Count -gt 0) {
+            $uniqueScopes = @($scopeValues | Select-Object -Unique)
+            $scopeString = $uniqueScopes -join ' '
+            $filter = "clientId eq '$($ClientPrincipal.id)' and resourceId eq '$($resourceSp.id)'"
+            $grantsUri = "$GraphApiBaseUrl/$GraphApiVersion/oauth2PermissionGrants?`$filter=$filter"
+            try {
+                $grants = Invoke-RestMethod -Method GET -Headers $Headers -Uri $grantsUri -ErrorAction Stop
+            }
+            catch {
+                $detail = Get-GraphErrorDetail -ErrorRecord $_
+                throw "Failed to read oauth2PermissionGrants for '$DisplayName'. The entra SP needs DelegatedPermissionGrant.ReadWrite.All (admin-consented). Portal app owners cannot grant tenant admin consent. Graph error: $detail"
+            }
+
+            try {
+                $existingGrants = @($grants.value)
+                if ($existingGrants.Count -gt 0) {
+                    $grant = $existingGrants[0]
+                    $existingScopes = @()
+                    if ($grant.scope) {
+                        $existingScopes = @($grant.scope -split '\s+' | Where-Object { $_ })
+                    }
+                    $merged = @($existingScopes + $uniqueScopes | Select-Object -Unique)
+                    $mergedString = $merged -join ' '
+                    if ($mergedString -ne $grant.scope) {
+                        Write-Output "Updating delegated admin consent on '$DisplayName' for '$($resourceSp.displayName)': $mergedString"
+                        $patchBody = @{ scope = $mergedString } | ConvertTo-Json
+                        Invoke-RestMethod -Method PATCH -Headers $Headers -Uri "$GraphApiBaseUrl/$GraphApiVersion/oauth2PermissionGrants/$($grant.id)" -Body $patchBody | Out-Null
+                    }
+                    else {
+                        Write-Output "Delegated admin consent already present on '$DisplayName' for '$($resourceSp.displayName)': $mergedString"
+                    }
+                }
+                else {
+                    Write-Output "Creating delegated admin consent on '$DisplayName' for '$($resourceSp.displayName)': $scopeString"
+                    $body = @{
+                        clientId    = $ClientPrincipal.id
+                        consentType = 'AllPrincipals'
+                        resourceId  = $resourceSp.id
+                        scope       = $scopeString
+                    } | ConvertTo-Json
+                    Invoke-RestMethod -Method POST -Headers $Headers -Uri "$GraphApiBaseUrl/$GraphApiVersion/oauth2PermissionGrants" -Body $body | Out-Null
+                }
+            }
+            catch {
+                $detail = Get-GraphErrorDetail -ErrorRecord $_
+                throw "Failed to grant delegated admin consent for '$DisplayName'. The entra SP needs DelegatedPermissionGrant.ReadWrite.All (admin-consented). App owners cannot click Grant admin consent in the portal. Graph error: $detail"
+            }
+        }
+
+        if ($roleIds.Count -gt 0) {
+            $assignmentsUri = "$ServicePrincipalUri/$($ClientPrincipal.id)/appRoleAssignments"
+            try {
+                $assignments = Invoke-RestMethod -Method GET -Headers $Headers -Uri $assignmentsUri -ErrorAction Stop
+            }
+            catch {
+                $detail = Get-GraphErrorDetail -ErrorRecord $_
+                throw "Failed to read appRoleAssignments for '$DisplayName'. The entra SP needs AppRoleAssignment.ReadWrite.All (admin-consented). Graph error: $detail"
+            }
+            $existingRoleIds = @($assignments.value | ForEach-Object { $_.appRoleId })
+
+            foreach ($roleId in $roleIds) {
+                if ($existingRoleIds -contains $roleId) {
+                    Write-Output "Application permission '$roleId' already granted on '$DisplayName' for '$($resourceSp.displayName)'"
+                    continue
+                }
+                Write-Output "Granting application permission '$roleId' on '$DisplayName' for '$($resourceSp.displayName)'"
+                $body = @{
+                    principalId = $ClientPrincipal.id
+                    resourceId  = $resourceSp.id
+                    appRoleId   = $roleId
+                } | ConvertTo-Json
+                try {
+                    Invoke-RestMethod -Method POST -Headers $Headers -Uri $assignmentsUri -Body $body | Out-Null
+                }
+                catch {
+                    $detail = Get-GraphErrorDetail -ErrorRecord $_
+                    throw "Failed to grant application admin consent for '$DisplayName'. The entra SP needs AppRoleAssignment.ReadWrite.All (admin-consented). Graph error: $detail"
+                }
+            }
+        }
+    }
 }
 
 Function Add-AppRegistrationOwners {
