@@ -99,7 +99,12 @@
           "serviceEndpoints": [],
           "privateEndpointNetworkPolicies": "Enabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
-          "delegations": [],
+          "delegations": [
+            {
+              "name": "applicationGatewayDelegation",
+              "properties": { "serviceName": "Microsoft.Network/applicationGateways" }
+            }
+          ],
           "nsgLayout": "#{{ subnet7NsgLayout }}",
           "routeTable": { "routeTableNumber": "#{{ subnet7RouteTable }}" }
         }
