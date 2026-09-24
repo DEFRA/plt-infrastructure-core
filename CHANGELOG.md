@@ -2,6 +2,12 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.3.1] - 2026-09-24
+
+### Added
+
+- **Naming role code `AIP`** — Allowed role value **Automated Intelligence Platform** in `resources/naming-convention/naming-convention.bicep`, so resource groups and other named resources can use the AIP role segment (for example platform RGs).
+
 ## [1.3.0] - 2026-09-18
 
 ### Added
