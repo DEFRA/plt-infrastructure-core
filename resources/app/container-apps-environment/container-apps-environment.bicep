@@ -94,8 +94,16 @@ module managedEnvironment 'br/SharedDefraRegistry:app.managed-environment:0.4.10
   }
 }
 
+// Module does not output staticIp; read it from the deployed environment (same pattern as ADP DNS zone).
+resource managedEnvironmentResource 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
+  name: containerAppsEnvironment.name
+  dependsOn: [
+    managedEnvironment
+  ]
+}
+
 var defaultDomain = toLower(managedEnvironment.outputs.defaultDomain)
-var staticIp = managedEnvironment.outputs.staticIp
+var staticIp = managedEnvironmentResource.properties.staticIp
 
 module privateDnsZone 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = {
   name: 'container-apps-environment-dns-${deploymentDate}'
