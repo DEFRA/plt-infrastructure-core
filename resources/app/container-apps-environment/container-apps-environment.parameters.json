@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "containerAppsEnvironment": {
+      "value": {
+        "name": "#{{ containerAppsEnvironmentName }}"
+      }
+    },
+    "logAnalytics": {
+      "value": {
+        "name": "#{{ logAnalyticsWorkspaceName }}",
+        "skuName": "PerGB2018"
+      }
+    },
+    "vnet": {
+      "value": {
+        "name": "#{{ virtualNetworkName }}",
+        "resourceGroup": "#{{ virtualNetworkResourceGroup }}",
+        "subnetContainerApps": "#{{ containerAppsEnvironmentSubnetName }}"
+      }
+    },
+    "subType": {
+      "value": "#{{ subType }}"
+    },
+    "internal": {
+      "value": true
+    },
+    "resourceLockEnabled": {
+      "value": #{{ resourceLockEnabled }}
+    }
+  }
+}

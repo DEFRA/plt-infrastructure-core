@@ -71,6 +71,13 @@ variables:
   # Validation needs a non-empty subnet token for AI DI private endpoint module; overridden by set-resource-names.
   - name: subnet3Name
     value: 'ValidationPlaceholderSUB'
+  # Validation needs non-empty CAE / LAW / subnet names before set-resource-names runs; overridden later.
+  - name: containerAppsEnvironmentName
+    value: 'ValidationPlaceholderACE'
+  - name: logAnalyticsWorkspaceName
+    value: 'ValidationPlaceholderLW'
+  - name: containerAppsEnvironmentSubnetName
+    value: 'ValidationPlaceholderSUB'
   # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
   - name: firewallVirtualApplianceIp
     value: ''
@@ -86,6 +93,9 @@ variables:
     value: ''
   # if no SKU then Document Intelligence is not deployed.
   - name: documentIntelligenceSku
+    value: ''
+  # subnetN (e.g. subnet4) = deploy internal-only Container Apps Environment on that subnet; empty/none = skip.
+  - name: containerAppsEnvironment
     value: ''
   # Optional JSON array for extra private DNS A records when DI is enabled. Default empty; instance core.yaml may override.
   - name: additionalDnsConfig
@@ -109,7 +119,7 @@ resources:
       name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      ref: refs/heads/main
+      ref: refs/heads/ml/container-app-env
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
@@ -132,6 +142,7 @@ extends:
         serviceConnection: $(subscriptionName)
         deploymentBranches:
           - 'refs/heads/main'
+          - 'refs/heads/ml/container-app-env'
         developmentEnvironment: true
         privateAgentName: 'DEFRA-COMMON-UBUNTU-SSV3'
         # primary must be compile-time (parameters) so job names are valid; config $(location) is still used at runtime via variables
@@ -220,7 +231,8 @@ extends:
                     -RegionCode "$(regionCode)" `
                     -InstanceNumber "$(instanceNumber)" `
                     -SubnetLayout "$(subnetLayout)" `
-                    -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)"
+                    -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)" `
+                    -ContainerAppsEnvironmentSubnet "$(containerAppsEnvironment)"
               # Same pattern as VNet pre-deploy Resolve-NetworkJoinGroup: Get-AzADGroup + SSV (ARM CLI SP often cannot read directory).
               - name: resolve-app-rg-contributor-group
                 type: 'script'
@@ -345,4 +357,29 @@ extends:
                         -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
                         -PipelineWorkspace "$(Pipeline.Workspace)"
                         -BuildSourcesDirectory "$(Build.SourcesDirectory)"
+              - ${{ if and(ne(coalesce(variables.containerAppsEnvironment, ''), ''), ne(lower(coalesce(variables.containerAppsEnvironment, '')), 'none')) }}:
+                - name: container-apps-environment
+                  path: resources/app/container-apps-environment
+                  parameterFilePath: resources/app/container-apps-environment
+                  resourceGroupName: $(servicesResourceGroup)
+                  postDeployScriptsList:
+                    - displayName: 'Output Container Apps Environment private DNS zone for hub linking'
+                      type: AzureCLI
+                      azureCLIScriptType: pscore
+                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                      scriptPath: scripts/pipeline/Output-ContainerAppsEnvironment.ps1
+                      scriptArguments: >
+                        -ResourceGroupName "$(servicesResourceGroup)"
+                    - displayName: 'Link Container Apps Environment private DNS zone to hub networks'
+                      type: AzurePowerShell
+                      azurePowerShellVersion: LatestVersion
+                      azurePowerShellUseCore: true
+                      serviceConnectionVariableName: 'ssvServiceConnection'
+                      useSystemAccessToken: true
+                      scriptPath: scripts/pipeline/Trigger-LinkPrivateDNSZones.ps1
+                      scriptArguments: >
+                        -PrivateDnsZoneName "$(containerAppsEnvironmentPrivateDnsZoneName)"
+                        -ResourceGroupName "$(servicesResourceGroup)"
+                        -SubscriptionName "$(subscriptionName)"
+                        -TenantId "$(tenantId)"
 

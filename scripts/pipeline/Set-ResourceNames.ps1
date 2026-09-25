@@ -4,8 +4,9 @@
 
 .DESCRIPTION
   Runs `resources/naming-convention/get-names.bicep` once and stores outputs
-  as pipeline variables (resource group, vnet, route table, subnet names, and
-  optional private link names). This keeps naming logic centralized and DRY.
+  as pipeline variables (resource group, vnet, route table, subnet names,
+  optional private link names, Container Apps Environment and Log Analytics names).
+  This keeps naming logic centralized and DRY.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$RootPath,
@@ -16,7 +17,9 @@ param(
   [Parameter(Mandatory = $true)][string]$RegionCode,
   [Parameter(Mandatory = $true)][string]$InstanceNumber,
   [Parameter(Mandatory = $true)][string]$SubnetLayout,
-  [string]$AdiPrivateLinkZoneSuffix = ''
+  [string]$AdiPrivateLinkZoneSuffix = '',
+  # When set to subnetN (e.g. subnet4), exports containerAppsEnvironmentSubnetName from that subnet's named output.
+  [string]$ContainerAppsEnvironmentSubnet = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -76,14 +79,17 @@ $rtName = az deployment sub show --name $namingDeploymentName --query "propertie
 $subnetNamesJson = az deployment sub show --name $namingDeploymentName --query "properties.outputs.subnetNames.value" -o json 2>$null
 $zoneName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneName.value" -o tsv 2>$null
 $privateLinkResourceName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneResourceName.value" -o tsv 2>$null
+$caeName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.containerAppsEnvironmentName.value" -o tsv 2>$null
+$lawName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.logAnalyticsWorkspaceName.value" -o tsv 2>$null
 
 if (-not $rgName) { throw "set-resource-names: could not get resourceGroupName" }
 Write-Host "##vso[task.setvariable variable=infraResourceGroupName]$rgName"
 Write-Host "##vso[task.setvariable variable=virtualNetworkName]$vnetName"
 Write-Host "##vso[task.setvariable variable=routeTableName]$rtName"
 
+$subnetNames = @()
 if (-not [string]::IsNullOrWhiteSpace($subnetNamesJson) -and $subnetNamesJson -ne '[]') {
-  $subnetNames = $subnetNamesJson | ConvertFrom-Json
+  $subnetNames = @($subnetNamesJson | ConvertFrom-Json)
   for ($i = 0; $i -lt $subnetNames.Count; $i++) {
     $n = $i + 1
     Write-Host "##vso[task.setvariable variable=subnet${n}Name]$($subnetNames[$i])"
@@ -94,4 +100,23 @@ if (-not [string]::IsNullOrWhiteSpace($zoneName)) {
 }
 if (-not [string]::IsNullOrWhiteSpace($privateLinkResourceName)) {
   Write-Host "##vso[task.setvariable variable=documentIntelligenceResourceName]$privateLinkResourceName"
+}
+if (-not [string]::IsNullOrWhiteSpace($caeName)) {
+  Write-Host "##vso[task.setvariable variable=containerAppsEnvironmentName]$caeName"
+}
+if (-not [string]::IsNullOrWhiteSpace($lawName)) {
+  Write-Host "##vso[task.setvariable variable=logAnalyticsWorkspaceName]$lawName"
+}
+
+$caeSubnetKey = $ContainerAppsEnvironmentSubnet.Trim().ToLowerInvariant()
+if (-not [string]::IsNullOrWhiteSpace($caeSubnetKey) -and $caeSubnetKey -ne 'none') {
+  if ($caeSubnetKey -notmatch '^subnet(\d+)$') {
+    throw "containerAppsEnvironment must be subnetN (e.g. subnet4) or none/empty; got '$ContainerAppsEnvironmentSubnet'."
+  }
+  $caeSubnetIndex = [int]$Matches[1]
+  if ($caeSubnetIndex -lt 1 -or $caeSubnetIndex -gt $subnetNames.Count) {
+    throw "containerAppsEnvironment '$ContainerAppsEnvironmentSubnet' is out of range for subnet layout (found $($subnetNames.Count) subnets)."
+  }
+  $caeSubnetName = $subnetNames[$caeSubnetIndex - 1]
+  Write-Host "##vso[task.setvariable variable=containerAppsEnvironmentSubnetName]$caeSubnetName"
 }

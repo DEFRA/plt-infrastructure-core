@@ -105,6 +105,35 @@ module privateLinkZoneNaming './naming-convention.bicep' = if (!empty(privateLin
   }
 }
 
+// Container Apps Environment (ACE) and Log Analytics Workspace (LW) names — role APP (deployed to APP RG).
+module containerAppsEnvironmentNaming './naming-convention.bicep' = {
+  name: 'ace-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'ACE'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: false
+  }
+}
+
+module logAnalyticsWorkspaceNaming './naming-convention.bicep' = {
+  name: 'lw-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'LW'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: false
+  }
+}
+
 // Outputs
 output resourceGroupName string = resourceGroupNaming.outputs.name
 output virtualNetworkName string = virtualNetworkNaming.outputs.name
@@ -113,3 +142,5 @@ output subnetNames array = [for i in range(0, length(subnetNameConfigs)): subnet
 output privateLinkZoneName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? '${privateLinkZoneNaming.outputs.name}.${privateLinkZoneSuffix}' : ''
 // Generic resource name (prefix) for the private link zone. Concrete pipelines map this to their variable (e.g. documentIntelligenceResourceName).
 output privateLinkZoneResourceName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? privateLinkZoneNaming.outputs.name : ''
+output containerAppsEnvironmentName string = containerAppsEnvironmentNaming.outputs.name
+output logAnalyticsWorkspaceName string = logAnalyticsWorkspaceNaming.outputs.name

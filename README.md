@@ -9,6 +9,7 @@ The following non-network resources may also be deployed according to Defra patt
 - Entra ID Groups and memberships.
 - Entra ID App Registrations (API permissions, optional Key Vault secrets).
 - Document Intelligence
+- Internal Container Apps Environment (Log Analytics + private DNS)
 - DNS
 - Resource Groups and permissions.
 
@@ -61,6 +62,7 @@ Located under `scripts/pipeline/`:
 - `Resolve-NetworkJoinGroup.ps1`: Resolves `networkJoinGroupName` to object id for VNet role assignment.
 - `Resolve-EntraGroupByDisplayName.ps1`: Shared helper to resolve Entra group display names to object ids (used where directory lookups are needed).
 - `SetDnsRecords.ps1`: Unified DNS record updater for both `additionalDnsConfig` entries and Document Intelligence private endpoint DNS.
+- `Output-ContainerAppsEnvironment.ps1`: Reads Container Apps Environment deployment outputs (default domain / static IP) for hub DNS linking.
 - `Validate-Params-Match-Config.ps1`: Validates pipeline `environmentName` matches config (`subType + deploymentEnvInstance`) and validates `location`.
 - `Validate-AdditionalDnsConfigJson.ps1`: Validates `additionalDnsConfig` JSON when Document Intelligence is enabled.
 

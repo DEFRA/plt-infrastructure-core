@@ -2,6 +2,12 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.4.0] - 2026-09-25
+
+### Added
+
+- **Internal Container Apps Environment** — Optional. Set `containerAppsEnvironment` to a subnet key (e.g. `subnet4`) in instance `core.yaml` to deploy an internal-only Azure Container Apps environment into the APP resource group (requires `APP` in `platformResourceGroups`). The value selects which VNet subnet hosts the environment (must be delegated to `Microsoft.App/environments`). Creates a dedicated Log Analytics workspace, private DNS zone for the environment default domain (spoke VNet linked), and triggers hub private DNS linking. Set to `none` or omit to skip.
+
 ## [1.3.0] - 2026-09-18
 
 ### Added
