@@ -73,7 +73,7 @@ module routeTableNaming './naming-convention.bicep' = {
 }
 // Name without instance number (last 2 chars); route-table.bicep appends instance 01
 var nameLen = length(routeTableNaming.outputs.name)
-var routeTableNameWithoutInstance = nameLen > 2 ? substring(routeTableNaming.outputs.name, 0, nameLen - 2) : routeTableNaming.outputs.name
+var routeTableNameWithoutInstance = nameLen > 2 ? substring(routeTableNaming.outputs.name, 0, max(0, nameLen - 2)) : routeTableNaming.outputs.name
 
 // Subnet naming: one module per subnet config. Config provides resType (suffix) per subnet; instanceNumber is 01, 02, etc.
 module subnetNaming './naming-convention.bicep' = [for i in range(0, length(subnetNameConfigs)): {
@@ -139,8 +139,8 @@ output resourceGroupName string = resourceGroupNaming.outputs.name
 output virtualNetworkName string = virtualNetworkNaming.outputs.name
 output routeTableName string = routeTableNameWithoutInstance
 output subnetNames array = [for i in range(0, length(subnetNameConfigs)): subnetNaming[i].outputs.name]
-output privateLinkZoneName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? '${privateLinkZoneNaming.outputs.name}.${privateLinkZoneSuffix}' : ''
+output privateLinkZoneName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? '${privateLinkZoneNaming!.outputs.name}.${privateLinkZoneSuffix}' : ''
 // Generic resource name (prefix) for the private link zone. Concrete pipelines map this to their variable (e.g. documentIntelligenceResourceName).
-output privateLinkZoneResourceName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? privateLinkZoneNaming.outputs.name : ''
+output privateLinkZoneResourceName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? privateLinkZoneNaming!.outputs.name : ''
 output containerAppsEnvironmentName string = containerAppsEnvironmentNaming.outputs.name
 output logAnalyticsWorkspaceName string = logAnalyticsWorkspaceNaming.outputs.name
