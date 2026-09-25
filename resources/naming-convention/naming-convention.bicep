@@ -54,6 +54,7 @@ param svc string
   'ADG'   // Azure Data Gateway
   'ADL'   // Azure Data Lake
   'AFW'   // Azure Firewall
+  'AIP'   // Automated Intelligence Platform
   'APP'   // Application
   'ASE'   // Application Service Environment
   'ASP'   // Application Service Plan

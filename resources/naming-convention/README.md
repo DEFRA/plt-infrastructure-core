@@ -127,6 +127,7 @@ Breaking down the example:
 | `ADG` | Azure Data Gateway |
 | `ADL` | Azure Data Lake |
 | `AFW` | Azure Firewall |
+| `AIP` | Automated Intelligence Platform |
 | `ASE` | Application Service Environment |
 | `ASP` | Application Service Plan |
 | `AXW` | Axway Server |
