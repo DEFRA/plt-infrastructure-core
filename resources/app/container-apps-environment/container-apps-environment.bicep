@@ -69,7 +69,6 @@ var enableStorage = storageEnabled && !empty(storage.accountName)
 var storageAccountName = toLower(storage.accountName)
 var storageSkuName = contains(storage, 'skuName') && !empty(storage.skuName) ? storage.skuName : 'Standard_LRS'
 var storagePrivateEndpointName = take('${storageAccountName}pep01', 64)
-var hasPepSubnet = contains(vnet, 'subnetPrivateEndpoints') && !empty(vnet.subnetPrivateEndpoints)
 
 module logAnalyticsWorkspace 'br/SharedDefraRegistry:operational-insights.workspace:0.4.3' = {
   name: 'log-analytics-${deploymentDate}'
@@ -154,6 +153,7 @@ module privateDnsZone 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = 
 }
 
 // --- Optional hardened storage account for Container Apps (shares/mounts are app-deploy concern) ---
+// Public access disabled (policy); private endpoint + DNS A record (same pattern as Document Intelligence).
 module storageAccountModule 'br/SharedDefraRegistry:storage.storage-account:0.5.3' = if (enableStorage) {
   name: 'container-apps-storage-${deploymentDate}'
   params: {
@@ -162,13 +162,12 @@ module storageAccountModule 'br/SharedDefraRegistry:storage.storage-account:0.5.
     skuName: storageSkuName
     kind: 'StorageV2'
     lock: resourceLockEnabled ? 'CanNotDelete' : null
-    // Private endpoint (file) on the PEP subnet; Deny + AzureServices keeps the public surface closed.
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: 'Disabled'
     networkAcls: {
       bypass: 'AzureServices'
       defaultAction: 'Deny'
     }
-    privateEndpoints: hasPepSubnet ? [
+    privateEndpoints: [
       {
         name: storagePrivateEndpointName
         service: 'file'
@@ -178,7 +177,7 @@ module storageAccountModule 'br/SharedDefraRegistry:storage.storage-account:0.5.
           Purpose: 'Container Apps Azure Files private endpoint'
         })
       }
-    ] : []
+    ]
     tags: union(defaultTags, {
       Name: storageAccountName
       Purpose: 'Container Apps Environment Azure Files'
@@ -192,3 +191,4 @@ output staticIp string = staticIp
 output logAnalyticsWorkspaceName string = logAnalytics.name
 output privateDnsZoneName string = defaultDomain
 output storageAccountName string = enableStorage ? storageAccountName : ''
+output storagePrivateEndpointName string = enableStorage ? storagePrivateEndpointName : ''

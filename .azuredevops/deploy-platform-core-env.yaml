@@ -387,4 +387,26 @@ extends:
                         -ResourceGroupName "$(servicesResourceGroup)"
                         -SubscriptionName "$(subscriptionName)"
                         -TenantId "$(tenantId)"
+                    - ${{ if eq(lower(coalesce(variables.containerAppsStorage, 'false')), 'true') }}:
+                      - displayName: 'Output Container Apps storage private endpoint IP for DNS'
+                        type: AzureCLI
+                        azureCLIScriptType: pscore
+                        serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                        scriptPath: scripts/pipeline/Output-ContainerAppsStoragePrivateEndpointIp.ps1
+                        scriptArguments: >
+                          -ResourceGroupName "$(servicesResourceGroup)"
+                          -StorageAccountName "$(containerAppsStorageAccountName)"
+                      - displayName: 'Set Container Apps storage private endpoint DNS A record'
+                        type: AzurePowerShell
+                        azurePowerShellVersion: LatestVersion
+                        azurePowerShellUseCore: true
+                        serviceConnectionVariableName: 'privateDnsServiceConnection'
+                        scriptPath: scripts/pipeline/SetDnsRecords.ps1
+                        scriptArguments: >
+                          -Fqdn "$(containerAppsStorageAccountName).file.core.windows.net"
+                          -IpAddress "$(containerAppsStoragePrivateEndpointIp)"
+                          -Location "$(location)"
+                          -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+                          -PipelineWorkspace "$(Pipeline.Workspace)"
+                          -BuildSourcesDirectory "$(Build.SourcesDirectory)"
 
