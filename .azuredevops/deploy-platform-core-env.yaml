@@ -78,6 +78,11 @@ variables:
     value: 'ValidationPlaceholderLW'
   - name: containerAppsEnvironmentSubnetName
     value: 'ValidationPlaceholderSUB'
+  - name: containerAppsStorageAccountName
+    value: 'validationplaceholdersto'
+  # true = provision hardened StorageV2 for the CAE; false/omit = skip. Shares/mounts are app-deploy concern.
+  - name: containerAppsStorage
+    value: false
   # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
   - name: firewallVirtualApplianceIp
     value: ''

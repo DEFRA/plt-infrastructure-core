@@ -17,7 +17,15 @@
       "value": {
         "name": "#{{ virtualNetworkName }}",
         "resourceGroup": "#{{ virtualNetworkResourceGroup }}",
-        "subnetContainerApps": "#{{ containerAppsEnvironmentSubnetName }}"
+        "subnetContainerApps": "#{{ containerAppsEnvironmentSubnetName }}",
+        "subnetPrivateEndpoints": "#{{ subnet3Name }}"
+      }
+    },
+    "storage": {
+      "value": {
+        "accountName": "#{{ containerAppsStorageAccountName }}",
+        "skuName": "Standard_LRS",
+        "enabled": #{{ containerAppsStorage }}
       }
     },
     "subType": {

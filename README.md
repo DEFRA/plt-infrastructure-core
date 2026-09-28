@@ -9,7 +9,7 @@ The following non-network resources may also be deployed according to Defra patt
 - Entra ID Groups and memberships.
 - Entra ID App Registrations (API permissions, optional Key Vault secrets).
 - Document Intelligence
-- Internal Container Apps Environment (Log Analytics + private DNS)
+- Internal Container Apps Environment (Log Analytics + private DNS + optional Azure Files)
 - DNS
 - Resource Groups and permissions.
 

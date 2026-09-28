@@ -81,6 +81,7 @@ $zoneName = az deployment sub show --name $namingDeploymentName --query "propert
 $privateLinkResourceName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneResourceName.value" -o tsv 2>$null
 $caeName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.containerAppsEnvironmentName.value" -o tsv 2>$null
 $lawName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.logAnalyticsWorkspaceName.value" -o tsv 2>$null
+$caeStorageName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.containerAppsStorageAccountName.value" -o tsv 2>$null
 
 if (-not $rgName) { throw "set-resource-names: could not get resourceGroupName" }
 Write-Host "##vso[task.setvariable variable=infraResourceGroupName]$rgName"
@@ -106,6 +107,9 @@ if (-not [string]::IsNullOrWhiteSpace($caeName)) {
 }
 if (-not [string]::IsNullOrWhiteSpace($lawName)) {
   Write-Host "##vso[task.setvariable variable=logAnalyticsWorkspaceName]$lawName"
+}
+if (-not [string]::IsNullOrWhiteSpace($caeStorageName)) {
+  Write-Host "##vso[task.setvariable variable=containerAppsStorageAccountName]$caeStorageName"
 }
 
 $caeSubnetKey = $ContainerAppsEnvironmentSubnet.Trim().ToLowerInvariant()

@@ -134,6 +134,21 @@ module logAnalyticsWorkspaceNaming './naming-convention.bicep' = {
   }
 }
 
+// Storage account for Container Apps Azure Files (STO). Azure requires lowercase; callers toLower the output.
+module containerAppsStorageNaming './naming-convention.bicep' = {
+  name: 'sto-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'STO'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: true
+  }
+}
+
 // Outputs
 output resourceGroupName string = resourceGroupNaming.outputs.name
 output virtualNetworkName string = virtualNetworkNaming.outputs.name
@@ -144,3 +159,4 @@ output privateLinkZoneName string = !empty(privateLinkZoneSuffix) && !empty(priv
 output privateLinkZoneResourceName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? privateLinkZoneNaming!.outputs.name : ''
 output containerAppsEnvironmentName string = containerAppsEnvironmentNaming.outputs.name
 output logAnalyticsWorkspaceName string = logAnalyticsWorkspaceNaming.outputs.name
+output containerAppsStorageAccountName string = containerAppsStorageNaming.outputs.name

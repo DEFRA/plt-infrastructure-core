@@ -4,8 +4,15 @@ param containerAppsEnvironment object
 @description('Required. Log Analytics workspace settings. Must contain name. Optional skuName (defaults to PerGB2018).')
 param logAnalytics object
 
-@description('Required. Virtual network for internal integration. Must contain name, resourceGroup and subnetContainerApps.')
+@description('Required. Virtual network for internal integration. Must contain name, resourceGroup and subnetContainerApps. Optional subnetPrivateEndpoints when provisioning Azure Files private endpoint.')
 param vnet object
+
+@description('Optional. Azure Files storage account for the environment. Set enabled to true (with accountName) to provision a hardened StorageV2 account for apps to create shares against later. Does not create file shares or CAE storage registrations.')
+param storage object = {
+  accountName: ''
+  skuName: 'Standard_LRS'
+  enabled: false
+}
 
 @description('Required. Sub type (e.g. SND, PRD).')
 param subType string
@@ -55,6 +62,14 @@ var infrastructureSubnetId = resourceId(
 
 var dockerBridgeCidr = '172.16.0.1/28'
 var infrastructureResourceGroupName = take('${containerAppsEnvironment.name}_ME', 63)
+
+var storageEnabledRaw = contains(storage, 'enabled') ? storage.enabled : false
+var storageEnabled = storageEnabledRaw == true || contains(['true', '1', 'yes'], toLower('${storageEnabledRaw}'))
+var enableStorage = storageEnabled && !empty(storage.accountName)
+var storageAccountName = toLower(storage.accountName)
+var storageSkuName = contains(storage, 'skuName') && !empty(storage.skuName) ? storage.skuName : 'Standard_LRS'
+var storagePrivateEndpointName = take('${storageAccountName}pep01', 64)
+var hasPepSubnet = contains(vnet, 'subnetPrivateEndpoints') && !empty(vnet.subnetPrivateEndpoints)
 
 module logAnalyticsWorkspace 'br/SharedDefraRegistry:operational-insights.workspace:0.4.3' = {
   name: 'log-analytics-${deploymentDate}'
@@ -138,8 +153,42 @@ module privateDnsZone 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = 
   }
 }
 
+// --- Optional hardened storage account for Container Apps (shares/mounts are app-deploy concern) ---
+module storageAccountModule 'br/SharedDefraRegistry:storage.storage-account:0.5.3' = if (enableStorage) {
+  name: 'container-apps-storage-${deploymentDate}'
+  params: {
+    name: storageAccountName
+    location: location
+    skuName: storageSkuName
+    kind: 'StorageV2'
+    lock: resourceLockEnabled ? 'CanNotDelete' : null
+    // Private endpoint (file) on the PEP subnet; Deny + AzureServices keeps the public surface closed.
+    publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
+    }
+    privateEndpoints: hasPepSubnet ? [
+      {
+        name: storagePrivateEndpointName
+        service: 'file'
+        subnetResourceId: resourceId(vnet.resourceGroup, 'Microsoft.Network/virtualNetworks/subnets', vnet.name, vnet.subnetPrivateEndpoints)
+        tags: union(defaultTags, {
+          Name: storagePrivateEndpointName
+          Purpose: 'Container Apps Azure Files private endpoint'
+        })
+      }
+    ] : []
+    tags: union(defaultTags, {
+      Name: storageAccountName
+      Purpose: 'Container Apps Environment Azure Files'
+    })
+  }
+}
+
 output name string = containerAppsEnvironment.name
 output defaultDomain string = defaultDomain
 output staticIp string = staticIp
 output logAnalyticsWorkspaceName string = logAnalytics.name
 output privateDnsZoneName string = defaultDomain
+output storageAccountName string = enableStorage ? storageAccountName : ''
