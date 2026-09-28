@@ -60,7 +60,8 @@ resources:
       name: DEFRA/ado-pipeline-common
       endpoint: DEFRA
       type: github
-      ref: refs/tags/1.2.0
+      # Tag 1.2.0 missed the arm-ttk GitHub download fix (#159); use main until 1.2.1 is tagged.
+      ref: refs/heads/main
 
 extends:
   template: /templates/pipelines/common-infrastructure-deploy.yaml@PipelineCommon

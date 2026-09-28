@@ -9,6 +9,10 @@ All notable changes to this repository should be documented in this file.
 - **Internal Container Apps Environment** — Optional. Set `containerAppsEnvironment` to a subnet key (e.g. `subnet4`) in instance `core.yaml` to deploy an internal-only Azure Container Apps environment into the APP resource group (requires `APP` in `platformResourceGroups`). The value selects which VNet subnet hosts the environment (must be delegated to `Microsoft.App/environments`). Creates a dedicated Log Analytics workspace, private DNS zone for the environment default domain (spoke VNet linked), and triggers hub private DNS linking. Set to `none` or omit to skip.
 - **Container Apps storage account** — Optional companion to the CAE. Set `containerAppsStorage: true` to provision a hardened StorageV2 account (STO naming, **public network disabled**, file private endpoint on the PEP subnet, DNS A record in `privatelink.file.core.windows.net` via the same SetDnsRecords path as Document Intelligence) in the APP RG for apps to create Azure Files shares against later. Does **not** create file shares or CAE storage registrations — those stay with app-deploy so new apps do not require a platform re-run. Omit or set `false` to skip.
 
+### Fixed
+
+- **Arm-ttk 409 during lint** — PipelineCommon pin moved off `refs/tags/1.2.0` (downloads arm-ttk from a public Azure blob that now rejects anonymous access with `409 Public access is not permitted on this storage account`) to `refs/heads/main`, which pulls arm-ttk from GitHub releases (#159). Re-pin to `1.2.1` once that tag is cut.
+
 ## [1.3.1] - 2026-09-24
 
 ### Added
