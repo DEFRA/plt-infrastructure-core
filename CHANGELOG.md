@@ -11,7 +11,7 @@ All notable changes to this repository should be documented in this file.
 
 ### Fixed
 
-- **Arm-ttk 409 during lint** — PipelineCommon pin moved off `refs/tags/1.2.0` (downloads arm-ttk from a public Azure blob that now rejects anonymous access with `409 Public access is not permitted on this storage account`) to `refs/heads/main`, which pulls arm-ttk from GitHub releases (#159). Re-pin to `1.2.1` once that tag is cut.
+- **Arm-ttk 409 during lint** — PipelineCommon pin moved from `refs/tags/1.2.0` (arm-ttk download from a public Azure blob that now returns `409 Public access is not permitted`) to `refs/tags/1.2.1` on main, which pulls arm-ttk from GitHub releases (#159).
 
 ## [1.3.1] - 2026-09-24
 
