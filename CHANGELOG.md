@@ -6,11 +6,12 @@ All notable changes to this repository should be documented in this file.
 
 ### Added
 
-- **Internal Container Apps Environment** — Optional. Set `containerAppsEnvironment` to a subnet key (e.g. `subnet4`) in instance `core.yaml` to deploy an internal-only Azure Container Apps environment into the APP resource group (requires `APP` in `platformResourceGroups`). The value selects which VNet subnet hosts the environment (must be delegated to `Microsoft.App/environments`). Creates a dedicated Log Analytics workspace, private DNS zone for the environment default domain (spoke VNet linked), and triggers hub private DNS linking. Set to `none` or omit to skip.
+- **Internal Container Apps Environment** — Optional. Set `containerAppsEnvironment` to a subnet key (e.g. `subnet4`) in instance `core.yaml` to deploy an internal-only Azure Container Apps environment into the APP resource group (requires `APP` in `platformResourceGroups`). The value selects which VNet subnet hosts the environment (must be delegated to `Microsoft.App/environments`). Creates a dedicated Log Analytics workspace, private DNS zone for the environment default domain (spoke VNet linked), and triggers hub private DNS linking. The environment is deployed with a **system-assigned managed identity** (required for `registryIdentity: system-environment` ACR pulls). Set to `none` or omit to skip.
 - **Container Apps storage account** — Optional companion to the CAE. Set `containerAppsStorage: true` to provision a hardened StorageV2 account (STO naming, **public network disabled**, file private endpoint on the PEP subnet, DNS A record in `privatelink.file.core.windows.net` via the same SetDnsRecords path as Document Intelligence) in the APP RG for apps to create Azure Files shares against later. Does **not** create file shares or CAE storage registrations — those stay with app-deploy so new apps do not require a platform re-run. Omit or set `false` to skip.
 
 ### Fixed
 
+- **CAE system-assigned identity** — Container Apps Environment is now deployed as a native `Microsoft.App/managedEnvironments` resource with `identity.type: SystemAssigned` (SharedDefra `app.managed-environment` has no managed-identity parameter, so platform redeploys cleared identity and broke `registryIdentity: system-environment` ACR pulls). Outputs `systemAssignedIdentityPrincipalId` for AcrPull grants.
 - **Arm-ttk 409 during lint** — PipelineCommon pin moved from `refs/tags/1.2.0` (arm-ttk download from a public Azure blob that now returns `409 Public access is not permitted`) to `refs/tags/1.2.1` on main, which pulls arm-ttk from GitHub releases (#159).
 
 ## [1.3.1] - 2026-09-24

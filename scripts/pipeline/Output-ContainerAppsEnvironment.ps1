@@ -20,10 +20,12 @@ if (-not $deploymentName) {
 $defaultDomain = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.defaultDomain.value" -o tsv
 $staticIp = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.staticIp.value" -o tsv
 $privateDnsZoneName = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.privateDnsZoneName.value" -o tsv
+$principalId = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.systemAssignedIdentityPrincipalId.value" -o tsv
 
 Write-Host "Container Apps Environment defaultDomain: $defaultDomain"
 Write-Host "Container Apps Environment staticIp: $staticIp"
 Write-Host "Container Apps Environment privateDnsZoneName: $privateDnsZoneName"
+Write-Host "Container Apps Environment systemAssignedIdentityPrincipalId: $principalId"
 
 if (-not [string]::IsNullOrWhiteSpace($defaultDomain)) {
   Write-Host "##vso[task.setvariable variable=containerAppsEnvironmentDefaultDomain]$defaultDomain"
@@ -33,4 +35,7 @@ if (-not [string]::IsNullOrWhiteSpace($staticIp)) {
 }
 if (-not [string]::IsNullOrWhiteSpace($privateDnsZoneName)) {
   Write-Host "##vso[task.setvariable variable=containerAppsEnvironmentPrivateDnsZoneName]$privateDnsZoneName"
+}
+if (-not [string]::IsNullOrWhiteSpace($principalId)) {
+  Write-Host "##vso[task.setvariable variable=containerAppsEnvironmentPrincipalId]$principalId"
 }

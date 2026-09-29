@@ -84,39 +84,45 @@ module logAnalyticsWorkspace 'br/SharedDefraRegistry:operational-insights.worksp
   }
 }
 
-module managedEnvironment 'br/SharedDefraRegistry:app.managed-environment:0.4.10' = {
-  name: 'container-apps-environment-${deploymentDate}'
-  params: {
-    enableDefaultTelemetry: false
-    logAnalyticsWorkspaceResourceId: logAnalyticsWorkspace.outputs.resourceId
-    name: containerAppsEnvironment.name
-    dockerBridgeCidr: dockerBridgeCidr
-    infrastructureSubnetId: infrastructureSubnetId
-    internal: internal
-    location: location
-    lock: resourceLockEnabled ? {
-      kind: 'CanNotDelete'
-      name: '${containerAppsEnvironment.name}-CanNotDelete'
-    } : null
-    workloadProfiles: workloadProfiles
-    zoneRedundant: false
-    infrastructureResourceGroupName: infrastructureResourceGroupName
-    tags: union(defaultTags, {
-      Name: containerAppsEnvironment.name
-      Purpose: 'Container Apps Environment'
-    })
-  }
-}
-
-// Module does not output staticIp; read it from the deployed environment (same pattern as ADP DNS zone).
-resource managedEnvironmentResource 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
-  name: containerAppsEnvironment.name
+resource logAnalyticsWorkspaceResource 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
+  name: logAnalytics.name
   dependsOn: [
-    managedEnvironment
+    logAnalyticsWorkspace
   ]
 }
 
-var defaultDomain = toLower(managedEnvironment.outputs.defaultDomain)
+// Native CAE (not SharedDefra app.managed-environment): that module has no managedIdentities
+// param, so redeploys left identity null and broke registryIdentity: system-environment.
+resource managedEnvironmentResource 'Microsoft.App/managedEnvironments@2025-01-01' = {
+  name: containerAppsEnvironment.name
+  location: location
+  tags: union(defaultTags, {
+    Name: containerAppsEnvironment.name
+    Purpose: 'Container Apps Environment'
+  })
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: logAnalyticsWorkspace.outputs.logAnalyticsWorkspaceId
+        sharedKey: logAnalyticsWorkspaceResource.listKeys().primarySharedKey
+      }
+    }
+    vnetConfiguration: {
+      internal: internal
+      infrastructureSubnetId: infrastructureSubnetId
+      dockerBridgeCidr: dockerBridgeCidr
+    }
+    workloadProfiles: workloadProfiles
+    zoneRedundant: false
+    infrastructureResourceGroup: infrastructureResourceGroupName
+  }
+}
+
+var defaultDomain = toLower(managedEnvironmentResource.properties.defaultDomain)
 var staticIp = managedEnvironmentResource.properties.staticIp
 
 module privateDnsZone 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = {
@@ -190,5 +196,6 @@ output defaultDomain string = defaultDomain
 output staticIp string = staticIp
 output logAnalyticsWorkspaceName string = logAnalytics.name
 output privateDnsZoneName string = defaultDomain
+output systemAssignedIdentityPrincipalId string = managedEnvironmentResource.identity.principalId
 output storageAccountName string = enableStorage ? storageAccountName : ''
 output storagePrivateEndpointName string = enableStorage ? storagePrivateEndpointName : ''
