@@ -15,7 +15,7 @@ All notable changes to this repository should be documented in this file.
 
 ### Fixed
 
-- **App registration create race** — After creating a new Entra app, listing `/owners` can briefly return `Request_ResourceNotFound` while Graph replicates. `Add-AppRegistrationOwners` now retries with backoff (same pattern as service principal creation).
+- **App registration create race** — After creating a new Entra app, listing `/owners` can briefly return `Request_ResourceNotFound` while Graph replicates. `Add-AppRegistrationOwners` now retries with backoff (same pattern as service principal creation). Admin consent now waits for a resolvable service principal id, URL-encodes the `oauth2PermissionGrants` filter, and retries grant reads on the same replication errors.
 
 ## [1.4.0] - 2026-09-25
 

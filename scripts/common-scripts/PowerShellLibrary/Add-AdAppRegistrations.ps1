@@ -304,6 +304,14 @@ Function Set-AadApp {
         -Application $application `
         -RequireAppRoleAssignment ([bool]$app.appRoles)
 
+    # Fresh SP creates can return before Graph can resolve the object by id for consent APIs.
+    $principal = Wait-AppRegistrationServicePrincipalReady `
+        -Headers $headers `
+        -ServicePrincipalUri $servicePrincipalUri `
+        -AppId $application.appId `
+        -DisplayName $app.displayName `
+        -ExistingPrincipal $principal
+
     if ($app.keyVault) {
         foreach ($secret in $app.keyVault.secrets) {
             $shouldCreateSecret = $true
@@ -368,6 +376,36 @@ Function Set-AadApp {
             -RequiredResourceAccess $application.requiredResourceAccess `
             -DisplayName $app.displayName
     }
+}
+
+Function Wait-AppRegistrationServicePrincipalReady {
+    Param(
+        [Parameter(Mandatory = $True)][Object]$Headers,
+        [Parameter(Mandatory = $True)][string]$ServicePrincipalUri,
+        [Parameter(Mandatory = $True)][string]$AppId,
+        [Parameter(Mandatory = $True)][string]$DisplayName,
+        [Parameter(Mandatory = $False)][Object]$ExistingPrincipal
+    )
+
+    if ($ExistingPrincipal -and -not [string]::IsNullOrWhiteSpace([string]$ExistingPrincipal.id)) {
+        return $ExistingPrincipal
+    }
+
+    $maxAttempts = 8
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        $principal = Get-AppRegistrationServicePrincipal -Headers $Headers -ServicePrincipalUri $ServicePrincipalUri -AppId $AppId
+        if ($principal -and -not [string]::IsNullOrWhiteSpace([string]$principal.id)) {
+            if ($attempt -gt 1) {
+                Write-Output "Service Principal for '$DisplayName' is now resolvable (id $($principal.id))."
+            }
+            return $principal
+        }
+        $delaySeconds = [Math]::Min(2 * $attempt, 10)
+        Write-Output "Service Principal for '$DisplayName' (appId $AppId) not yet resolvable; waiting ${delaySeconds}s before retry ($attempt/$maxAttempts)."
+        Start-Sleep -Seconds $delaySeconds
+    }
+
+    throw "Service Principal for '$DisplayName' (appId $AppId) was not resolvable after $maxAttempts attempts."
 }
 
 Function Get-AppRegistrationServicePrincipal {
@@ -482,6 +520,10 @@ Function Grant-AppRegistrationAdminConsent {
         return
     }
 
+    if ([string]::IsNullOrWhiteSpace([string]$ClientPrincipal.id)) {
+        throw "Cannot grant admin consent for '$DisplayName': client service principal id is empty."
+    }
+
     Write-Output "Granting admin consent for '$DisplayName'..."
 
     foreach ($resource in @($RequiredResourceAccess)) {
@@ -490,6 +532,9 @@ Function Grant-AppRegistrationAdminConsent {
         $resourceSp = Get-AppRegistrationServicePrincipal -Headers $Headers -ServicePrincipalUri $ServicePrincipalUri -AppId $resource.resourceAppId
         if (-not $resourceSp) {
             throw "Cannot grant admin consent: resource service principal for appId '$($resource.resourceAppId)' was not found in the tenant."
+        }
+        if ([string]::IsNullOrWhiteSpace([string]$resourceSp.id)) {
+            throw "Cannot grant admin consent: resource service principal for appId '$($resource.resourceAppId)' has an empty id."
         }
 
         $scopeValues = New-Object System.Collections.Generic.List[string]
@@ -513,17 +558,33 @@ Function Grant-AppRegistrationAdminConsent {
             $uniqueScopes = @($scopeValues | Select-Object -Unique)
             $scopeString = $uniqueScopes -join ' '
             $filter = "clientId eq '$($ClientPrincipal.id)' and resourceId eq '$($resourceSp.id)'"
-            $grantsUri = "$GraphApiBaseUrl/$GraphApiVersion/oauth2PermissionGrants?`$filter=$filter"
-            try {
-                $grants = Invoke-RestMethod -Method GET -Headers $Headers -Uri $grantsUri -ErrorAction Stop
-            }
-            catch {
-                $detail = Get-GraphErrorDetail -ErrorRecord $_
-                if (Test-GraphInsufficientPrivilege -ErrorRecord $_) {
-                    Write-AdminConsentPrivilegeWarning -DisplayName $DisplayName -Detail $detail
-                    return
+            $grantsUri = "$GraphApiBaseUrl/$GraphApiVersion/oauth2PermissionGrants?`$filter=$([uri]::EscapeDataString($filter))"
+
+            $grants = $null
+            $maxAttempts = 8
+            for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+                try {
+                    $grants = Invoke-RestMethod -Method GET -Headers $Headers -Uri $grantsUri -ErrorAction Stop
+                    break
                 }
-                throw "Failed to read oauth2PermissionGrants for '$DisplayName'. Graph error: $detail"
+                catch {
+                    $detail = Get-GraphErrorDetail -ErrorRecord $_
+                    if (Test-GraphInsufficientPrivilege -ErrorRecord $_) {
+                        Write-AdminConsentPrivilegeWarning -DisplayName $DisplayName -Detail $detail
+                        return
+                    }
+                    $isReplication = $detail -match 'Request_ResourceNotFound|does not exist'
+                    if ($isReplication -and $attempt -lt $maxAttempts) {
+                        $delaySeconds = [Math]::Min(2 * $attempt, 10)
+                        Write-Output "oauth2PermissionGrants for '$DisplayName' not yet readable; waiting ${delaySeconds}s before retry ($attempt/$maxAttempts)."
+                        Start-Sleep -Seconds $delaySeconds
+                        continue
+                    }
+                    throw "Failed to read oauth2PermissionGrants for '$DisplayName'. Graph error: $detail"
+                }
+            }
+            if (-not $grants) {
+                throw "Failed to read oauth2PermissionGrants for '$DisplayName' after $maxAttempts attempts."
             }
 
             try {
