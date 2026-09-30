@@ -83,12 +83,14 @@ variables:
   # true = provision hardened StorageV2 for the CAE; false/omit = skip. Shares/mounts are app-deploy concern.
   - name: containerAppsStorage
     value: false
-  # Validation needs a non-empty Postgres name before set-resource-names; overridden later.
+  # Validation needs a non-empty Postgres name / subnet before set-resource-names; overridden later.
   - name: postgresFlexibleServerName
     value: 'ValidationPlaceholderPSQ'
-  # true = deploy private PostgreSQL Flexible Server (VNet-injected on subnet5); false/omit = skip.
+  - name: postgresFlexibleServerSubnetName
+    value: 'ValidationPlaceholderSUB'
+  # subnetN (e.g. subnet5) = deploy private PostgreSQL Flexible Server on that subnet; empty/none = skip.
   - name: postgresFlexibleServer
-    value: false
+    value: ''
   # Optional CAE system-assigned MI as extra Entra admin (set by Set-PostgresEntraAdminFromCae.ps1).
   - name: postgresCaeEntraAdminObjectId
     value: ''
@@ -248,7 +250,8 @@ extends:
                     -InstanceNumber "$(instanceNumber)" `
                     -SubnetLayout "$(subnetLayout)" `
                     -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)" `
-                    -ContainerAppsEnvironmentSubnet "$(containerAppsEnvironment)"
+                    -ContainerAppsEnvironmentSubnet "$(containerAppsEnvironment)" `
+                    -PostgresFlexibleServerSubnet "$(postgresFlexibleServer)"
               # Same pattern as VNet pre-deploy Resolve-NetworkJoinGroup: Get-AzADGroup + SSV (ARM CLI SP often cannot read directory).
               - name: resolve-app-rg-contributor-group
                 type: 'script'
@@ -420,7 +423,7 @@ extends:
                           -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
                           -PipelineWorkspace "$(Pipeline.Workspace)"
                           -BuildSourcesDirectory "$(Build.SourcesDirectory)"
-              - ${{ if eq(lower(coalesce(variables.postgresFlexibleServer, 'false')), 'true') }}:
+              - ${{ if and(ne(coalesce(variables.postgresFlexibleServer, ''), ''), ne(lower(coalesce(variables.postgresFlexibleServer, '')), 'none')) }}:
                 - name: postgres-flexible-server
                   path: resources/data/postgres-flexible-server
                   parameterFilePath: resources/data/postgres-flexible-server

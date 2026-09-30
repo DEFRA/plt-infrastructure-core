@@ -16,7 +16,7 @@
       "value": {
         "name": "#{{ virtualNetworkName }}",
         "resourceGroup": "#{{ virtualNetworkResourceGroup }}",
-        "subnetPostgreSql": "#{{ subnet5Name }}"
+        "subnetPostgreSql": "#{{ postgresFlexibleServerSubnetName }}"
       }
     },
     "containerAppsEnvironmentEntraAdmin": {

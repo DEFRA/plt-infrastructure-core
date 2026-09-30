@@ -19,7 +19,9 @@ param(
   [Parameter(Mandatory = $true)][string]$SubnetLayout,
   [string]$AdiPrivateLinkZoneSuffix = '',
   # When set to subnetN (e.g. subnet4), exports containerAppsEnvironmentSubnetName from that subnet's named output.
-  [string]$ContainerAppsEnvironmentSubnet = ''
+  [string]$ContainerAppsEnvironmentSubnet = '',
+  # When set to subnetN (e.g. subnet5), exports postgresFlexibleServerSubnetName from that subnet's named output.
+  [string]$PostgresFlexibleServerSubnet = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -127,4 +129,17 @@ if (-not [string]::IsNullOrWhiteSpace($caeSubnetKey) -and $caeSubnetKey -ne 'non
   }
   $caeSubnetName = $subnetNames[$caeSubnetIndex - 1]
   Write-Host "##vso[task.setvariable variable=containerAppsEnvironmentSubnetName]$caeSubnetName"
+}
+
+$postgresSubnetKey = $PostgresFlexibleServerSubnet.Trim().ToLowerInvariant()
+if (-not [string]::IsNullOrWhiteSpace($postgresSubnetKey) -and $postgresSubnetKey -ne 'none') {
+  if ($postgresSubnetKey -notmatch '^subnet(\d+)$') {
+    throw "postgresFlexibleServer must be subnetN (e.g. subnet5) or none/empty; got '$PostgresFlexibleServerSubnet'."
+  }
+  $postgresSubnetIndex = [int]$Matches[1]
+  if ($postgresSubnetIndex -lt 1 -or $postgresSubnetIndex -gt $subnetNames.Count) {
+    throw "postgresFlexibleServer '$PostgresFlexibleServerSubnet' is out of range for subnet layout (found $($subnetNames.Count) subnets)."
+  }
+  $postgresSubnetName = $subnetNames[$postgresSubnetIndex - 1]
+  Write-Host "##vso[task.setvariable variable=postgresFlexibleServerSubnetName]$postgresSubnetName"
 }
