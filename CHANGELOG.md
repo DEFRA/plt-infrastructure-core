@@ -13,6 +13,10 @@ All notable changes to this repository should be documented in this file.
 
 - **Layout 1 subnet 5** — Delegation moved from `Microsoft.App/environments` to **`Microsoft.DBforPostgreSQL/flexibleServers`** (Container Apps Environment is on subnet 4). Subnet 5 is reserved for the platform PostgreSQL Flexible Server.
 
+### Fixed
+
+- **App registration create race** — After creating a new Entra app, listing `/owners` can briefly return `Request_ResourceNotFound` while Graph replicates. `Add-AppRegistrationOwners` now retries with backoff (same pattern as service principal creation).
+
 ## [1.4.0] - 2026-09-25
 
 ### Added

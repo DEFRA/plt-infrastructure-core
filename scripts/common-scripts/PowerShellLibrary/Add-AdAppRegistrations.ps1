@@ -620,7 +620,30 @@ Function Add-AppRegistrationOwners {
     )
 
     $ownersUri = "$GraphApiBaseUrl/$GraphApiVersion/applications/$ApplicationId/owners"
-    $existing = Invoke-RestMethod -Method GET -Uri $ownersUri -Headers $Headers
+
+    # Fresh creates can 404 briefly while Graph replicates the application object.
+    $existing = $null
+    $maxAttempts = 8
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            $existing = Invoke-RestMethod -Method GET -Uri $ownersUri -Headers $Headers -ErrorAction Stop
+            break
+        }
+        catch {
+            $detail = Get-GraphErrorDetail -ErrorRecord $_
+            $isReplication = $detail -match 'Request_ResourceNotFound|does not exist'
+            if ($isReplication -and $attempt -lt $maxAttempts) {
+                $delaySeconds = [Math]::Min(2 * $attempt, 10)
+                Write-Output "Application '$DisplayName' ($ApplicationId) not yet visible for owners; waiting ${delaySeconds}s before retry ($attempt/$maxAttempts)."
+                Start-Sleep -Seconds $delaySeconds
+                continue
+            }
+            throw
+        }
+    }
+    if (-not $existing) {
+        throw "Could not list owners for App-Registration '$DisplayName' ($ApplicationId) after $maxAttempts attempts."
+    }
     $existingIds = @($existing.value | ForEach-Object { $_.id })
 
     $ownerRefs = New-Object System.Collections.Generic.List[object]
