@@ -669,6 +669,35 @@ Function Grant-AppRegistrationAdminConsent {
     }
 }
 
+Function Test-GraphReplicationMiss {
+    Param($ErrorRecord)
+    $detail = Get-GraphErrorDetail -ErrorRecord $ErrorRecord
+    return ($detail -match 'Request_ResourceNotFound|does not exist')
+}
+
+Function Invoke-GraphWithReplicationRetry {
+    Param(
+        [Parameter(Mandatory = $True)][scriptblock]$Action,
+        [Parameter(Mandatory = $True)][string]$OperationDescription,
+        [int]$MaxAttempts = 8
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            return & $Action
+        }
+        catch {
+            if ((Test-GraphReplicationMiss -ErrorRecord $_) -and $attempt -lt $MaxAttempts) {
+                $delaySeconds = [Math]::Min(2 * $attempt, 10)
+                Write-Output "$OperationDescription not yet visible to Graph; waiting ${delaySeconds}s before retry ($attempt/$MaxAttempts)."
+                Start-Sleep -Seconds $delaySeconds
+                continue
+            }
+            throw
+        }
+    }
+}
+
 Function Add-AppRegistrationOwners {
     Param(
         [Parameter(Mandatory = $True)][Object]$Headers,
@@ -683,27 +712,8 @@ Function Add-AppRegistrationOwners {
     $ownersUri = "$GraphApiBaseUrl/$GraphApiVersion/applications/$ApplicationId/owners"
 
     # Fresh creates can 404 briefly while Graph replicates the application object.
-    $existing = $null
-    $maxAttempts = 8
-    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-        try {
-            $existing = Invoke-RestMethod -Method GET -Uri $ownersUri -Headers $Headers -ErrorAction Stop
-            break
-        }
-        catch {
-            $detail = Get-GraphErrorDetail -ErrorRecord $_
-            $isReplication = $detail -match 'Request_ResourceNotFound|does not exist'
-            if ($isReplication -and $attempt -lt $maxAttempts) {
-                $delaySeconds = [Math]::Min(2 * $attempt, 10)
-                Write-Output "Application '$DisplayName' ($ApplicationId) not yet visible for owners; waiting ${delaySeconds}s before retry ($attempt/$maxAttempts)."
-                Start-Sleep -Seconds $delaySeconds
-                continue
-            }
-            throw
-        }
-    }
-    if (-not $existing) {
-        throw "Could not list owners for App-Registration '$DisplayName' ($ApplicationId) after $maxAttempts attempts."
+    $existing = Invoke-GraphWithReplicationRetry -OperationDescription "Application '$DisplayName' ($ApplicationId) owners list" -Action {
+        Invoke-RestMethod -Method GET -Uri $ownersUri -Headers $Headers -ErrorAction Stop
     }
     $existingIds = @($existing.value | ForEach-Object { $_.id })
 
@@ -740,7 +750,24 @@ Function Add-AppRegistrationOwners {
         $ownerBody = @{
             '@odata.id' = "$GraphApiBaseUrl/$GraphApiVersion/directoryObjects/$($ownerRef.ObjectId)"
         } | ConvertTo-Json
-        Invoke-RestMethod -Method POST -Uri "$ownersUri/`$ref" -Body $ownerBody -Headers $Headers | Out-Null
+
+        Invoke-GraphWithReplicationRetry -OperationDescription "Add owner '$($ownerRef.Label)' on '$DisplayName'" -Action {
+            try {
+                Invoke-RestMethod -Method POST -Uri "$ownersUri/`$ref" -Body $ownerBody -Headers $Headers -ErrorAction Stop | Out-Null
+            }
+            catch {
+                # POST may 404 while replicas catch up; treat "already owner" as success if list now shows them.
+                if (Test-GraphReplicationMiss -ErrorRecord $_) {
+                    $recheck = Invoke-RestMethod -Method GET -Uri $ownersUri -Headers $Headers -ErrorAction Stop
+                    $recheckIds = @($recheck.value | ForEach-Object { $_.id })
+                    if ($recheckIds -contains $ownerRef.ObjectId) {
+                        Write-Output "Owner '$($ownerRef.Label)' is already an owner of App-Registration '$DisplayName' (confirmed after replication miss)."
+                        return
+                    }
+                }
+                throw
+            }
+        }
         $existingIds += $ownerRef.ObjectId
     }
 }
