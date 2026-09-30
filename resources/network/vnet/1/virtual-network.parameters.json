@@ -74,12 +74,12 @@
         {
           "addressPrefix": "#{{ subnet5AddressPrefix }}",
           "serviceEndpoints": [],
-          "privateEndpointNetworkPolicies": "Enabled",
+          "privateEndpointNetworkPolicies": "Disabled",
           "privateLinkServiceNetworkPolicies": "Enabled",
           "delegations": [
             {
-              "name": "containerAppsDelegation",
-              "properties": { "serviceName": "Microsoft.App/environments" }
+              "name": "Microsoft.DBforPostgreSQL.flexibleServers",
+              "properties": { "serviceName": "Microsoft.DBforPostgreSQL/flexibleServers" }
             }
           ],
           "nsgLayout": "#{{ subnet5NsgLayout }}",

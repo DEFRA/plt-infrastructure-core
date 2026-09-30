@@ -149,6 +149,21 @@ module containerAppsStorageNaming './naming-convention.bicep' = {
   }
 }
 
+// PostgreSQL Flexible Server (PSQ). Azure requires lowercase server names.
+module postgresFlexibleServerNaming './naming-convention.bicep' = {
+  name: 'psq-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'PSQ'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: true
+  }
+}
+
 // Outputs
 output resourceGroupName string = resourceGroupNaming.outputs.name
 output virtualNetworkName string = virtualNetworkNaming.outputs.name
@@ -160,3 +175,4 @@ output privateLinkZoneResourceName string = !empty(privateLinkZoneSuffix) && !em
 output containerAppsEnvironmentName string = containerAppsEnvironmentNaming.outputs.name
 output logAnalyticsWorkspaceName string = logAnalyticsWorkspaceNaming.outputs.name
 output containerAppsStorageAccountName string = containerAppsStorageNaming.outputs.name
+output postgresFlexibleServerName string = postgresFlexibleServerNaming.outputs.name

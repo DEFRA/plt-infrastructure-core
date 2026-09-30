@@ -10,6 +10,7 @@ The following non-network resources may also be deployed according to Defra patt
 - Entra ID App Registrations (API permissions, optional Key Vault secrets).
 - Document Intelligence
 - Internal Container Apps Environment (Log Analytics + private DNS + optional Azure Files)
+- Private PostgreSQL Flexible Server (VNet-injected, Entra MI admin)
 - DNS
 - Resource Groups and permissions.
 
@@ -63,6 +64,7 @@ Located under `scripts/pipeline/`:
 - `Resolve-EntraGroupByDisplayName.ps1`: Shared helper to resolve Entra group display names to object ids (used where directory lookups are needed).
 - `SetDnsRecords.ps1`: Unified DNS record updater for both `additionalDnsConfig` entries and Document Intelligence private endpoint DNS.
 - `Output-ContainerAppsEnvironment.ps1`: Reads Container Apps Environment deployment outputs (default domain / static IP) for hub DNS linking.
+- `Set-PostgresEntraAdminFromCae.ps1`: Resolves an optional Container Apps Environment system-assigned MI for PostgreSQL Entra admin (falls back to platform UAMI only).
 - `Validate-Params-Match-Config.ps1`: Validates pipeline `environmentName` matches config (`subType + deploymentEnvInstance`) and validates `location`.
 - `Validate-AdditionalDnsConfigJson.ps1`: Validates `additionalDnsConfig` JSON when Document Intelligence is enabled.
 

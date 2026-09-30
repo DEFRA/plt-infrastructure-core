@@ -114,6 +114,7 @@ param role string
   'SUB'   // Azure Subnet
   'SU'    // Subnet (abbreviated)
   'PEP'   // Private Endpoint
+  'PSQ'   // PostgreSQL Flexible Server
   'VNT'   // Virtual Network
   'WAF'   // Azure WAF Policy
 ])

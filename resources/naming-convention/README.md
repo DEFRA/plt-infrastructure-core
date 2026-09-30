@@ -112,6 +112,7 @@ Breaking down the example:
 | `KVT` | Key Vault |
 | `LW` | Log Analytics Workspace |
 | `NSG` | Network Security Group |
+| `PSQ` | PostgreSQL Flexible Server |
 | `RGP` | Resource Group* |
 | `STO` | Storage Account |
 | `SUB` | Azure Subnet |

@@ -83,6 +83,17 @@ variables:
   # true = provision hardened StorageV2 for the CAE; false/omit = skip. Shares/mounts are app-deploy concern.
   - name: containerAppsStorage
     value: false
+  # Validation needs a non-empty Postgres name before set-resource-names; overridden later.
+  - name: postgresFlexibleServerName
+    value: 'ValidationPlaceholderPSQ'
+  # true = deploy private PostgreSQL Flexible Server (VNet-injected on subnet5); false/omit = skip.
+  - name: postgresFlexibleServer
+    value: false
+  # Optional CAE system-assigned MI as extra Entra admin (set by Set-PostgresEntraAdminFromCae.ps1).
+  - name: postgresCaeEntraAdminObjectId
+    value: ''
+  - name: postgresCaeEntraAdminPrincipalName
+    value: ''
   # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
   - name: firewallVirtualApplianceIp
     value: ''
@@ -409,4 +420,31 @@ extends:
                           -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
                           -PipelineWorkspace "$(Pipeline.Workspace)"
                           -BuildSourcesDirectory "$(Build.SourcesDirectory)"
+              - ${{ if eq(lower(coalesce(variables.postgresFlexibleServer, 'false')), 'true') }}:
+                - name: postgres-flexible-server
+                  path: resources/data/postgres-flexible-server
+                  parameterFilePath: resources/data/postgres-flexible-server
+                  resourceGroupName: $(servicesResourceGroup)
+                  preDeployScriptsList:
+                    - displayName: 'Resolve optional CAE Entra admin for PostgreSQL'
+                      type: AzureCLI
+                      azureCLIScriptType: pscore
+                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                      scriptPath: scripts/pipeline/Set-PostgresEntraAdminFromCae.ps1
+                      scriptArguments: >
+                        -ResourceGroupName "$(servicesResourceGroup)"
+                        -ContainerAppsEnvironmentName "$(containerAppsEnvironmentName)"
+                  postDeployScriptsList:
+                    - displayName: 'Link PostgreSQL private DNS zone to hub networks'
+                      type: AzurePowerShell
+                      azurePowerShellVersion: LatestVersion
+                      azurePowerShellUseCore: true
+                      serviceConnectionVariableName: 'ssvServiceConnection'
+                      useSystemAccessToken: true
+                      scriptPath: scripts/pipeline/Trigger-LinkPrivateDNSZones.ps1
+                      scriptArguments: >
+                        -PrivateDnsZoneName "privatelink.postgres.database.azure.com"
+                        -ResourceGroupName "$(servicesResourceGroup)"
+                        -SubscriptionName "$(subscriptionName)"
+                        -TenantId "$(tenantId)"
 

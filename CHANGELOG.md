@@ -2,6 +2,17 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.5.0] - 2026-09-30
+
+### Added
+
+- **Private PostgreSQL Flexible Server** — Optional. Set `postgresFlexibleServer: true` in instance `core.yaml` to deploy a VNet-injected Flexible Server into the APP resource group (requires `APP` in `platformResourceGroups`). Defaults to Burstable **Standard_B1ms**, 32 GB, PostgreSQL 16, high availability disabled. **No public connectivity** (delegated subnet injection on layout 1 **subnet 5** + `privatelink.postgres.database.azure.com` in the APP RG, spoke-linked and hub-linked). **Entra authentication only** (`passwordAuth` disabled): creates a platform user-assigned MI as Entra admin for later app-deploy DB automation; when a Container Apps Environment exists in the same APP RG, its system-assigned MI is also granted Entra admin. Per-app database users remain an app-deploy concern. Set to `false` or omit to skip.
+- **Naming resource type `PSQ`** — PostgreSQL Flexible Server naming via `get-names` / `Set-ResourceNames` (`postgresFlexibleServerName`).
+
+### Changed
+
+- **Layout 1 subnet 5** — Delegation moved from `Microsoft.App/environments` to **`Microsoft.DBforPostgreSQL/flexibleServers`** (Container Apps Environment is on subnet 4). Subnet 5 is reserved for the platform PostgreSQL Flexible Server.
+
 ## [1.4.0] - 2026-09-25
 
 ### Added
