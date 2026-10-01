@@ -6,7 +6,9 @@
   Runs `resources/naming-convention/get-names.bicep` once and stores outputs
   as pipeline variables (resource group, vnet, route table, subnet names,
   optional private link names, Container Apps Environment and Log Analytics names).
-  This keeps naming logic centralized and DRY.
+  Also exports `virtualNetworkResourceGroup` (INF) and `servicesResourceGroup` (APP)
+  so parallel grouped-deployment jobs can hydrate tokens by re-running this script
+  without re-creating RGs. This keeps naming logic centralized and DRY.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$RootPath,
@@ -76,6 +78,7 @@ az deployment sub create --name $namingDeploymentName --location $Location --tem
 if ($LASTEXITCODE -ne 0) { throw "set-resource-names: get-names (INF) failed" }
 
 $rgName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
+$appRgName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.appResourceGroupName.value" -o tsv 2>$null
 $vnetName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.virtualNetworkName.value" -o tsv
 $rtName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.routeTableName.value" -o tsv
 $subnetNamesJson = az deployment sub show --name $namingDeploymentName --query "properties.outputs.subnetNames.value" -o json 2>$null
@@ -88,8 +91,13 @@ $postgresName = az deployment sub show --name $namingDeploymentName --query "pro
 
 if (-not $rgName) { throw "set-resource-names: could not get resourceGroupName" }
 Write-Host "##vso[task.setvariable variable=infraResourceGroupName]$rgName"
+# Same INF RG hosts the spoke VNet; export both names so parallel jobs can hydrate without create-RGs.
+Write-Host "##vso[task.setvariable variable=virtualNetworkResourceGroup]$rgName"
 Write-Host "##vso[task.setvariable variable=virtualNetworkName]$vnetName"
 Write-Host "##vso[task.setvariable variable=routeTableName]$rtName"
+if (-not [string]::IsNullOrWhiteSpace($appRgName)) {
+  Write-Host "##vso[task.setvariable variable=servicesResourceGroup]$appRgName"
+}
 
 $subnetNames = @()
 if (-not [string]::IsNullOrWhiteSpace($subnetNamesJson) -and $subnetNamesJson -ne '[]') {

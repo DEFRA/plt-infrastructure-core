@@ -42,6 +42,21 @@ module resourceGroupNaming './naming-convention.bicep' = {
   }
 }
 
+// APP resource group name (services / CAE / Postgres target RG).
+module appResourceGroupNaming './naming-convention.bicep' = {
+  name: 'app-rg-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'RGP'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: false
+  }
+}
+
 // Get virtual network name using naming convention
 module virtualNetworkNaming './naming-convention.bicep' = {
   name: 'vnet-naming-${uniqueString(deployment().name)}'
@@ -166,6 +181,7 @@ module postgresFlexibleServerNaming './naming-convention.bicep' = {
 
 // Outputs
 output resourceGroupName string = resourceGroupNaming.outputs.name
+output appResourceGroupName string = appResourceGroupNaming.outputs.name
 output virtualNetworkName string = virtualNetworkNaming.outputs.name
 output routeTableName string = routeTableNameWithoutInstance
 output subnetNames array = [for i in range(0, length(subnetNameConfigs)): subnetNaming[i].outputs.name]

@@ -43,7 +43,10 @@ var highAvailability = !empty(server.?highAvailability) ? server.?highAvailabili
 var availabilityZone = server.?availabilityZone ?? -1
 
 var adminIdentityName = take('${serverName}-dbadmin', 128)
-var privateDnsZoneName = 'privatelink.postgres.database.azure.com'
+// Server-scoped zone (not the centrally managed privatelink.postgres.database.azure.com) so CCoE hub linking is allowed.
+// Azure FQDN becomes {server}.{zone}, e.g. sndaieapppsq1401.sndaieapppsq1401.privatelink.postgres.database.azure.com
+var privateDnsZoneName = '${serverName}.privatelink.postgres.database.azure.com'
+var serverFqdn = '${serverName}.${privateDnsZoneName}'
 
 var hasCaeAdmin = !empty(containerAppsEnvironmentEntraAdmin.objectId) && !empty(containerAppsEnvironmentEntraAdmin.principalName)
 
@@ -154,7 +157,7 @@ module flexibleServer 'br/avm:db-for-postgre-sql/flexible-server:0.16.1' = {
 }
 
 output name string = serverName
-output fqdn string = '${serverName}.postgres.database.azure.com'
+output fqdn string = serverFqdn
 output privateDnsZoneName string = privateDnsZoneName
 output adminManagedIdentityName string = adminIdentityName
 output adminManagedIdentityPrincipalId string = aadAdminUserMi.outputs.principalId
