@@ -12,7 +12,7 @@ All notable changes to this repository should be documented in this file.
 ### Changed
 
 - **Layout 1 subnet 5** — Delegation moved from `Microsoft.App/environments` to **`Microsoft.DBforPostgreSQL/flexibleServers`** (Container Apps Environment is on subnet 4). Subnet 5 is reserved for the platform PostgreSQL Flexible Server.
-- **Parallel pre-reqs** — Platform deploy groups are split for speed: `init` (set-resource-names → resolve contributor → create platform RGs), then parallel `pre_req_*` jobs (DNS links, AAD groups, app registrations, route tables, NSGs). `landing_zone` (VNet + optional DI/CAE/Postgres) waits on route tables + NSGs. Jobs that need naming re-run `Set-ResourceNames` to hydrate job-local variables (ADO does not share non-output vars across grouped deployments).
+- **Parallel pre-reqs** — After `validate_and_setup`, `pre_req_*` jobs (DNS links, AAD groups, app registrations, route tables, NSGs) all start together. Network jobs are self-contained (set-resource-names → resolve contributor → create RGs → deploy) so they are not gated behind a separate `init` job. `landing_zone` waits on route tables + NSGs. `Create-PlatformResourceGroups` retries transient conflicts when RT/NSG jobs ensure RGs concurrently.
 
 ### Fixed
 
