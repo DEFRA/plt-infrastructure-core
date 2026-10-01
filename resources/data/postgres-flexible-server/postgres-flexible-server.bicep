@@ -36,7 +36,8 @@ var defaultTags = union(loadJsonContent('../../default-tags.json'), commonTags)
 var serverName = toLower(server.name)
 var skuName = contains(server, 'skuName') && !empty(server.skuName) ? server.skuName : 'Standard_B1ms'
 var tier = contains(server, 'tier') && !empty(server.tier) ? server.tier : 'Burstable'
-var storageSizeGB = contains(server, 'storageSizeGB') && !empty(server.storageSizeGB) ? server.storageSizeGB : 32
+// empty() does not accept integers — use contains() only for numeric defaults.
+var storageSizeGB = contains(server, 'storageSizeGB') ? server.storageSizeGB : 32
 var postgresVersion = contains(server, 'version') && !empty(server.version) ? server.version : '16'
 var highAvailability = contains(server, 'highAvailability') && !empty(server.highAvailability) ? server.highAvailability : 'Disabled'
 
@@ -142,9 +143,6 @@ module flexibleServer 'br/SharedDefraRegistry:db-for-postgre-sql.flexible-server
       Purpose: 'Platform PostgreSQL Flexible Server'
     })
   }
-  dependsOn: [
-    aadAdminUserMi
-  ]
 }
 
 output name string = serverName
