@@ -34,19 +34,20 @@ var commonTags = {
 var defaultTags = union(loadJsonContent('../../default-tags.json'), commonTags)
 
 var serverName = toLower(server.name)
-var skuName = contains(server, 'skuName') && !empty(server.skuName) ? server.skuName : 'Standard_B1ms'
-var tier = contains(server, 'tier') && !empty(server.tier) ? server.tier : 'Burstable'
-// empty() does not accept integers — use contains() only for numeric defaults.
-var storageSizeGB = contains(server, 'storageSizeGB') ? server.storageSizeGB : 32
-var postgresVersion = contains(server, 'version') && !empty(server.version) ? server.version : '16'
-var highAvailability = contains(server, 'highAvailability') && !empty(server.highAvailability) ? server.highAvailability : 'Disabled'
+var skuName = !empty(server.?skuName) ? server.?skuName! : 'Standard_B1ms'
+var tier = !empty(server.?tier) ? server.?tier! : 'Burstable'
+var storageSizeGB = server.?storageSizeGB ?? 32
+var postgresVersion = !empty(server.?version) ? server.?version! : '16'
+var highAvailability = !empty(server.?highAvailability) ? server.?highAvailability! : 'Disabled'
+// AVM: -1 = no availability zone (required for Burstable / non-zonal SKUs).
+var availabilityZone = server.?availabilityZone ?? -1
 
 var adminIdentityName = take('${serverName}-dbadmin', 128)
 var privateDnsZoneName = 'privatelink.postgres.database.azure.com'
 
 var hasCaeAdmin = !empty(containerAppsEnvironmentEntraAdmin.objectId) && !empty(containerAppsEnvironmentEntraAdmin.principalName)
 
-// Flexible Server Entra admin `objectId` for a user-assigned MI is the clientId (SharedDefra / ADP pattern).
+// Flexible Server Entra admin `objectId` for a user-assigned MI is the clientId (AVM / ADP pattern).
 // For a CAE system-assigned MI, pass the principalId from the environment identity.
 var entraAdministrators = concat(
   [
@@ -115,7 +116,8 @@ module privateDnsZone 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = 
 // Private VNet injection (delegated subnet) — no public endpoint.
 // Entra auth enabled; password auth disabled. Platform UAMI (+ optional CAE MI) are Entra admins
 // so app-deploy can create per-app databases later without a shared password.
-module flexibleServer 'br/SharedDefraRegistry:db-for-postgre-sql.flexible-server:0.4.4' = {
+// Uses public AVM (not SharedDefra) so PostgreSQL 16+ is in the version allow-list.
+module flexibleServer 'br/avm:db-for-postgre-sql/flexible-server:0.16.1' = {
   name: 'postgres-flexible-server-${deploymentDate}'
   params: {
     name: serverName
@@ -125,13 +127,19 @@ module flexibleServer 'br/SharedDefraRegistry:db-for-postgre-sql.flexible-server
     skuName: skuName
     storageSizeGB: storageSizeGB
     highAvailability: highAvailability
+    availabilityZone: availabilityZone
     createMode: 'Default'
-    activeDirectoryAuth: 'Enabled'
-    passwordAuth: 'Disabled'
-    enableDefaultTelemetry: false
-    lock: resourceLockEnabled ? 'CanNotDelete' : null
+    authConfig: {
+      activeDirectoryAuth: 'Enabled'
+      passwordAuth: 'Disabled'
+    }
+    enableTelemetry: false
+    lock: resourceLockEnabled ? {
+      kind: 'CanNotDelete'
+    } : null
     backupRetentionDays: 7
     geoRedundantBackup: 'Disabled'
+    publicNetworkAccess: 'Disabled'
     administrators: entraAdministrators
     configurations: []
     databases: []
