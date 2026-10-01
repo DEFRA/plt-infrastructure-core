@@ -531,6 +531,7 @@ extends:
                       scriptPath: scripts/pipeline/Output-PostgresFlexibleServer.ps1
                       scriptArguments: >
                         -ResourceGroupName "$(servicesResourceGroup)"
+                        -PostgresFlexibleServerName "$(postgresFlexibleServerName)"
                     - displayName: 'Link PostgreSQL private DNS zone to hub networks'
                       type: AzurePowerShell
                       azurePowerShellVersion: LatestVersion
