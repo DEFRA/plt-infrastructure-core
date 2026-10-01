@@ -12,7 +12,7 @@ All notable changes to this repository should be documented in this file.
 ### Changed
 
 - **Layout 1 subnet 5** — Delegation moved from `Microsoft.App/environments` to **`Microsoft.DBforPostgreSQL/flexibleServers`** (Container Apps Environment is on subnet 4). Subnet 5 is reserved for the platform PostgreSQL Flexible Server.
-- **Parallel pre-reqs** — After `validate_and_setup`, `pre_req_*` jobs (DNS links, AAD groups, app registrations, route tables, NSGs) all start together. Network jobs are self-contained (set-resource-names → resolve contributor → create RGs → deploy) so they are not gated behind a separate `init` job. `landing_zone` waits on route tables + NSGs. `Create-PlatformResourceGroups` retries transient conflicts when RT/NSG jobs ensure RGs concurrently.
+- **Parallel pre-reqs** — After `validate_and_setup`, `pre_req_*` jobs (DNS links, AAD groups, app registrations, route tables, NSGs) all start together. Network jobs are self-contained (set-resource-names → resolve contributor → create RGs → deploy) so they are not gated behind a separate `init` job. `landing_zone` deploys the spoke VNet only, then parallel **Deploy Azure Services** jobs (`azure_document_intelligence`, `azure_container_apps`, `azure_postgres`, …) each depend on `landing_zone`. Add future Azure services the same way. `Create-PlatformResourceGroups` retries transient conflicts when RT/NSG jobs ensure RGs concurrently.
 
 ### Fixed
 

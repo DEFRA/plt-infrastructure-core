@@ -426,126 +426,196 @@ extends:
                         -SubscriptionName $(subscriptionName)
                         -TenantId $(tenantId)
                         -PeerToSec $false
-              # Private DNS zone creation (ai-document-intelligence-zone) omitted: corporate policy prevents creation in certain subscriptions. Use existing zone and add DNS lookup later. Module kept under resources/network/private-dns-zone for other scenarios.
-              - ${{ if and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none')) }}:
+
+        # --- Deploy Azure Services: parallel after VNet (add new services as sibling groups) ---
+        # Private DNS zone creation (ai-document-intelligence-zone) omitted: corporate policy prevents creation in certain subscriptions. Use existing zone and add DNS lookup later. Module kept under resources/network/private-dns-zone for other scenarios.
+        - ${{ if and(ne(coalesce(variables.documentIntelligenceSku, ''), ''), ne(lower(coalesce(variables.documentIntelligenceSku, '')), 'none')) }}:
+          - name: azure_document_intelligence
+            dependsOnGroupedDeployments:
+              - landing_zone
+            deployments:
+                - name: set-resource-names
+                  type: 'script'
+                  scriptType: AzureCLI
+                  azureCLIScriptType: pscore
+                  serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                  inlineScript: |
+                    & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Set-ResourceNames.ps1" `
+                      -RootPath "$(Pipeline.Workspace)/s/self" `
+                      -Location "$(location)" `
+                      -SubType "$(subType)" `
+                      -ServiceCode "$(serviceCode)" `
+                      -DeploymentEnvInstance "$(deploymentEnvInstance)" `
+                      -RegionCode "$(regionCode)" `
+                      -InstanceNumber "$(instanceNumber)" `
+                      -SubnetLayout "$(subnetLayout)" `
+                      -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)" `
+                      -ContainerAppsEnvironmentSubnet "$(containerAppsEnvironment)" `
+                      -PostgresFlexibleServerSubnet "$(postgresFlexibleServer)"
                 - name: ai-document-intelligence
                   path: resources/ai/document-intelligence
                   parameterFilePath: resources/ai/document-intelligence
                   resourceGroupName: $(servicesResourceGroup)
                   preDeployScriptsList:
-                    - displayName: 'Set DNS A records from additionalDnsConfig'
-                      type: AzurePowerShell
-                      azurePowerShellVersion: LatestVersion
-                      azurePowerShellUseCore: true
-                      serviceConnectionVariableName: 'privateDnsServiceConnection'
-                      scriptPath: scripts/pipeline/SetDnsRecords.ps1
-                      scriptArguments: >
-                        -Location "$(location)"
-                        -AdditionalDnsConfig '$(additionalDnsConfig)'
-                        -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
-                        -PipelineWorkspace "$(Pipeline.Workspace)"
-                        -BuildSourcesDirectory "$(Build.SourcesDirectory)"
-                  postDeployScriptsList:
-                    - displayName: 'Output Document Intelligence private endpoint IP for DNS'
-                      type: AzureCLI
-                      azureCLIScriptType: pscore
-                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                      scriptPath: scripts/pipeline/Output-DocumentIntelligencePrivateEndpointIp.ps1
-                      scriptArguments: >
-                        -ResourceGroupName "$(servicesResourceGroup)"
-                    - displayName: 'Set Document Intelligence private endpoint DNS A record'
-                      type: AzurePowerShell
-                      azurePowerShellVersion: LatestVersion
-                      azurePowerShellUseCore: true
-                      serviceConnectionVariableName: 'privateDnsServiceConnection'
-                      scriptPath: scripts/pipeline/SetDnsRecords.ps1
-                      scriptArguments: >
-                        -Fqdn "$(documentIntelligenceResourceName).cognitiveservices.azure.com"
-                        -IpAddress "$(documentIntelligencePrivateEndpointIp)"
-                        -Location "$(location)"
-                        -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
-                        -PipelineWorkspace "$(Pipeline.Workspace)"
-                        -BuildSourcesDirectory "$(Build.SourcesDirectory)"
-              - ${{ if and(ne(coalesce(variables.containerAppsEnvironment, ''), ''), ne(lower(coalesce(variables.containerAppsEnvironment, '')), 'none')) }}:
-                - name: container-apps-environment
-                  path: resources/app/container-apps-environment
-                  parameterFilePath: resources/app/container-apps-environment
-                  resourceGroupName: $(servicesResourceGroup)
-                  postDeployScriptsList:
-                    - displayName: 'Output Container Apps Environment private DNS zone for hub linking'
-                      type: AzureCLI
-                      azureCLIScriptType: pscore
-                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                      scriptPath: scripts/pipeline/Output-ContainerAppsEnvironment.ps1
-                      scriptArguments: >
-                        -ResourceGroupName "$(servicesResourceGroup)"
-                    - displayName: 'Link Container Apps Environment private DNS zone to hub networks'
-                      type: AzurePowerShell
-                      azurePowerShellVersion: LatestVersion
-                      azurePowerShellUseCore: true
-                      serviceConnectionVariableName: 'ssvServiceConnection'
-                      useSystemAccessToken: true
-                      scriptPath: scripts/pipeline/Trigger-LinkPrivateDNSZones.ps1
-                      scriptArguments: >
-                        -PrivateDnsZoneName "$(containerAppsEnvironmentPrivateDnsZoneName)"
-                        -ResourceGroupName "$(servicesResourceGroup)"
-                        -SubscriptionName "$(subscriptionName)"
-                        -TenantId "$(tenantId)"
-                    - ${{ if eq(lower(coalesce(variables.containerAppsStorage, 'false')), 'true') }}:
-                      - displayName: 'Output Container Apps storage private endpoint IP for DNS'
-                        type: AzureCLI
-                        azureCLIScriptType: pscore
-                        serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                        scriptPath: scripts/pipeline/Output-ContainerAppsStoragePrivateEndpointIp.ps1
-                        scriptArguments: >
-                          -ResourceGroupName "$(servicesResourceGroup)"
-                          -StorageAccountName "$(containerAppsStorageAccountName)"
-                      - displayName: 'Set Container Apps storage private endpoint DNS A record'
+                      - displayName: 'Set DNS A records from additionalDnsConfig'
                         type: AzurePowerShell
                         azurePowerShellVersion: LatestVersion
                         azurePowerShellUseCore: true
                         serviceConnectionVariableName: 'privateDnsServiceConnection'
                         scriptPath: scripts/pipeline/SetDnsRecords.ps1
                         scriptArguments: >
-                          -Fqdn "$(containerAppsStorageAccountName).file.core.windows.net"
-                          -IpAddress "$(containerAppsStoragePrivateEndpointIp)"
+                          -Location "$(location)"
+                          -AdditionalDnsConfig '$(additionalDnsConfig)'
+                          -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+                          -PipelineWorkspace "$(Pipeline.Workspace)"
+                          -BuildSourcesDirectory "$(Build.SourcesDirectory)"
+                  postDeployScriptsList:
+                      - displayName: 'Output Document Intelligence private endpoint IP for DNS'
+                        type: AzureCLI
+                        azureCLIScriptType: pscore
+                        serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                        scriptPath: scripts/pipeline/Output-DocumentIntelligencePrivateEndpointIp.ps1
+                        scriptArguments: >
+                          -ResourceGroupName "$(servicesResourceGroup)"
+                      - displayName: 'Set Document Intelligence private endpoint DNS A record'
+                        type: AzurePowerShell
+                        azurePowerShellVersion: LatestVersion
+                        azurePowerShellUseCore: true
+                        serviceConnectionVariableName: 'privateDnsServiceConnection'
+                        scriptPath: scripts/pipeline/SetDnsRecords.ps1
+                        scriptArguments: >
+                          -Fqdn "$(documentIntelligenceResourceName).cognitiveservices.azure.com"
+                          -IpAddress "$(documentIntelligencePrivateEndpointIp)"
                           -Location "$(location)"
                           -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
                           -PipelineWorkspace "$(Pipeline.Workspace)"
                           -BuildSourcesDirectory "$(Build.SourcesDirectory)"
-              - ${{ if and(ne(coalesce(variables.postgresFlexibleServer, ''), ''), ne(lower(coalesce(variables.postgresFlexibleServer, '')), 'none')) }}:
+
+        - ${{ if and(ne(coalesce(variables.containerAppsEnvironment, ''), ''), ne(lower(coalesce(variables.containerAppsEnvironment, '')), 'none')) }}:
+          - name: azure_container_apps
+            dependsOnGroupedDeployments:
+              - landing_zone
+            deployments:
+                - name: set-resource-names
+                  type: 'script'
+                  scriptType: AzureCLI
+                  azureCLIScriptType: pscore
+                  serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                  inlineScript: |
+                    & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Set-ResourceNames.ps1" `
+                      -RootPath "$(Pipeline.Workspace)/s/self" `
+                      -Location "$(location)" `
+                      -SubType "$(subType)" `
+                      -ServiceCode "$(serviceCode)" `
+                      -DeploymentEnvInstance "$(deploymentEnvInstance)" `
+                      -RegionCode "$(regionCode)" `
+                      -InstanceNumber "$(instanceNumber)" `
+                      -SubnetLayout "$(subnetLayout)" `
+                      -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)" `
+                      -ContainerAppsEnvironmentSubnet "$(containerAppsEnvironment)" `
+                      -PostgresFlexibleServerSubnet "$(postgresFlexibleServer)"
+                - name: container-apps-environment
+                  path: resources/app/container-apps-environment
+                  parameterFilePath: resources/app/container-apps-environment
+                  resourceGroupName: $(servicesResourceGroup)
+                  postDeployScriptsList:
+                      - displayName: 'Output Container Apps Environment private DNS zone for hub linking'
+                        type: AzureCLI
+                        azureCLIScriptType: pscore
+                        serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                        scriptPath: scripts/pipeline/Output-ContainerAppsEnvironment.ps1
+                        scriptArguments: >
+                          -ResourceGroupName "$(servicesResourceGroup)"
+                      - displayName: 'Link Container Apps Environment private DNS zone to hub networks'
+                        type: AzurePowerShell
+                        azurePowerShellVersion: LatestVersion
+                        azurePowerShellUseCore: true
+                        serviceConnectionVariableName: 'ssvServiceConnection'
+                        useSystemAccessToken: true
+                        scriptPath: scripts/pipeline/Trigger-LinkPrivateDNSZones.ps1
+                        scriptArguments: >
+                          -PrivateDnsZoneName "$(containerAppsEnvironmentPrivateDnsZoneName)"
+                          -ResourceGroupName "$(servicesResourceGroup)"
+                          -SubscriptionName "$(subscriptionName)"
+                          -TenantId "$(tenantId)"
+                      - ${{ if eq(lower(coalesce(variables.containerAppsStorage, 'false')), 'true') }}:
+                        - displayName: 'Output Container Apps storage private endpoint IP for DNS'
+                          type: AzureCLI
+                          azureCLIScriptType: pscore
+                          serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                          scriptPath: scripts/pipeline/Output-ContainerAppsStoragePrivateEndpointIp.ps1
+                          scriptArguments: >
+                            -ResourceGroupName "$(servicesResourceGroup)"
+                            -StorageAccountName "$(containerAppsStorageAccountName)"
+                        - displayName: 'Set Container Apps storage private endpoint DNS A record'
+                          type: AzurePowerShell
+                          azurePowerShellVersion: LatestVersion
+                          azurePowerShellUseCore: true
+                          serviceConnectionVariableName: 'privateDnsServiceConnection'
+                          scriptPath: scripts/pipeline/SetDnsRecords.ps1
+                          scriptArguments: >
+                            -Fqdn "$(containerAppsStorageAccountName).file.core.windows.net"
+                            -IpAddress "$(containerAppsStoragePrivateEndpointIp)"
+                            -Location "$(location)"
+                            -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+                            -PipelineWorkspace "$(Pipeline.Workspace)"
+                            -BuildSourcesDirectory "$(Build.SourcesDirectory)"
+
+        - ${{ if and(ne(coalesce(variables.postgresFlexibleServer, ''), ''), ne(lower(coalesce(variables.postgresFlexibleServer, '')), 'none')) }}:
+          - name: azure_postgres
+            dependsOnGroupedDeployments:
+              - landing_zone
+            deployments:
+                - name: set-resource-names
+                  type: 'script'
+                  scriptType: AzureCLI
+                  azureCLIScriptType: pscore
+                  serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                  inlineScript: |
+                    & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Set-ResourceNames.ps1" `
+                      -RootPath "$(Pipeline.Workspace)/s/self" `
+                      -Location "$(location)" `
+                      -SubType "$(subType)" `
+                      -ServiceCode "$(serviceCode)" `
+                      -DeploymentEnvInstance "$(deploymentEnvInstance)" `
+                      -RegionCode "$(regionCode)" `
+                      -InstanceNumber "$(instanceNumber)" `
+                      -SubnetLayout "$(subnetLayout)" `
+                      -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)" `
+                      -ContainerAppsEnvironmentSubnet "$(containerAppsEnvironment)" `
+                      -PostgresFlexibleServerSubnet "$(postgresFlexibleServer)"
                 - name: postgres-flexible-server
                   path: resources/data/postgres-flexible-server
                   parameterFilePath: resources/data/postgres-flexible-server
                   resourceGroupName: $(servicesResourceGroup)
                   preDeployScriptsList:
-                    - displayName: 'Resolve optional CAE Entra admin for PostgreSQL'
-                      type: AzureCLI
-                      azureCLIScriptType: pscore
-                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                      scriptPath: scripts/pipeline/Set-PostgresEntraAdminFromCae.ps1
-                      scriptArguments: >
-                        -ResourceGroupName "$(servicesResourceGroup)"
-                        -ContainerAppsEnvironmentName "$(containerAppsEnvironmentName)"
+                      - displayName: 'Resolve optional CAE Entra admin for PostgreSQL'
+                        type: AzureCLI
+                        azureCLIScriptType: pscore
+                        serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                        scriptPath: scripts/pipeline/Set-PostgresEntraAdminFromCae.ps1
+                        scriptArguments: >
+                          -ResourceGroupName "$(servicesResourceGroup)"
+                          -ContainerAppsEnvironmentName "$(containerAppsEnvironmentName)"
                   postDeployScriptsList:
-                    - displayName: 'Output PostgreSQL private DNS zone for hub linking'
-                      type: AzureCLI
-                      azureCLIScriptType: pscore
-                      serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
-                      scriptPath: scripts/pipeline/Output-PostgresFlexibleServer.ps1
-                      scriptArguments: >
-                        -ResourceGroupName "$(servicesResourceGroup)"
-                        -PostgresFlexibleServerName "$(postgresFlexibleServerName)"
-                    - displayName: 'Link PostgreSQL private DNS zone to hub networks'
-                      type: AzurePowerShell
-                      azurePowerShellVersion: LatestVersion
-                      azurePowerShellUseCore: true
-                      serviceConnectionVariableName: 'ssvServiceConnection'
-                      useSystemAccessToken: true
-                      scriptPath: scripts/pipeline/Trigger-LinkPrivateDNSZones.ps1
-                      scriptArguments: >
-                        -PrivateDnsZoneName "$(postgresFlexibleServerPrivateDnsZoneName)"
-                        -ResourceGroupName "$(servicesResourceGroup)"
-                        -SubscriptionName "$(subscriptionName)"
-                        -TenantId "$(tenantId)"
+                      - displayName: 'Output PostgreSQL private DNS zone for hub linking'
+                        type: AzureCLI
+                        azureCLIScriptType: pscore
+                        serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                        scriptPath: scripts/pipeline/Output-PostgresFlexibleServer.ps1
+                        scriptArguments: >
+                          -ResourceGroupName "$(servicesResourceGroup)"
+                          -PostgresFlexibleServerName "$(postgresFlexibleServerName)"
+                      - displayName: 'Link PostgreSQL private DNS zone to hub networks'
+                        type: AzurePowerShell
+                        azurePowerShellVersion: LatestVersion
+                        azurePowerShellUseCore: true
+                        serviceConnectionVariableName: 'ssvServiceConnection'
+                        useSystemAccessToken: true
+                        scriptPath: scripts/pipeline/Trigger-LinkPrivateDNSZones.ps1
+                        scriptArguments: >
+                          -PrivateDnsZoneName "$(postgresFlexibleServerPrivateDnsZoneName)"
+                          -ResourceGroupName "$(servicesResourceGroup)"
+                          -SubscriptionName "$(subscriptionName)"
+                          -TenantId "$(tenantId)"
 
