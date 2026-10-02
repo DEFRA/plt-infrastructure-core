@@ -179,6 +179,21 @@ module postgresFlexibleServerNaming './naming-convention.bicep' = {
   }
 }
 
+// Key Vault (KVT) in the APP RG — lowercase (globally unique vault DNS name).
+module keyVaultNaming './naming-convention.bicep' = {
+  name: 'kvt-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'KVT'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: true
+  }
+}
+
 // Outputs
 output resourceGroupName string = resourceGroupNaming.outputs.name
 output appResourceGroupName string = appResourceGroupNaming.outputs.name
@@ -192,3 +207,4 @@ output containerAppsEnvironmentName string = containerAppsEnvironmentNaming.outp
 output logAnalyticsWorkspaceName string = logAnalyticsWorkspaceNaming.outputs.name
 output containerAppsStorageAccountName string = containerAppsStorageNaming.outputs.name
 output postgresFlexibleServerName string = postgresFlexibleServerNaming.outputs.name
+output keyVaultName string = keyVaultNaming.outputs.name

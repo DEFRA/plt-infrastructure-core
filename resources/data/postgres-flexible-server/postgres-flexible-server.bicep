@@ -117,8 +117,9 @@ module privateDnsZone 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = 
 }
 
 // Private VNet injection (delegated subnet) — no public endpoint.
-// Entra auth enabled; password auth disabled. Platform UAMI (+ optional CAE MI) are Entra admins
-// so app-deploy can create per-app databases later without a shared password.
+// Entra auth enabled; password auth enabled so apps can use stable DATABASE_URL secrets
+// (Entra MI remains available for admins / automation). Platform UAMI (+ optional CAE MI)
+// are Entra admins for DB automation. Per-app DB users/passwords remain an app-deploy concern.
 // Uses public AVM (not SharedDefra) so PostgreSQL 16+ is in the version allow-list.
 module flexibleServer 'br/avm:db-for-postgre-sql/flexible-server:0.16.1' = {
   name: 'postgres-flexible-server-${deploymentDate}'
@@ -134,7 +135,7 @@ module flexibleServer 'br/avm:db-for-postgre-sql/flexible-server:0.16.1' = {
     createMode: 'Default'
     authConfig: {
       activeDirectoryAuth: 'Enabled'
-      passwordAuth: 'Disabled'
+      passwordAuth: 'Enabled'
     }
     enableTelemetry: false
     lock: resourceLockEnabled ? {

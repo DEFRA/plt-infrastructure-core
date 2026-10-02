@@ -88,6 +88,7 @@ $caeName = az deployment sub show --name $namingDeploymentName --query "properti
 $lawName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.logAnalyticsWorkspaceName.value" -o tsv 2>$null
 $caeStorageName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.containerAppsStorageAccountName.value" -o tsv 2>$null
 $postgresName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.postgresFlexibleServerName.value" -o tsv 2>$null
+$keyVaultName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.keyVaultName.value" -o tsv 2>$null
 
 if (-not $rgName) { throw "set-resource-names: could not get resourceGroupName" }
 Write-Host "##vso[task.setvariable variable=infraResourceGroupName]$rgName"
@@ -124,6 +125,9 @@ if (-not [string]::IsNullOrWhiteSpace($caeStorageName)) {
 }
 if (-not [string]::IsNullOrWhiteSpace($postgresName)) {
   Write-Host "##vso[task.setvariable variable=postgresFlexibleServerName]$postgresName"
+}
+if (-not [string]::IsNullOrWhiteSpace($keyVaultName)) {
+  Write-Host "##vso[task.setvariable variable=keyVaultName]$keyVaultName"
 }
 
 $caeSubnetKey = $ContainerAppsEnvironmentSubnet.Trim().ToLowerInvariant()

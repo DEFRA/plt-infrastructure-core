@@ -2,6 +2,16 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.6.0] - 2026-10-02
+
+### Added
+
+- **Private Key Vault (`KVT`)** — Optional. Set `keyVault: true` in instance `core.yaml` to deploy a private Key Vault into the APP resource group (requires `APP` in `platformResourceGroups`). SharedDefra `key-vault.vault` **0.5.3**, RBAC auth, soft-delete, public access disabled, vault private endpoint on the PEP subnet, DNS A record for `{name}.vaultcore.azure.net`. Grants Key Vault Secrets Officer to `appRgContributor` when resolvable. Parallel **Deploy Azure Services** job `azure_key_vault` (depends on `landing_zone` only). Naming via `get-names` / `Set-ResourceNames` (`keyVaultName`).
+
+### Changed
+
+- **PostgreSQL Flexible Server auth** — `passwordAuth` flipped to **Enabled** (Entra auth remains enabled). Apps can use stable password-based `DATABASE_URL` secrets while admins/automation keep Entra MI.
+
 ## [1.5.0] - 2026-09-30
 
 ### Added
