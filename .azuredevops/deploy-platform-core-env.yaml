@@ -681,7 +681,7 @@ extends:
                         serviceConnectionVariableName: 'privateDnsServiceConnection'
                         scriptPath: scripts/pipeline/SetDnsRecords.ps1
                         scriptArguments: >
-                          -Fqdn "$(keyVaultName).vaultcore.azure.net"
+                          -Fqdn "$(keyVaultName).vault.azure.net"
                           -IpAddress "$(keyVaultPrivateEndpointIp)"
                           -Location "$(location)"
                           -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'

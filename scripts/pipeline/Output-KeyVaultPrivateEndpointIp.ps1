@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Resolves the platform Key Vault private-endpoint IP for DNS (vaultcore.azure.net / privatelink.vaultcore.azure.net).
+  Resolves the platform Key Vault private-endpoint IP for DNS (vault.azure.net → privatelink.vaultcore.azure.net).
 #>
 param(
   [Parameter(Mandatory = $true)][string]$ResourceGroupName,

@@ -65,7 +65,7 @@ Located under `scripts/pipeline/`:
 - `SetDnsRecords.ps1`: Unified DNS record updater for `additionalDnsConfig`, Document Intelligence, Container Apps Storage, and Key Vault private endpoint DNS.
 - `Set-ResourceNames.ps1`: Derives INF/APP RG, VNet, subnet, and optional resource names from `get-names.bicep` and exports them as pipeline variables (safe to re-run per job for parallel grouped deployments).
 - `Output-ContainerAppsEnvironment.ps1`: Reads Container Apps Environment deployment outputs (default domain / static IP) for hub DNS linking.
-- `Output-KeyVaultPrivateEndpointIp.ps1`: Resolves the platform Key Vault vault private-endpoint IP for `*.vaultcore.azure.net` DNS.
+- `Output-KeyVaultPrivateEndpointIp.ps1`: Resolves the platform Key Vault private-endpoint IP for `*.vault.azure.net` DNS (zone `privatelink.vaultcore.azure.net`).
 - `Set-PostgresEntraAdminFromCae.ps1`: Resolves an optional Container Apps Environment system-assigned MI for PostgreSQL Entra admin (falls back to platform UAMI only).
 - `Validate-Params-Match-Config.ps1`: Validates pipeline `environmentName` matches config (`subType + deploymentEnvInstance`) and validates `location`.
 - `Validate-AdditionalDnsConfigJson.ps1`: Validates `additionalDnsConfig` JSON when Document Intelligence is enabled.
