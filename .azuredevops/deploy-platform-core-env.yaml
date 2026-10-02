@@ -660,17 +660,6 @@ extends:
                   path: resources/security/key-vault
                   parameterFilePath: resources/security/key-vault
                   resourceGroupName: $(servicesResourceGroup)
-                  preDeployScriptsList:
-                      - displayName: 'Resolve app RG contributor group for Key Vault RBAC'
-                        type: AzurePowerShell
-                        azurePowerShellVersion: LatestVersion
-                        azurePowerShellUseCore: true
-                        serviceConnectionVariableName: 'ssvServiceConnection'
-                        scriptPath: scripts/pipeline/Resolve-EntraGroupByDisplayName.ps1
-                        scriptArguments: >
-                          -GroupName "$(appRgContributor)"
-                          -OutputVariableName 'appRgContributorObjectId'
-                          -IfNotFound 'Warn'
                   postDeployScriptsList:
                       - displayName: 'Output Key Vault private endpoint IP for DNS'
                         type: AzureCLI

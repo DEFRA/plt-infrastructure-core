@@ -6,7 +6,7 @@ All notable changes to this repository should be documented in this file.
 
 ### Added
 
-- **Private Key Vault (`KVT`)** — Optional. Set `keyVault: true` in instance `core.yaml` to deploy a private Key Vault into the APP resource group (requires `APP` in `platformResourceGroups`). SharedDefra `key-vault.vault` **0.5.3**, RBAC auth, soft-delete, public access disabled, vault private endpoint on the PEP subnet, DNS A record for `{name}.vault.azure.net` (zone `privatelink.vaultcore.azure.net`). Grants Key Vault Secrets Officer to `appRgContributor` when resolvable. Parallel **Deploy Azure Services** job `azure_key_vault` (depends on `landing_zone` only). Naming via `get-names` / `Set-ResourceNames` (`keyVaultName`).
+- **Private Key Vault (`KVT`)** — Optional. Set `keyVault: true` in instance `core.yaml` to deploy a private Key Vault into the APP resource group (requires `APP` in `platformResourceGroups`). SharedDefra `key-vault.vault` **0.5.3**, RBAC auth, soft-delete, public access disabled, vault private endpoint on the PEP subnet, DNS A record for `{name}.vault.azure.net` (zone `privatelink.vaultcore.azure.net`). Does **not** assign Key Vault Secrets Officer — that is granted separately at subscription level to the CI/CD app registration. Parallel **Deploy Azure Services** job `azure_key_vault` (depends on `landing_zone` only). Naming via `get-names` / `Set-ResourceNames` (`keyVaultName`).
 
 ### Changed
 

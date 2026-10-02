@@ -7,9 +7,6 @@ param vnet object
 @description('Required. Sub type (e.g. SND, PRD).')
 param subType string
 
-@description('Optional. Entra group object id granted Key Vault Secrets Officer (e.g. appRgContributor). Empty skips the assignment.')
-param secretsOfficerPrincipalId string = ''
-
 @description('Optional. Location for all resources.')
 param location string = resourceGroup().location
 
@@ -37,21 +34,6 @@ var enableSoftDelete = keyVault.?enableSoftDelete ?? true
 var enablePurgeProtection = keyVault.?enablePurgeProtection ?? resourceLockEnabled
 var softDeleteRetentionInDays = keyVault.?softDeleteRetentionInDays ?? 90
 var privateEndpointName = take('${toLower(keyVaultName)}pep01', 64)
-
-var hasSecretsOfficer = !empty(secretsOfficerPrincipalId)
-
-var roleAssignments = hasSecretsOfficer
-  ? [
-      {
-        roleDefinitionIdOrName: 'Key Vault Secrets Officer'
-        description: 'App RG contributor group — manage secrets in the platform Key Vault'
-        principalIds: [
-          secretsOfficerPrincipalId
-        ]
-        principalType: 'Group'
-      }
-    ]
-  : []
 
 module vault 'br/SharedDefraRegistry:key-vault.vault:0.5.3' = {
   name: 'key-vault-${deploymentDate}'
@@ -81,7 +63,8 @@ module vault 'br/SharedDefraRegistry:key-vault.vault:0.5.3' = {
         })
       }
     ]
-    roleAssignments: roleAssignments
+    // Secrets Officer is granted separately (subscription-level) to the CI/CD app registration — not here.
+    roleAssignments: []
     tags: union(defaultTags, {
       Name: keyVaultName
       Purpose: 'Platform Key Vault'

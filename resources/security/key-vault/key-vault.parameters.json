@@ -18,9 +18,6 @@
         "subnetPrivateEndpoints": "#{{ subnet3Name }}"
       }
     },
-    "secretsOfficerPrincipalId": {
-      "value": "#{{ appRgContributorObjectId }}"
-    },
     "subType": {
       "value": "#{{ subType }}"
     },
