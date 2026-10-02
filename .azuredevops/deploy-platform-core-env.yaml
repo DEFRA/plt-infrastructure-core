@@ -104,6 +104,9 @@ variables:
     value: false
   - name: keyVaultPrivateEndpointIp
     value: ''
+  # Set when keyVault=true (via Set-ResourceNames); empty skips POSTGRES-* secret writes.
+  - name: postgresKeyVaultName
+    value: ''
   # Firewall virtual appliance IP for route table next hop (set in variable group or config; required when deploying route tables that use VirtualAppliance)
   - name: firewallVirtualApplianceIp
     value: ''
@@ -573,6 +576,8 @@ extends:
           - name: azure_postgres
             dependsOnGroupedDeployments:
               - landing_zone
+              - ${{ if eq(lower(coalesce(variables.keyVault, 'false')), 'true') }}:
+                - azure_key_vault
             deployments:
                 - name: set-resource-names
                   type: 'script'
@@ -591,7 +596,8 @@ extends:
                       -SubnetLayout "$(subnetLayout)" `
                       -AdiPrivateLinkZoneSuffix "$(adiPrivateLinkZoneSuffix)" `
                       -ContainerAppsEnvironmentSubnet "$(containerAppsEnvironment)" `
-                      -PostgresFlexibleServerSubnet "$(postgresFlexibleServer)"
+                      -PostgresFlexibleServerSubnet "$(postgresFlexibleServer)" `
+                      -KeyVaultEnabled "$(keyVault)"
                 - name: postgres-flexible-server
                   path: resources/data/postgres-flexible-server
                   parameterFilePath: resources/data/postgres-flexible-server

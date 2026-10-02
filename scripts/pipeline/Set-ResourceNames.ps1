@@ -23,7 +23,9 @@ param(
   # When set to subnetN (e.g. subnet4), exports containerAppsEnvironmentSubnetName from that subnet's named output.
   [string]$ContainerAppsEnvironmentSubnet = '',
   # When set to subnetN (e.g. subnet5), exports postgresFlexibleServerSubnetName from that subnet's named output.
-  [string]$PostgresFlexibleServerSubnet = ''
+  [string]$PostgresFlexibleServerSubnet = '',
+  # When true, also exports postgresKeyVaultName (same as keyVaultName) for Postgres to store POSTGRES-* secrets.
+  [string]$KeyVaultEnabled = 'false'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -128,6 +130,9 @@ if (-not [string]::IsNullOrWhiteSpace($postgresName)) {
 }
 if (-not [string]::IsNullOrWhiteSpace($keyVaultName)) {
   Write-Host "##vso[task.setvariable variable=keyVaultName]$keyVaultName"
+  if ($KeyVaultEnabled.Trim().ToLowerInvariant() -eq 'true') {
+    Write-Host "##vso[task.setvariable variable=postgresKeyVaultName]$keyVaultName"
+  }
 }
 
 $caeSubnetKey = $ContainerAppsEnvironmentSubnet.Trim().ToLowerInvariant()

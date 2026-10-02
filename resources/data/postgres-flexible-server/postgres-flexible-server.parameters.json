@@ -25,6 +25,9 @@
         "principalName": "#{{ postgresCaeEntraAdminPrincipalName }}"
       }
     },
+    "keyVaultName": {
+      "value": "#{{ postgresKeyVaultName }}"
+    },
     "subType": {
       "value": "#{{ subType }}"
     },

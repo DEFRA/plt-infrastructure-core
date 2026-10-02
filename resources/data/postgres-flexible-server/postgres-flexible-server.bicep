@@ -13,6 +13,12 @@ param containerAppsEnvironmentEntraAdmin object = {
   principalName: ''
 }
 
+@description('Optional. Platform Key Vault name. When set, stores POSTGRES-HOST / POSTGRES-USER / POSTGRES-PASSWORD (ADP pattern).')
+param keyVaultName string = ''
+
+@description('Optional. Local admin login required when passwordAuth is Enabled. Can only be set at create (or when enabling password auth).')
+param administratorLogin string = 'psqladmin'
+
 @description('Optional. Location for all resources.')
 param location string = resourceGroup().location
 
@@ -48,7 +54,13 @@ var adminIdentityName = take('${serverName}-dbadmin', 128)
 var privateDnsZoneName = '${serverName}.privatelink.postgres.database.azure.com'
 var serverFqdn = '${serverName}.${privateDnsZoneName}'
 
+// Password auth requires admin credentials (EngineCredentialsNotProvided otherwise).
+// Stable across redeploys so platform runs do not rotate the password unexpectedly.
+// Complexity: upper + lower + digit + special (Azure Flexible Server policy).
+var administratorLoginPassword = 'P${toUpper(take(uniqueString(resourceGroup().id, serverName, 'pg-admin'), 8))}${take(uniqueString(serverName, 'pg-admin-pw'), 8)}9!'
+
 var hasCaeAdmin = !empty(containerAppsEnvironmentEntraAdmin.objectId) && !empty(containerAppsEnvironmentEntraAdmin.principalName)
+var hasKeyVault = !empty(keyVaultName)
 
 // Flexible Server Entra admin `objectId` for a user-assigned MI is the clientId (AVM / ADP pattern).
 // For a CAE system-assigned MI, pass the principalId from the environment identity.
@@ -79,6 +91,10 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2023-05-01' existing 
 resource postgresSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-05-01' existing = {
   parent: virtualNetwork
   name: vnet.subnetPostgreSql
+}
+
+resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = if (hasKeyVault) {
+  name: keyVaultName
 }
 
 module aadAdminUserMi 'br/SharedDefraRegistry:managed-identity.user-assigned-identity:0.4.3' = {
@@ -117,9 +133,8 @@ module privateDnsZone 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = 
 }
 
 // Private VNet injection (delegated subnet) — no public endpoint.
-// Entra auth enabled; password auth enabled so apps can use stable DATABASE_URL secrets
-// (Entra MI remains available for admins / automation). Platform UAMI (+ optional CAE MI)
-// are Entra admins for DB automation. Per-app DB users/passwords remain an app-deploy concern.
+// Entra + password auth: admin login/password required by Azure when passwordAuth is Enabled.
+// Platform UAMI (+ optional CAE MI) remain Entra admins for DB automation.
 // Uses public AVM (not SharedDefra) so PostgreSQL 16+ is in the version allow-list.
 module flexibleServer 'br/avm:db-for-postgre-sql/flexible-server:0.16.1' = {
   name: 'postgres-flexible-server-${deploymentDate}'
@@ -133,6 +148,8 @@ module flexibleServer 'br/avm:db-for-postgre-sql/flexible-server:0.16.1' = {
     highAvailability: highAvailability
     availabilityZone: availabilityZone
     createMode: 'Default'
+    administratorLogin: administratorLogin
+    administratorLoginPassword: administratorLoginPassword
     authConfig: {
       activeDirectoryAuth: 'Enabled'
       passwordAuth: 'Enabled'
@@ -157,9 +174,43 @@ module flexibleServer 'br/avm:db-for-postgre-sql/flexible-server:0.16.1' = {
   }
 }
 
+resource secretPostgresHost 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = if (hasKeyVault) {
+  name: 'POSTGRES-HOST'
+  parent: keyVault
+  properties: {
+    value: serverFqdn
+  }
+  dependsOn: [
+    flexibleServer
+  ]
+}
+
+resource secretPostgresUser 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = if (hasKeyVault) {
+  name: 'POSTGRES-USER'
+  parent: keyVault
+  properties: {
+    value: administratorLogin
+  }
+  dependsOn: [
+    flexibleServer
+  ]
+}
+
+resource secretPostgresPassword 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = if (hasKeyVault) {
+  name: 'POSTGRES-PASSWORD'
+  parent: keyVault
+  properties: {
+    value: administratorLoginPassword
+  }
+  dependsOn: [
+    flexibleServer
+  ]
+}
+
 output name string = serverName
 output fqdn string = serverFqdn
 output privateDnsZoneName string = privateDnsZoneName
+output administratorLogin string = administratorLogin
 output adminManagedIdentityName string = adminIdentityName
 output adminManagedIdentityPrincipalId string = aadAdminUserMi.outputs.principalId
 output adminManagedIdentityClientId string = aadAdminUserMi.outputs.clientId

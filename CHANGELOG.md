@@ -10,7 +10,7 @@ All notable changes to this repository should be documented in this file.
 
 ### Changed
 
-- **PostgreSQL Flexible Server auth** — `passwordAuth` flipped to **Enabled** (Entra auth remains enabled). Apps can use stable password-based `DATABASE_URL` secrets while admins/automation keep Entra MI.
+- **PostgreSQL Flexible Server auth** — `passwordAuth` flipped to **Enabled** (Entra auth remains enabled). Supplies required `administratorLogin` / generated admin password (stable per RG+server). When `keyVault: true`, waits for `azure_key_vault` and writes ADP-style secrets `POSTGRES-HOST`, `POSTGRES-USER`, `POSTGRES-PASSWORD` into the platform Key Vault.
 
 ## [1.5.0] - 2026-09-30
 
