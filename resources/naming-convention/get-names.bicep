@@ -164,6 +164,26 @@ module containerAppsStorageNaming './naming-convention.bicep' = {
   }
 }
 
+// Second STO for Premium NFS (instanceNumber + 1, e.g. 01 → 02). Same APP/STO pattern.
+var nfsStorageInstanceNumberInt = int(instanceNumber) + 1
+var nfsStorageInstanceNumber = nfsStorageInstanceNumberInt <= 99
+  ? (nfsStorageInstanceNumberInt < 10 ? '0${nfsStorageInstanceNumberInt}' : string(nfsStorageInstanceNumberInt))
+  : '99'
+
+module containerAppsNfsStorageNaming './naming-convention.bicep' = {
+  name: 'sto-nfs-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'STO'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: nfsStorageInstanceNumber
+    toLower: true
+  }
+}
+
 // PostgreSQL Flexible Server (PSQ). Azure requires lowercase server names.
 module postgresFlexibleServerNaming './naming-convention.bicep' = {
   name: 'psq-naming-${uniqueString(deployment().name)}'
@@ -206,5 +226,6 @@ output privateLinkZoneResourceName string = !empty(privateLinkZoneSuffix) && !em
 output containerAppsEnvironmentName string = containerAppsEnvironmentNaming.outputs.name
 output logAnalyticsWorkspaceName string = logAnalyticsWorkspaceNaming.outputs.name
 output containerAppsStorageAccountName string = containerAppsStorageNaming.outputs.name
+output containerAppsNfsStorageAccountName string = containerAppsNfsStorageNaming.outputs.name
 output postgresFlexibleServerName string = postgresFlexibleServerNaming.outputs.name
 output keyVaultName string = keyVaultNaming.outputs.name

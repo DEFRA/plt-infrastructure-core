@@ -80,8 +80,13 @@ variables:
     value: 'ValidationPlaceholderSUB'
   - name: containerAppsStorageAccountName
     value: 'validationplaceholdersto'
-  # true = provision hardened StorageV2 for the CAE; false/omit = skip. Shares/mounts are app-deploy concern.
+  # true = provision hardened StorageV2 for the CAE; false/omit = skip. Shares/mounts are product-deploy concern.
   - name: containerAppsStorage
+    value: false
+  # Premium FileStorage (SSD LRS) for NFSv4.1 mounts; false/omit = skip. Shares/mounts are product-deploy concern.
+  - name: containerAppsNfsStorageAccountName
+    value: 'validationplaceholderstonfs'
+  - name: containerAppsNfsStorage
     value: false
   # Validation needs a non-empty Postgres name / subnet before set-resource-names; overridden later.
   - name: postgresFlexibleServerName
@@ -567,6 +572,32 @@ extends:
                           scriptArguments: >
                             -Fqdn "$(containerAppsStorageAccountName).file.core.windows.net"
                             -IpAddress "$(containerAppsStoragePrivateEndpointIp)"
+                            -Location "$(location)"
+                            -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+                            -PipelineWorkspace "$(Pipeline.Workspace)"
+                            -BuildSourcesDirectory "$(Build.SourcesDirectory)"
+                      - ${{ if eq(lower(coalesce(variables.containerAppsNfsStorage, 'false')), 'true') }}:
+                        - displayName: 'Output Container Apps NFS storage private endpoint IP for DNS'
+                          type: AzureCLI
+                          azureCLIScriptType: pscore
+                          serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                          scriptPath: scripts/pipeline/Output-ContainerAppsStoragePrivateEndpointIp.ps1
+                          scriptArguments: >
+                            -ResourceGroupName "$(servicesResourceGroup)"
+                            -StorageAccountName "$(containerAppsNfsStorageAccountName)"
+                            -DeploymentAccountOutput storageNfsAccountName
+                            -DeploymentPrivateEndpointOutput storageNfsPrivateEndpointName
+                            -OutputAccountNameVariable containerAppsNfsStorageAccountName
+                            -OutputIpVariable containerAppsNfsStoragePrivateEndpointIp
+                        - displayName: 'Set Container Apps NFS storage private endpoint DNS A record'
+                          type: AzurePowerShell
+                          azurePowerShellVersion: LatestVersion
+                          azurePowerShellUseCore: true
+                          serviceConnectionVariableName: 'privateDnsServiceConnection'
+                          scriptPath: scripts/pipeline/SetDnsRecords.ps1
+                          scriptArguments: >
+                            -Fqdn "$(containerAppsNfsStorageAccountName).file.core.windows.net"
+                            -IpAddress "$(containerAppsNfsStoragePrivateEndpointIp)"
                             -Location "$(location)"
                             -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
                             -PipelineWorkspace "$(Pipeline.Workspace)"

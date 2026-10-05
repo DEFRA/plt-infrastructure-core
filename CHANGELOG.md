@@ -2,6 +2,12 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.7.0] - 2026-10-05
+
+### Added
+
+- **Container Apps NFS storage account** — Optional companion to the CAE. Set `containerAppsNfsStorage: true` to provision a second, hardened **FileStorage** account (`Premium_LRS` SSD, STO naming with `instanceNumber + 1`, public access disabled, file private endpoint + DNS A record). Configures Azure Files **NFSv4.1** with encryption-in-transit **disabled** (required for Container Apps `NfsAzureFile` mounts). Does **not** create file shares or CAE storage registrations — product-deploy owns that. Independent of `containerAppsStorage` (Standard SMB STO). Omit or `false` to skip.
+
 ## [1.6.0] - 2026-10-02
 
 ### Added
@@ -16,7 +22,7 @@ All notable changes to this repository should be documented in this file.
 
 ### Added
 
-- **Private PostgreSQL Flexible Server** — Optional. Set `postgresFlexibleServer` to a subnet key (e.g. `subnet5`) in instance `core.yaml` to deploy a VNet-injected Flexible Server into the APP resource group (requires `APP` in `platformResourceGroups`). The value selects which VNet subnet hosts the server (must be delegated to `Microsoft.DBforPostgreSQL/flexibleServers`; layout 1 defaults to subnet 5). Defaults to Burstable **Standard_B1ms**, 32 GB, PostgreSQL **16** via public AVM `db-for-postgre-sql/flexible-server` **0.16.1** (SharedDefra still caps at 15), high availability disabled. **No public connectivity** (delegated subnet injection + server-scoped private DNS zone `{server}.privatelink.postgres.database.azure.com` in the APP RG — avoids the centrally managed `privatelink.postgres.database.azure.com` zone — spoke-linked and hub-linked). **Entra authentication only** (`passwordAuth` disabled): creates a platform user-assigned MI as Entra admin for later app-deploy DB automation; when a Container Apps Environment exists in the same APP RG, its system-assigned MI is also granted Entra admin. Per-app database users remain an app-deploy concern. Set to `none` or omit to skip.
+- **Private PostgreSQL Flexible Server** — Optional. Set `postgresFlexibleServer` to a subnet key (e.g. `subnet5`) in instance `core.yaml` to deploy a VNet-injected Flexible Server into the APP resource group (requires `APP` in `platformResourceGroups`). The value selects which VNet subnet hosts the server (must be delegated to `Microsoft.DBforPostgreSQL/flexibleServers`; layout 1 defaults to subnet 5). Defaults to Burstable **Standard_B1ms**, 32 GB, PostgreSQL **16** via public AVM `db-for-postgre-sql/flexible-server` **0.16.1** (SharedDefra still caps at 15), high availability disabled. **No public connectivity** (delegated subnet injection + server-scoped private DNS zone `{server}.privatelink.postgres.database.azure.com` in the APP RG — avoids the centrally managed `privatelink.postgres.database.azure.com` zone — spoke-linked and hub-linked). **Entra authentication only** (`passwordAuth` disabled): creates a platform user-assigned MI as Entra admin for later product-deploy DB automation; when a Container Apps Environment exists in the same APP RG, its system-assigned MI is also granted Entra admin. Per-app database users remain an product-deploy concern. Set to `none` or omit to skip.
 - **Naming resource type `PSQ`** — PostgreSQL Flexible Server naming via `get-names` / `Set-ResourceNames` (`postgresFlexibleServerName`).
 
 ### Changed
@@ -33,7 +39,7 @@ All notable changes to this repository should be documented in this file.
 ### Added
 
 - **Internal Container Apps Environment** — Optional. Set `containerAppsEnvironment` to a subnet key (e.g. `subnet4`) in instance `core.yaml` to deploy an internal-only Azure Container Apps environment into the APP resource group (requires `APP` in `platformResourceGroups`). The value selects which VNet subnet hosts the environment (must be delegated to `Microsoft.App/environments`). Creates a dedicated Log Analytics workspace, private DNS zone for the environment default domain (spoke VNet linked), and triggers hub private DNS linking. The environment is deployed with a **system-assigned managed identity** (required for `registryIdentity: system-environment` ACR pulls). Set to `none` or omit to skip.
-- **Container Apps storage account** — Optional companion to the CAE. Set `containerAppsStorage: true` to provision a hardened StorageV2 account (STO naming, **public network disabled**, file private endpoint on the PEP subnet, DNS A record in `privatelink.file.core.windows.net` via the same SetDnsRecords path as Document Intelligence) in the APP RG for apps to create Azure Files shares against later. Does **not** create file shares or CAE storage registrations — those stay with app-deploy so new apps do not require a platform re-run. Omit or set `false` to skip.
+- **Container Apps storage account** — Optional companion to the CAE. Set `containerAppsStorage: true` to provision a hardened StorageV2 account (STO naming, **public network disabled**, file private endpoint on the PEP subnet, DNS A record in `privatelink.file.core.windows.net` via the same SetDnsRecords path as Document Intelligence) in the APP RG for apps to create Azure Files shares against later. Does **not** create file shares or CAE storage registrations — those stay with product-deploy so new apps do not require a platform re-run. Omit or set `false` to skip.
 
 ### Fixed
 

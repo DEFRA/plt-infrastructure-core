@@ -28,6 +28,13 @@
         "enabled": #{{ containerAppsStorage }}
       }
     },
+    "storageNfs": {
+      "value": {
+        "accountName": "#{{ containerAppsNfsStorageAccountName }}",
+        "skuName": "Premium_LRS",
+        "enabled": #{{ containerAppsNfsStorage }}
+      }
+    },
     "subType": {
       "value": "#{{ subType }}"
     },

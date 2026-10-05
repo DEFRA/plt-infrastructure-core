@@ -14,6 +14,13 @@ param storage object = {
   enabled: false
 }
 
+@description('Optional. Premium FileStorage (SSD) account for NFSv4.1 Azure Files mounts (e.g. Archon git workspaces). Set enabled to true (with accountName). LRS only. Disables NFS encryption-in-transit so Container Apps can mount. Does not create shares or CAE registrations.')
+param storageNfs object = {
+  accountName: ''
+  skuName: 'Premium_LRS'
+  enabled: false
+}
+
 @description('Required. Sub type (e.g. SND, PRD).')
 param subType string
 
@@ -69,6 +76,13 @@ var enableStorage = storageEnabled && !empty(storage.accountName)
 var storageAccountName = toLower(storage.accountName)
 var storageSkuName = contains(storage, 'skuName') && !empty(storage.skuName) ? storage.skuName : 'Standard_LRS'
 var storagePrivateEndpointName = take('${storageAccountName}pep01', 64)
+
+var storageNfsEnabledRaw = contains(storageNfs, 'enabled') ? storageNfs.enabled : false
+var storageNfsEnabled = storageNfsEnabledRaw == true || contains(['true', '1', 'yes'], toLower('${storageNfsEnabledRaw}'))
+var enableStorageNfs = storageNfsEnabled && !empty(storageNfs.accountName)
+var storageNfsAccountName = toLower(storageNfs.accountName)
+var storageNfsSkuName = contains(storageNfs, 'skuName') && !empty(storageNfs.skuName) ? storageNfs.skuName : 'Premium_LRS'
+var storageNfsPrivateEndpointName = take('${storageNfsAccountName}pep01', 64)
 
 module logAnalyticsWorkspace 'br/SharedDefraRegistry:operational-insights.workspace:0.4.3' = {
   name: 'log-analytics-${deploymentDate}'
@@ -158,7 +172,7 @@ module privateDnsZone 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = 
   }
 }
 
-// --- Optional hardened storage account for Container Apps (shares/mounts are app-deploy concern) ---
+// --- Optional hardened storage account for Container Apps (shares/mounts are product-deploy concern) ---
 // Public access disabled (policy); private endpoint + DNS A record (same pattern as Document Intelligence).
 module storageAccountModule 'br/SharedDefraRegistry:storage.storage-account:0.5.3' = if (enableStorage) {
   name: 'container-apps-storage-${deploymentDate}'
@@ -191,6 +205,49 @@ module storageAccountModule 'br/SharedDefraRegistry:storage.storage-account:0.5.
   }
 }
 
+// --- Optional Premium FileStorage for NFSv4.1 (POSIX chmod; Container Apps NfsAzureFile) ---
+// NFS encryption-in-transit must be off — ACA cannot mount encrypted NFS.
+module storageNfsAccountModule 'br/SharedDefraRegistry:storage.storage-account:0.5.3' = if (enableStorageNfs) {
+  name: 'container-apps-storage-nfs-${deploymentDate}'
+  params: {
+    name: storageNfsAccountName
+    location: location
+    skuName: storageNfsSkuName
+    kind: 'FileStorage'
+    supportsHttpsTrafficOnly: true
+    lock: resourceLockEnabled ? 'CanNotDelete' : null
+    publicNetworkAccess: 'Disabled'
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
+    }
+    fileServices: {
+      protocolSettings: {
+        nfs: {
+          encryptionInTransit: {
+            required: false
+          }
+        }
+      }
+    }
+    privateEndpoints: [
+      {
+        name: storageNfsPrivateEndpointName
+        service: 'file'
+        subnetResourceId: resourceId(vnet.resourceGroup, 'Microsoft.Network/virtualNetworks/subnets', vnet.name, vnet.subnetPrivateEndpoints)
+        tags: union(defaultTags, {
+          Name: storageNfsPrivateEndpointName
+          Purpose: 'Container Apps Azure Files NFS private endpoint'
+        })
+      }
+    ]
+    tags: union(defaultTags, {
+      Name: storageNfsAccountName
+      Purpose: 'Container Apps Environment Azure Files NFS (Premium SSD)'
+    })
+  }
+}
+
 output name string = containerAppsEnvironment.name
 output defaultDomain string = defaultDomain
 output staticIp string = staticIp
@@ -199,3 +256,5 @@ output privateDnsZoneName string = defaultDomain
 output systemAssignedIdentityPrincipalId string = managedEnvironmentResource.identity.principalId
 output storageAccountName string = enableStorage ? storageAccountName : ''
 output storagePrivateEndpointName string = enableStorage ? storagePrivateEndpointName : ''
+output storageNfsAccountName string = enableStorageNfs ? storageNfsAccountName : ''
+output storageNfsPrivateEndpointName string = enableStorageNfs ? storageNfsPrivateEndpointName : ''

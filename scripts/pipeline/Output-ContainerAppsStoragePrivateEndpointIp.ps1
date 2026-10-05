@@ -5,7 +5,14 @@
 param(
   [Parameter(Mandatory = $true)][string]$ResourceGroupName,
   [Parameter(Mandatory = $false)][string]$StorageAccountName = '',
-  [Parameter(Mandatory = $false)][string]$PrivateEndpointName = ''
+  [Parameter(Mandatory = $false)][string]$PrivateEndpointName = '',
+  [Parameter(Mandatory = $false)][string]$OutputAccountNameVariable = 'containerAppsStorageAccountName',
+  [Parameter(Mandatory = $false)][string]$OutputIpVariable = 'containerAppsStoragePrivateEndpointIp',
+  [Parameter(Mandatory = $false)][string]$OutputPrivateEndpointNameVariable = '',
+  # When set, read this deployment output for the account name if -StorageAccountName is empty
+  # (default: storageAccountName; NFS uses storageNfsAccountName).
+  [Parameter(Mandatory = $false)][string]$DeploymentAccountOutput = 'storageAccountName',
+  [Parameter(Mandatory = $false)][string]$DeploymentPrivateEndpointOutput = 'storagePrivateEndpointName'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,10 +25,10 @@ if (-not $deploymentName) {
 
 if ($deploymentName) {
   if ([string]::IsNullOrWhiteSpace($StorageAccountName)) {
-    $StorageAccountName = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.storageAccountName.value" -o tsv
+    $StorageAccountName = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.$DeploymentAccountOutput.value" -o tsv
   }
   if ([string]::IsNullOrWhiteSpace($PrivateEndpointName)) {
-    $PrivateEndpointName = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.storagePrivateEndpointName.value" -o tsv
+    $PrivateEndpointName = az deployment group show -g $rg -n $deploymentName --query "properties.outputs.$DeploymentPrivateEndpointOutput.value" -o tsv
   }
 }
 
@@ -47,8 +54,11 @@ Write-Host "Container Apps storage account: $StorageAccountName"
 Write-Host "Container Apps storage private endpoint: $PrivateEndpointName"
 Write-Host "Container Apps storage private endpoint IP: $ip"
 
-Write-Host "##vso[task.setvariable variable=containerAppsStorageAccountName]$StorageAccountName"
+Write-Host "##vso[task.setvariable variable=$OutputAccountNameVariable]$StorageAccountName"
+if (-not [string]::IsNullOrWhiteSpace($OutputPrivateEndpointNameVariable)) {
+  Write-Host "##vso[task.setvariable variable=$OutputPrivateEndpointNameVariable]$PrivateEndpointName"
+}
 if ([string]::IsNullOrWhiteSpace($ip)) {
   throw "Could not resolve private endpoint IP for $PrivateEndpointName in $rg"
 }
-Write-Host "##vso[task.setvariable variable=containerAppsStoragePrivateEndpointIp]$ip"
+Write-Host "##vso[task.setvariable variable=$OutputIpVariable]$ip"

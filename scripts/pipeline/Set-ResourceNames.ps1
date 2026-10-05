@@ -89,6 +89,7 @@ $privateLinkResourceName = az deployment sub show --name $namingDeploymentName -
 $caeName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.containerAppsEnvironmentName.value" -o tsv 2>$null
 $lawName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.logAnalyticsWorkspaceName.value" -o tsv 2>$null
 $caeStorageName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.containerAppsStorageAccountName.value" -o tsv 2>$null
+$caeNfsStorageName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.containerAppsNfsStorageAccountName.value" -o tsv 2>$null
 $postgresName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.postgresFlexibleServerName.value" -o tsv 2>$null
 $keyVaultName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.keyVaultName.value" -o tsv 2>$null
 
@@ -124,6 +125,9 @@ if (-not [string]::IsNullOrWhiteSpace($lawName)) {
 }
 if (-not [string]::IsNullOrWhiteSpace($caeStorageName)) {
   Write-Host "##vso[task.setvariable variable=containerAppsStorageAccountName]$caeStorageName"
+}
+if (-not [string]::IsNullOrWhiteSpace($caeNfsStorageName)) {
+  Write-Host "##vso[task.setvariable variable=containerAppsNfsStorageAccountName]$caeNfsStorageName"
 }
 if (-not [string]::IsNullOrWhiteSpace($postgresName)) {
   Write-Host "##vso[task.setvariable variable=postgresFlexibleServerName]$postgresName"
