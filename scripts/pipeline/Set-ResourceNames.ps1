@@ -4,8 +4,11 @@
 
 .DESCRIPTION
   Runs `resources/naming-convention/get-names.bicep` once and stores outputs
-  as pipeline variables (resource group, vnet, route table, subnet names, and
-  optional private link names). This keeps naming logic centralized and DRY.
+  as pipeline variables (resource group, vnet, route table, subnet names,
+  optional private link names, Container Apps Environment and Log Analytics names).
+  Also exports `virtualNetworkResourceGroup` (INF) and `servicesResourceGroup` (APP)
+  so parallel grouped-deployment jobs can hydrate tokens by re-running this script
+  without re-creating RGs. This keeps naming logic centralized and DRY.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$RootPath,
@@ -16,7 +19,13 @@ param(
   [Parameter(Mandatory = $true)][string]$RegionCode,
   [Parameter(Mandatory = $true)][string]$InstanceNumber,
   [Parameter(Mandatory = $true)][string]$SubnetLayout,
-  [string]$AdiPrivateLinkZoneSuffix = ''
+  [string]$AdiPrivateLinkZoneSuffix = '',
+  # When set to subnetN (e.g. subnet4), exports containerAppsEnvironmentSubnetName from that subnet's named output.
+  [string]$ContainerAppsEnvironmentSubnet = '',
+  # When set to subnetN (e.g. subnet5), exports postgresFlexibleServerSubnetName from that subnet's named output.
+  [string]$PostgresFlexibleServerSubnet = '',
+  # When true, also exports postgresKeyVaultName (same as keyVaultName) for Postgres to store POSTGRES-* secrets.
+  [string]$KeyVaultEnabled = 'false'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -71,19 +80,32 @@ az deployment sub create --name $namingDeploymentName --location $Location --tem
 if ($LASTEXITCODE -ne 0) { throw "set-resource-names: get-names (INF) failed" }
 
 $rgName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
+$appRgName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.appResourceGroupName.value" -o tsv 2>$null
 $vnetName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.virtualNetworkName.value" -o tsv
 $rtName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.routeTableName.value" -o tsv
 $subnetNamesJson = az deployment sub show --name $namingDeploymentName --query "properties.outputs.subnetNames.value" -o json 2>$null
 $zoneName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneName.value" -o tsv 2>$null
 $privateLinkResourceName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.privateLinkZoneResourceName.value" -o tsv 2>$null
+$caeName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.containerAppsEnvironmentName.value" -o tsv 2>$null
+$lawName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.logAnalyticsWorkspaceName.value" -o tsv 2>$null
+$caeStorageName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.containerAppsStorageAccountName.value" -o tsv 2>$null
+$caeNfsStorageName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.containerAppsNfsStorageAccountName.value" -o tsv 2>$null
+$postgresName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.postgresFlexibleServerName.value" -o tsv 2>$null
+$keyVaultName = az deployment sub show --name $namingDeploymentName --query "properties.outputs.keyVaultName.value" -o tsv 2>$null
 
 if (-not $rgName) { throw "set-resource-names: could not get resourceGroupName" }
 Write-Host "##vso[task.setvariable variable=infraResourceGroupName]$rgName"
+# Same INF RG hosts the spoke VNet; export both names so parallel jobs can hydrate without create-RGs.
+Write-Host "##vso[task.setvariable variable=virtualNetworkResourceGroup]$rgName"
 Write-Host "##vso[task.setvariable variable=virtualNetworkName]$vnetName"
 Write-Host "##vso[task.setvariable variable=routeTableName]$rtName"
+if (-not [string]::IsNullOrWhiteSpace($appRgName)) {
+  Write-Host "##vso[task.setvariable variable=servicesResourceGroup]$appRgName"
+}
 
+$subnetNames = @()
 if (-not [string]::IsNullOrWhiteSpace($subnetNamesJson) -and $subnetNamesJson -ne '[]') {
-  $subnetNames = $subnetNamesJson | ConvertFrom-Json
+  $subnetNames = @($subnetNamesJson | ConvertFrom-Json)
   for ($i = 0; $i -lt $subnetNames.Count; $i++) {
     $n = $i + 1
     Write-Host "##vso[task.setvariable variable=subnet${n}Name]$($subnetNames[$i])"
@@ -94,4 +116,51 @@ if (-not [string]::IsNullOrWhiteSpace($zoneName)) {
 }
 if (-not [string]::IsNullOrWhiteSpace($privateLinkResourceName)) {
   Write-Host "##vso[task.setvariable variable=documentIntelligenceResourceName]$privateLinkResourceName"
+}
+if (-not [string]::IsNullOrWhiteSpace($caeName)) {
+  Write-Host "##vso[task.setvariable variable=containerAppsEnvironmentName]$caeName"
+}
+if (-not [string]::IsNullOrWhiteSpace($lawName)) {
+  Write-Host "##vso[task.setvariable variable=logAnalyticsWorkspaceName]$lawName"
+}
+if (-not [string]::IsNullOrWhiteSpace($caeStorageName)) {
+  Write-Host "##vso[task.setvariable variable=containerAppsStorageAccountName]$caeStorageName"
+}
+if (-not [string]::IsNullOrWhiteSpace($caeNfsStorageName)) {
+  Write-Host "##vso[task.setvariable variable=containerAppsNfsStorageAccountName]$caeNfsStorageName"
+}
+if (-not [string]::IsNullOrWhiteSpace($postgresName)) {
+  Write-Host "##vso[task.setvariable variable=postgresFlexibleServerName]$postgresName"
+}
+if (-not [string]::IsNullOrWhiteSpace($keyVaultName)) {
+  Write-Host "##vso[task.setvariable variable=keyVaultName]$keyVaultName"
+  if ($KeyVaultEnabled.Trim().ToLowerInvariant() -eq 'true') {
+    Write-Host "##vso[task.setvariable variable=postgresKeyVaultName]$keyVaultName"
+  }
+}
+
+$caeSubnetKey = $ContainerAppsEnvironmentSubnet.Trim().ToLowerInvariant()
+if (-not [string]::IsNullOrWhiteSpace($caeSubnetKey) -and $caeSubnetKey -ne 'none') {
+  if ($caeSubnetKey -notmatch '^subnet(\d+)$') {
+    throw "containerAppsEnvironment must be subnetN (e.g. subnet4) or none/empty; got '$ContainerAppsEnvironmentSubnet'."
+  }
+  $caeSubnetIndex = [int]$Matches[1]
+  if ($caeSubnetIndex -lt 1 -or $caeSubnetIndex -gt $subnetNames.Count) {
+    throw "containerAppsEnvironment '$ContainerAppsEnvironmentSubnet' is out of range for subnet layout (found $($subnetNames.Count) subnets)."
+  }
+  $caeSubnetName = $subnetNames[$caeSubnetIndex - 1]
+  Write-Host "##vso[task.setvariable variable=containerAppsEnvironmentSubnetName]$caeSubnetName"
+}
+
+$postgresSubnetKey = $PostgresFlexibleServerSubnet.Trim().ToLowerInvariant()
+if (-not [string]::IsNullOrWhiteSpace($postgresSubnetKey) -and $postgresSubnetKey -ne 'none') {
+  if ($postgresSubnetKey -notmatch '^subnet(\d+)$') {
+    throw "postgresFlexibleServer must be subnetN (e.g. subnet5) or none/empty; got '$PostgresFlexibleServerSubnet'."
+  }
+  $postgresSubnetIndex = [int]$Matches[1]
+  if ($postgresSubnetIndex -lt 1 -or $postgresSubnetIndex -gt $subnetNames.Count) {
+    throw "postgresFlexibleServer '$PostgresFlexibleServerSubnet' is out of range for subnet layout (found $($subnetNames.Count) subnets)."
+  }
+  $postgresSubnetName = $subnetNames[$postgresSubnetIndex - 1]
+  Write-Host "##vso[task.setvariable variable=postgresFlexibleServerSubnetName]$postgresSubnetName"
 }

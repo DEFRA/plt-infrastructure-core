@@ -42,6 +42,21 @@ module resourceGroupNaming './naming-convention.bicep' = {
   }
 }
 
+// APP resource group name (services / CAE / Postgres target RG).
+module appResourceGroupNaming './naming-convention.bicep' = {
+  name: 'app-rg-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'RGP'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: false
+  }
+}
+
 // Get virtual network name using naming convention
 module virtualNetworkNaming './naming-convention.bicep' = {
   name: 'vnet-naming-${uniqueString(deployment().name)}'
@@ -73,7 +88,7 @@ module routeTableNaming './naming-convention.bicep' = {
 }
 // Name without instance number (last 2 chars); route-table.bicep appends instance 01
 var nameLen = length(routeTableNaming.outputs.name)
-var routeTableNameWithoutInstance = nameLen > 2 ? substring(routeTableNaming.outputs.name, 0, nameLen - 2) : routeTableNaming.outputs.name
+var routeTableNameWithoutInstance = nameLen > 2 ? substring(routeTableNaming.outputs.name, 0, max(0, nameLen - 2)) : routeTableNaming.outputs.name
 
 // Subnet naming: one module per subnet config. Config provides resType (suffix) per subnet; instanceNumber is 01, 02, etc.
 module subnetNaming './naming-convention.bicep' = [for i in range(0, length(subnetNameConfigs)): {
@@ -105,11 +120,112 @@ module privateLinkZoneNaming './naming-convention.bicep' = if (!empty(privateLin
   }
 }
 
+// Container Apps Environment (ACE) and Log Analytics Workspace (LW) names — role APP (deployed to APP RG).
+module containerAppsEnvironmentNaming './naming-convention.bicep' = {
+  name: 'ace-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'ACE'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: false
+  }
+}
+
+module logAnalyticsWorkspaceNaming './naming-convention.bicep' = {
+  name: 'lw-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'LW'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: false
+  }
+}
+
+// Storage account for Container Apps Azure Files (STO). Azure requires lowercase; callers toLower the output.
+module containerAppsStorageNaming './naming-convention.bicep' = {
+  name: 'sto-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'STO'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: true
+  }
+}
+
+// Second STO for Premium NFS (instanceNumber + 1, e.g. 01 → 02). Same APP/STO pattern.
+var nfsStorageInstanceNumberInt = int(instanceNumber) + 1
+var nfsStorageInstanceNumber = nfsStorageInstanceNumberInt <= 99
+  ? (nfsStorageInstanceNumberInt < 10 ? '0${nfsStorageInstanceNumberInt}' : string(nfsStorageInstanceNumberInt))
+  : '99'
+
+module containerAppsNfsStorageNaming './naming-convention.bicep' = {
+  name: 'sto-nfs-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'STO'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: nfsStorageInstanceNumber
+    toLower: true
+  }
+}
+
+// PostgreSQL Flexible Server (PSQ). Azure requires lowercase server names.
+module postgresFlexibleServerNaming './naming-convention.bicep' = {
+  name: 'psq-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'PSQ'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: true
+  }
+}
+
+// Key Vault (KVT) in the APP RG — lowercase (globally unique vault DNS name).
+module keyVaultNaming './naming-convention.bicep' = {
+  name: 'kvt-naming-${uniqueString(deployment().name)}'
+  params: {
+    subType: subType
+    svc: svc
+    role: 'APP'
+    resType: 'KVT'
+    deploymentEnvInstance: deploymentEnvInstance
+    regionCode: regionCode
+    instanceNumber: instanceNumber
+    toLower: true
+  }
+}
+
 // Outputs
 output resourceGroupName string = resourceGroupNaming.outputs.name
+output appResourceGroupName string = appResourceGroupNaming.outputs.name
 output virtualNetworkName string = virtualNetworkNaming.outputs.name
 output routeTableName string = routeTableNameWithoutInstance
 output subnetNames array = [for i in range(0, length(subnetNameConfigs)): subnetNaming[i].outputs.name]
-output privateLinkZoneName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? '${privateLinkZoneNaming.outputs.name}.${privateLinkZoneSuffix}' : ''
+output privateLinkZoneName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? '${privateLinkZoneNaming!.outputs.name}.${privateLinkZoneSuffix}' : ''
 // Generic resource name (prefix) for the private link zone. Concrete pipelines map this to their variable (e.g. documentIntelligenceResourceName).
-output privateLinkZoneResourceName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? privateLinkZoneNaming.outputs.name : ''
+output privateLinkZoneResourceName string = !empty(privateLinkZoneSuffix) && !empty(privateLinkZoneResType) ? privateLinkZoneNaming!.outputs.name : ''
+output containerAppsEnvironmentName string = containerAppsEnvironmentNaming.outputs.name
+output logAnalyticsWorkspaceName string = logAnalyticsWorkspaceNaming.outputs.name
+output containerAppsStorageAccountName string = containerAppsStorageNaming.outputs.name
+output containerAppsNfsStorageAccountName string = containerAppsNfsStorageNaming.outputs.name
+output postgresFlexibleServerName string = postgresFlexibleServerNaming.outputs.name
+output keyVaultName string = keyVaultNaming.outputs.name

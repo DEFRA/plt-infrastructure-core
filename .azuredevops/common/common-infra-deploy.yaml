@@ -60,7 +60,7 @@ resources:
       name: DEFRA/ado-pipeline-common
       endpoint: DEFRA
       type: github
-      ref: refs/tags/1.2.0
+      ref: refs/tags/1.2.1
 
 extends:
   template: /templates/pipelines/common-infrastructure-deploy.yaml@PipelineCommon

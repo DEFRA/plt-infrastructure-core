@@ -2,6 +2,30 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.4.0] - 2026-10-06
+
+### Added
+
+- **Container Apps Environment** — Optional internal CAE (`containerAppsEnvironment`, layout 1 subnet 4) with system-assigned MI, Log Analytics, and private DNS.
+- **CAE storage** — Optional Standard SMB STO (`containerAppsStorage`) and Premium NFS STO (`containerAppsNfsStorage`, `Premium_LRS`, instanceNumber+1). Shares/CAE mounts remain product-deploy.
+- **PostgreSQL Flexible Server** — Optional private Flex Server (`postgresFlexibleServer`, layout 1 subnet 5). Entra + password auth; optional `POSTGRES-*` secrets when `keyVault: true`.
+- **Key Vault** — Optional private KVT (`keyVault: true`) with vault PE + DNS.
+- **Naming** — `PSQ` / `KVT` / CAE / STO names via `get-names`; layout 1 subnet 5 delegated to PostgreSQL (CAE on subnet 4).
+
+### Changed
+
+- Parallel pre-req and Deploy Azure Services jobs after `landing_zone`.
+
+### Fixed
+
+- CAE system-assigned identity retained across redeploys; app-registration Graph race retries; arm-ttk pin for lint.
+
+## [1.3.1] - 2026-09-24
+
+### Added
+
+- **Naming role code `AIP`** — Allowed role value **Automated Intelligence Platform** in `resources/naming-convention/naming-convention.bicep`, so resource groups and other named resources can use the AIP role segment (for example platform RGs).
+
 ## [1.3.0] - 2026-09-18
 
 ### Added

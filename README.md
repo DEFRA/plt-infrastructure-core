@@ -9,6 +9,10 @@ The following non-network resources may also be deployed according to Defra patt
 - Entra ID Groups and memberships.
 - Entra ID App Registrations (API permissions, optional Key Vault secrets).
 - Document Intelligence
+- Internal Container Apps Environment (system-assigned MI, Log Analytics, private DNS)
+- Optional CAE storage accounts (Standard SMB and/or Premium NFS) — shares/mounts via product-deploy
+- Private PostgreSQL Flexible Server (VNet-injected; Entra + password auth)
+- Private platform Key Vault (vault PE + DNS)
 - DNS
 - Resource Groups and permissions.
 
@@ -60,7 +64,11 @@ Located under `scripts/pipeline/`:
 - `Invoke-AddAdAppRegistrations.ps1` / `Add-AdAppRegistrations.ps1`: Creates or updates Entra app registrations from `app-registration.json`. Skips the step when that file is not present.
 - `Resolve-NetworkJoinGroup.ps1`: Resolves `networkJoinGroupName` to object id for VNet role assignment.
 - `Resolve-EntraGroupByDisplayName.ps1`: Shared helper to resolve Entra group display names to object ids (used where directory lookups are needed).
-- `SetDnsRecords.ps1`: Unified DNS record updater for both `additionalDnsConfig` entries and Document Intelligence private endpoint DNS.
+- `SetDnsRecords.ps1`: Unified DNS record updater for `additionalDnsConfig`, Document Intelligence, Container Apps Storage, and Key Vault private endpoint DNS.
+- `Set-ResourceNames.ps1`: Derives INF/APP RG, VNet, subnet, and optional resource names from `get-names.bicep` and exports them as pipeline variables (safe to re-run per job for parallel grouped deployments).
+- `Output-ContainerAppsEnvironment.ps1`: Reads Container Apps Environment deployment outputs (default domain / static IP) for hub DNS linking.
+- `Output-KeyVaultPrivateEndpointIp.ps1`: Resolves the platform Key Vault private-endpoint IP for `*.vault.azure.net` DNS (zone `privatelink.vaultcore.azure.net`).
+- `Set-PostgresEntraAdminFromCae.ps1`: Resolves an optional Container Apps Environment system-assigned MI for PostgreSQL Entra admin (falls back to platform UAMI only).
 - `Validate-Params-Match-Config.ps1`: Validates pipeline `environmentName` matches config (`subType + deploymentEnvInstance`) and validates `location`.
 - `Validate-AdditionalDnsConfigJson.ps1`: Validates `additionalDnsConfig` JSON when Document Intelligence is enabled.
 

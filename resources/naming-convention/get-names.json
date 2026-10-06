@@ -1,0 +1,3006 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "13842920178538908847"
+    }
+  },
+  "parameters": {
+    "subType": {
+      "type": "string",
+      "metadata": {
+        "description": "Required. Sub Type (3-4 characters, e.g., SSV5, PRD, DEV)"
+      }
+    },
+    "svc": {
+      "type": "string",
+      "metadata": {
+        "description": "Required. Service code (3 characters, e.g., AIE, AAD)"
+      }
+    },
+    "role": {
+      "type": "string",
+      "metadata": {
+        "description": "Required. Role code (3 characters, use INF for heterogeneous resource groups)"
+      }
+    },
+    "deploymentEnvInstance": {
+      "type": "string",
+      "metadata": {
+        "description": "Required. Deployment Environment instance number (1 digit, 0-9)"
+      }
+    },
+    "regionCode": {
+      "type": "string",
+      "metadata": {
+        "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)"
+      }
+    },
+    "instanceNumber": {
+      "type": "string",
+      "metadata": {
+        "description": "Required. Instance number within the region (2 digits, 00-99)"
+      }
+    },
+    "privateLinkZoneSuffix": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional. Private link zone suffix (e.g. privatelink.cognitiveservices.azure.com). When set with privateLinkZoneResType, outputs privateLinkZoneName and privateLinkZoneResourceName."
+      }
+    },
+    "privateLinkZoneResType": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional. Resource type code for the zone prefix (e.g. ADI, KVT). When set with privateLinkZoneSuffix, outputs privateLinkZoneName and privateLinkZoneResourceName."
+      }
+    },
+    "subnetNameConfigs": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Optional. Subnet name configs: array of {resType, instanceNumber}. When set, outputs subnetNames array. Config provides suffix (resType) per subnet; instanceNumber is 01, 02, etc."
+      }
+    }
+  },
+  "variables": {
+    "nfsStorageInstanceNumberInt": "[add(int(parameters('instanceNumber')), 1)]",
+    "nfsStorageInstanceNumber": "[if(lessOrEquals(variables('nfsStorageInstanceNumberInt'), 99), if(less(variables('nfsStorageInstanceNumberInt'), 10), format('0{0}', variables('nfsStorageInstanceNumberInt')), string(variables('nfsStorageInstanceNumberInt'))), '99')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('rg-naming-{0}', uniqueString(deployment().name))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "[parameters('role')]"
+          },
+          "resType": {
+            "value": "RGP"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[parameters('instanceNumber')]"
+          },
+          "toLower": {
+            "value": false
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('app-rg-naming-{0}', uniqueString(deployment().name))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "APP"
+          },
+          "resType": {
+            "value": "RGP"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[parameters('instanceNumber')]"
+          },
+          "toLower": {
+            "value": false
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('vnet-naming-{0}', uniqueString(deployment().name))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "NET"
+          },
+          "resType": {
+            "value": "VNT"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[parameters('instanceNumber')]"
+          },
+          "toLower": {
+            "value": false
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('rt-naming-{0}', uniqueString(deployment().name))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "NET"
+          },
+          "resType": {
+            "value": "RT"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "00"
+          },
+          "toLower": {
+            "value": false
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "copy": {
+        "name": "subnetNaming",
+        "count": "[length(range(0, length(parameters('subnetNameConfigs'))))]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('subnet-{0}-{1}', range(0, length(parameters('subnetNameConfigs')))[copyIndex()], uniqueString(deployment().name, parameters('subnetNameConfigs')[range(0, length(parameters('subnetNameConfigs')))[copyIndex()]].resType, parameters('subnetNameConfigs')[range(0, length(parameters('subnetNameConfigs')))[copyIndex()]].instanceNumber))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "NET"
+          },
+          "resType": {
+            "value": "[parameters('subnetNameConfigs')[range(0, length(parameters('subnetNameConfigs')))[copyIndex()]].resType]"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[parameters('subnetNameConfigs')[range(0, length(parameters('subnetNameConfigs')))[copyIndex()]].instanceNumber]"
+          },
+          "toLower": {
+            "value": false
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "condition": "[and(not(empty(parameters('privateLinkZoneSuffix'))), not(empty(parameters('privateLinkZoneResType'))))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('pdz-naming-{0}', uniqueString(deployment().name, parameters('privateLinkZoneSuffix'), parameters('privateLinkZoneResType')))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "INF"
+          },
+          "resType": {
+            "value": "[parameters('privateLinkZoneResType')]"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[parameters('instanceNumber')]"
+          },
+          "toLower": {
+            "value": false
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('ace-naming-{0}', uniqueString(deployment().name))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "APP"
+          },
+          "resType": {
+            "value": "ACE"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[parameters('instanceNumber')]"
+          },
+          "toLower": {
+            "value": false
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('lw-naming-{0}', uniqueString(deployment().name))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "APP"
+          },
+          "resType": {
+            "value": "LW"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[parameters('instanceNumber')]"
+          },
+          "toLower": {
+            "value": false
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('sto-naming-{0}', uniqueString(deployment().name))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "APP"
+          },
+          "resType": {
+            "value": "STO"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[parameters('instanceNumber')]"
+          },
+          "toLower": {
+            "value": true
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('sto-nfs-naming-{0}', uniqueString(deployment().name))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "APP"
+          },
+          "resType": {
+            "value": "STO"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[variables('nfsStorageInstanceNumber')]"
+          },
+          "toLower": {
+            "value": true
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('psq-naming-{0}', uniqueString(deployment().name))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "APP"
+          },
+          "resType": {
+            "value": "PSQ"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[parameters('instanceNumber')]"
+          },
+          "toLower": {
+            "value": true
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('kvt-naming-{0}', uniqueString(deployment().name))]",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subType": {
+            "value": "[parameters('subType')]"
+          },
+          "svc": {
+            "value": "[parameters('svc')]"
+          },
+          "role": {
+            "value": "APP"
+          },
+          "resType": {
+            "value": "KVT"
+          },
+          "deploymentEnvInstance": {
+            "value": "[parameters('deploymentEnvInstance')]"
+          },
+          "regionCode": {
+            "value": "[parameters('regionCode')]"
+          },
+          "instanceNumber": {
+            "value": "[parameters('instanceNumber')]"
+          },
+          "toLower": {
+            "value": true
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16863509734093312146"
+            }
+          },
+          "parameters": {
+            "subType": {
+              "type": "string",
+              "allowedValues": [
+                "AIP",
+                "APS",
+                "CAT",
+                "DEV",
+                "LOG",
+                "MST",
+                "OPS",
+                "POC",
+                "PRD",
+                "PRE",
+                "SEC",
+                "SND",
+                "SSV1",
+                "SSV2",
+                "SSV3",
+                "SSV4",
+                "SSV5",
+                "TST"
+              ],
+              "metadata": {
+                "description": "Required. Sub Type (3-4 characters)."
+              }
+            },
+            "svc": {
+              "type": "string",
+              "allowedValues": [
+                "AAD",
+                "AIE",
+                "AIM",
+                "BOO",
+                "CHM",
+                "CSC",
+                "CUS",
+                "EMZ",
+                "EOB",
+                "EXP",
+                "FFC",
+                "FFF",
+                "IDM",
+                "IMD",
+                "IMF",
+                "IMP"
+              ],
+              "metadata": {
+                "description": "Required. Service code (3 characters)."
+              }
+            },
+            "role": {
+              "type": "string",
+              "allowedValues": [
+                "AAC",
+                "AAS",
+                "ADF",
+                "ADG",
+                "ADL",
+                "AFW",
+                "AIP",
+                "APP",
+                "ASE",
+                "ASP",
+                "AXW",
+                "BAS",
+                "BES",
+                "BLB",
+                "CER",
+                "DBS",
+                "DGW",
+                "DHC",
+                "DNS",
+                "ETL",
+                "EXP",
+                "FES",
+                "FLB",
+                "FTP",
+                "GIT",
+                "INF",
+                "JEN",
+                "NET",
+                "PLB"
+              ],
+              "metadata": {
+                "description": "Required. Role code (3 characters)."
+              }
+            },
+            "resType": {
+              "type": "string",
+              "allowedValues": [
+                "AAA",
+                "ACA",
+                "ACE",
+                "ACI",
+                "ADF",
+                "AFD",
+                "AFA",
+                "AGW",
+                "AIS",
+                "AKS",
+                "ALA",
+                "ALB",
+                "API",
+                "ASG",
+                "ASP",
+                "ASE",
+                "AAS",
+                "AVS",
+                "AWA",
+                "ADI",
+                "BEP",
+                "CR",
+                "FLB",
+                "KVT",
+                "LW",
+                "NSG",
+                "RGP",
+                "RT",
+                "STO",
+                "SUB",
+                "SU",
+                "PEP",
+                "PSQ",
+                "VNT",
+                "WAF"
+              ],
+              "metadata": {
+                "description": "Required. Resource Type code (2-3 characters)."
+              }
+            },
+            "deploymentEnvInstance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Deployment Environment instance number (1 digit, 0-9)."
+              }
+            },
+            "regionCode": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1,
+              "metadata": {
+                "description": "Required. Region code (1 digit, e.g., 4 for UK South, 0 for Europe North)."
+              }
+            },
+            "instanceNumber": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "metadata": {
+                "description": "Required. Instance number within the region (2 digits, 00-99, e.g., 00, 01, 02, 99). Must be numeric."
+              }
+            },
+            "toLower": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Optional. Whether to convert the output to lowercase. Default is false to preserve uppercase naming convention."
+              }
+            }
+          },
+          "variables": {
+            "instanceNumberInt": "[int(parameters('instanceNumber'))]",
+            "instanceNumberValidated": "[if(and(greaterOrEquals(variables('instanceNumberInt'), 0), lessOrEquals(variables('instanceNumberInt'), 99)), if(less(variables('instanceNumberInt'), 10), format('0{0}', variables('instanceNumberInt')), string(variables('instanceNumberInt'))), parameters('instanceNumber'))]",
+            "regionAndInstance": "[format('{0}{1}', parameters('regionCode'), variables('instanceNumberValidated'))]",
+            "resourceName": "[format('{0}{1}{2}{3}{4}{5}', parameters('subType'), parameters('svc'), parameters('role'), parameters('resType'), parameters('deploymentEnvInstance'), variables('regionAndInstance'))]"
+          },
+          "resources": [],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[if(parameters('toLower'), toLower(variables('resourceName')), variables('resourceName'))]"
+            },
+            "components": {
+              "type": "object",
+              "value": {
+                "subType": "[parameters('subType')]",
+                "svc": "[parameters('svc')]",
+                "role": "[parameters('role')]",
+                "resType": "[parameters('resType')]",
+                "deploymentEnvInstance": "[parameters('deploymentEnvInstance')]",
+                "regionCode": "[parameters('regionCode')]",
+                "instanceNumber": "[variables('instanceNumberValidated')]",
+                "regionAndInstance": "[variables('regionAndInstance')]",
+                "fullName": "[variables('resourceName')]"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('rg-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value]"
+    },
+    "appResourceGroupName": {
+      "type": "string",
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('app-rg-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value]"
+    },
+    "virtualNetworkName": {
+      "type": "string",
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('vnet-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value]"
+    },
+    "routeTableName": {
+      "type": "string",
+      "value": "[if(greater(length(reference(subscriptionResourceId('Microsoft.Resources/deployments', format('rt-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value), 2), substring(reference(subscriptionResourceId('Microsoft.Resources/deployments', format('rt-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value, 0, max(0, sub(length(reference(subscriptionResourceId('Microsoft.Resources/deployments', format('rt-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value), 2))), reference(subscriptionResourceId('Microsoft.Resources/deployments', format('rt-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value)]"
+    },
+    "subnetNames": {
+      "type": "array",
+      "copy": {
+        "count": "[length(range(0, length(parameters('subnetNameConfigs'))))]",
+        "input": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('subnet-{0}-{1}', range(0, length(parameters('subnetNameConfigs')))[range(0, length(parameters('subnetNameConfigs')))[copyIndex()]], uniqueString(deployment().name, parameters('subnetNameConfigs')[range(0, length(parameters('subnetNameConfigs')))[range(0, length(parameters('subnetNameConfigs')))[copyIndex()]]].resType, parameters('subnetNameConfigs')[range(0, length(parameters('subnetNameConfigs')))[range(0, length(parameters('subnetNameConfigs')))[copyIndex()]]].instanceNumber))), '2025-04-01').outputs.name.value]"
+      }
+    },
+    "privateLinkZoneName": {
+      "type": "string",
+      "value": "[if(and(not(empty(parameters('privateLinkZoneSuffix'))), not(empty(parameters('privateLinkZoneResType')))), format('{0}.{1}', reference(subscriptionResourceId('Microsoft.Resources/deployments', format('pdz-naming-{0}', uniqueString(deployment().name, parameters('privateLinkZoneSuffix'), parameters('privateLinkZoneResType')))), '2025-04-01').outputs.name.value, parameters('privateLinkZoneSuffix')), '')]"
+    },
+    "privateLinkZoneResourceName": {
+      "type": "string",
+      "value": "[if(and(not(empty(parameters('privateLinkZoneSuffix'))), not(empty(parameters('privateLinkZoneResType')))), reference(subscriptionResourceId('Microsoft.Resources/deployments', format('pdz-naming-{0}', uniqueString(deployment().name, parameters('privateLinkZoneSuffix'), parameters('privateLinkZoneResType')))), '2025-04-01').outputs.name.value, '')]"
+    },
+    "containerAppsEnvironmentName": {
+      "type": "string",
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('ace-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value]"
+    },
+    "logAnalyticsWorkspaceName": {
+      "type": "string",
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('lw-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value]"
+    },
+    "containerAppsStorageAccountName": {
+      "type": "string",
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('sto-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value]"
+    },
+    "containerAppsNfsStorageAccountName": {
+      "type": "string",
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('sto-nfs-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value]"
+    },
+    "postgresFlexibleServerName": {
+      "type": "string",
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('psq-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('kvt-naming-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.name.value]"
+    }
+  }
+}

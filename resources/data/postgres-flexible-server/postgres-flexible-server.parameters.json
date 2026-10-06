@@ -1,0 +1,38 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "server": {
+      "value": {
+        "name": "#{{ postgresFlexibleServerName }}",
+        "skuName": "Standard_B1ms",
+        "tier": "Burstable",
+        "storageSizeGB": 32,
+        "version": "16",
+        "highAvailability": "Disabled"
+      }
+    },
+    "vnet": {
+      "value": {
+        "name": "#{{ virtualNetworkName }}",
+        "resourceGroup": "#{{ virtualNetworkResourceGroup }}",
+        "subnetPostgreSql": "#{{ postgresFlexibleServerSubnetName }}"
+      }
+    },
+    "containerAppsEnvironmentEntraAdmin": {
+      "value": {
+        "objectId": "#{{ postgresCaeEntraAdminObjectId }}",
+        "principalName": "#{{ postgresCaeEntraAdminPrincipalName }}"
+      }
+    },
+    "keyVaultName": {
+      "value": "#{{ postgresKeyVaultName }}"
+    },
+    "subType": {
+      "value": "#{{ subType }}"
+    },
+    "resourceLockEnabled": {
+      "value": #{{ resourceLockEnabled }}
+    }
+  }
+}

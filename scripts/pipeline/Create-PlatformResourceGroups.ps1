@@ -106,10 +106,27 @@ foreach ($Role in $roles) {
   }
   $rgParamsPath = Join-Path $tempDir "rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss').json"
   @{ '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'; contentVersion = '1.0.0.0'; parameters = $rgParams } | ConvertTo-Json -Depth 4 | Set-Content -Path $rgParamsPath -Encoding utf8
-  az deployment sub create --name $rgDeploymentName --location $Location --template-file $bicepFile --parameters $rgParamsPath --output none
-  if ($LASTEXITCODE -ne 0) { throw "Resource group deployment failed for role $Role" }
 
-  $resourceGroupNameOutput = az deployment sub show --name $rgDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
+  # Parallel pre-req jobs may create the same RGs concurrently; retry transient conflicts.
+  $maxAttempts = 5
+  $resourceGroupNameOutput = $null
+  for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+    az deployment sub create --name $rgDeploymentName --location $Location --template-file $bicepFile --parameters $rgParamsPath --output none
+    if ($LASTEXITCODE -eq 0) {
+      $resourceGroupNameOutput = az deployment sub show --name $rgDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
+      break
+    }
+    if ($attempt -eq $maxAttempts) {
+      throw "Resource group deployment failed for role $Role after $maxAttempts attempts"
+    }
+    $delaySeconds = [Math]::Min(2 * $attempt, 10)
+    Write-Host "Resource group deployment for role $Role collided or failed; waiting ${delaySeconds}s before retry ($attempt/$maxAttempts)."
+    Start-Sleep -Seconds $delaySeconds
+    $rgDeploymentName = "rg-$Role-$(Get-Date -Format 'yyyyMMddHHmmss')" -replace '[^a-zA-Z0-9._-]', '-'
+  }
+  if (-not $resourceGroupNameOutput) {
+    $resourceGroupNameOutput = az deployment sub show --name $rgDeploymentName --query "properties.outputs.resourceGroupName.value" -o tsv
+  }
   # Export key RG names for downstream pipeline steps.
   if ($Role -eq 'INF') { Write-Host "##vso[task.setvariable variable=virtualNetworkResourceGroup]$resourceGroupNameOutput" }
   if ($Role -eq 'APP') { Write-Host "##vso[task.setvariable variable=servicesResourceGroup]$resourceGroupNameOutput" }

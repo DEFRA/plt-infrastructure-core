@@ -54,6 +54,7 @@ param svc string
   'ADG'   // Azure Data Gateway
   'ADL'   // Azure Data Lake
   'AFW'   // Azure Firewall
+  'AIP'   // Automated Intelligence Platform
   'APP'   // Application
   'ASE'   // Application Service Environment
   'ASP'   // Application Service Plan
@@ -113,6 +114,7 @@ param role string
   'SUB'   // Azure Subnet
   'SU'    // Subnet (abbreviated)
   'PEP'   // Private Endpoint
+  'PSQ'   // PostgreSQL Flexible Server
   'VNT'   // Virtual Network
   'WAF'   // Azure WAF Policy
 ])

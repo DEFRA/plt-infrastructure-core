@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "containerAppsEnvironment": {
+      "value": {
+        "name": "#{{ containerAppsEnvironmentName }}"
+      }
+    },
+    "logAnalytics": {
+      "value": {
+        "name": "#{{ logAnalyticsWorkspaceName }}",
+        "skuName": "PerGB2018"
+      }
+    },
+    "vnet": {
+      "value": {
+        "name": "#{{ virtualNetworkName }}",
+        "resourceGroup": "#{{ virtualNetworkResourceGroup }}",
+        "subnetContainerApps": "#{{ containerAppsEnvironmentSubnetName }}",
+        "subnetPrivateEndpoints": "#{{ subnet3Name }}"
+      }
+    },
+    "storage": {
+      "value": {
+        "accountName": "#{{ containerAppsStorageAccountName }}",
+        "skuName": "Standard_LRS",
+        "enabled": #{{ containerAppsStorage }}
+      }
+    },
+    "storageNfs": {
+      "value": {
+        "accountName": "#{{ containerAppsNfsStorageAccountName }}",
+        "skuName": "Premium_LRS",
+        "enabled": #{{ containerAppsNfsStorage }}
+      }
+    },
+    "subType": {
+      "value": "#{{ subType }}"
+    },
+    "internal": {
+      "value": true
+    },
+    "resourceLockEnabled": {
+      "value": #{{ resourceLockEnabled }}
+    }
+  }
+}

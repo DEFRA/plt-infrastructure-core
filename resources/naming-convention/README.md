@@ -112,6 +112,7 @@ Breaking down the example:
 | `KVT` | Key Vault |
 | `LW` | Log Analytics Workspace |
 | `NSG` | Network Security Group |
+| `PSQ` | PostgreSQL Flexible Server |
 | `RGP` | Resource Group* |
 | `STO` | Storage Account |
 | `SUB` | Azure Subnet |
@@ -127,6 +128,7 @@ Breaking down the example:
 | `ADG` | Azure Data Gateway |
 | `ADL` | Azure Data Lake |
 | `AFW` | Azure Firewall |
+| `AIP` | Automated Intelligence Platform |
 | `ASE` | Application Service Environment |
 | `ASP` | Application Service Plan |
 | `AXW` | Axway Server |
