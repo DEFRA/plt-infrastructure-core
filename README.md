@@ -9,8 +9,10 @@ The following non-network resources may also be deployed according to Defra patt
 - Entra ID Groups and memberships.
 - Entra ID App Registrations (API permissions, optional Key Vault secrets).
 - Document Intelligence
-- Internal Container Apps Environment (Log Analytics + private DNS + optional Azure Files)
-- Private PostgreSQL Flexible Server (VNet-injected, Entra MI admin)
+- Internal Container Apps Environment (system-assigned MI, Log Analytics, private DNS)
+- Optional CAE storage accounts (Standard SMB and/or Premium NFS) — shares/mounts via product-deploy
+- Private PostgreSQL Flexible Server (VNet-injected; Entra + password auth)
+- Private platform Key Vault (vault PE + DNS)
 - DNS
 - Resource Groups and permissions.
 

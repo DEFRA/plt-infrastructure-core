@@ -2,49 +2,23 @@
 
 All notable changes to this repository should be documented in this file.
 
-## [1.7.0] - 2026-10-05
+## [1.4.0] - 2026-10-06
 
 ### Added
 
-- **Container Apps NFS storage account** — Optional companion to the CAE. Set `containerAppsNfsStorage: true` to provision a second, hardened **FileStorage** account (`Premium_LRS` SSD, STO naming with `instanceNumber + 1`, public access disabled, file private endpoint + DNS A record). Configures Azure Files **NFSv4.1** with encryption-in-transit **disabled** (required for Container Apps `NfsAzureFile` mounts). Does **not** create file shares or CAE storage registrations — product-deploy owns that. Independent of `containerAppsStorage` (Standard SMB STO). Omit or `false` to skip.
-
-## [1.6.0] - 2026-10-02
-
-### Added
-
-- **Private Key Vault (`KVT`)** — Optional. Set `keyVault: true` in instance `core.yaml` to deploy a private Key Vault into the APP resource group (requires `APP` in `platformResourceGroups`). SharedDefra `key-vault.vault` **0.5.3**, RBAC auth, soft-delete, public access disabled, vault private endpoint on the PEP subnet, DNS A record for `{name}.vault.azure.net` (zone `privatelink.vaultcore.azure.net`). Does **not** assign Key Vault Secrets Officer — that is granted separately at subscription level to the CI/CD app registration. Parallel **Deploy Azure Services** job `azure_key_vault` (depends on `landing_zone` only). Naming via `get-names` / `Set-ResourceNames` (`keyVaultName`).
+- **Container Apps Environment** — Optional internal CAE (`containerAppsEnvironment`, layout 1 subnet 4) with system-assigned MI, Log Analytics, and private DNS.
+- **CAE storage** — Optional Standard SMB STO (`containerAppsStorage`) and Premium NFS STO (`containerAppsNfsStorage`, `Premium_LRS`, instanceNumber+1). Shares/CAE mounts remain product-deploy.
+- **PostgreSQL Flexible Server** — Optional private Flex Server (`postgresFlexibleServer`, layout 1 subnet 5). Entra + password auth; optional `POSTGRES-*` secrets when `keyVault: true`.
+- **Key Vault** — Optional private KVT (`keyVault: true`) with vault PE + DNS.
+- **Naming** — `PSQ` / `KVT` / CAE / STO names via `get-names`; layout 1 subnet 5 delegated to PostgreSQL (CAE on subnet 4).
 
 ### Changed
 
-- **PostgreSQL Flexible Server auth** — `passwordAuth` flipped to **Enabled** (Entra auth remains enabled). Supplies required `administratorLogin` / generated admin password (stable per RG+server). When `keyVault: true`, waits for `azure_key_vault` and writes ADP-style secrets `POSTGRES-HOST`, `POSTGRES-USER`, `POSTGRES-PASSWORD` into the platform Key Vault.
-
-## [1.5.0] - 2026-09-30
-
-### Added
-
-- **Private PostgreSQL Flexible Server** — Optional. Set `postgresFlexibleServer` to a subnet key (e.g. `subnet5`) in instance `core.yaml` to deploy a VNet-injected Flexible Server into the APP resource group (requires `APP` in `platformResourceGroups`). The value selects which VNet subnet hosts the server (must be delegated to `Microsoft.DBforPostgreSQL/flexibleServers`; layout 1 defaults to subnet 5). Defaults to Burstable **Standard_B1ms**, 32 GB, PostgreSQL **16** via public AVM `db-for-postgre-sql/flexible-server` **0.16.1** (SharedDefra still caps at 15), high availability disabled. **No public connectivity** (delegated subnet injection + server-scoped private DNS zone `{server}.privatelink.postgres.database.azure.com` in the APP RG — avoids the centrally managed `privatelink.postgres.database.azure.com` zone — spoke-linked and hub-linked). **Entra authentication only** (`passwordAuth` disabled): creates a platform user-assigned MI as Entra admin for later product-deploy DB automation; when a Container Apps Environment exists in the same APP RG, its system-assigned MI is also granted Entra admin. Per-app database users remain an product-deploy concern. Set to `none` or omit to skip.
-- **Naming resource type `PSQ`** — PostgreSQL Flexible Server naming via `get-names` / `Set-ResourceNames` (`postgresFlexibleServerName`).
-
-### Changed
-
-- **Layout 1 subnet 5** — Delegation moved from `Microsoft.App/environments` to **`Microsoft.DBforPostgreSQL/flexibleServers`** (Container Apps Environment is on subnet 4). Subnet 5 is reserved for the platform PostgreSQL Flexible Server.
-- **Parallel pre-reqs** — After `validate_and_setup`, `pre_req_*` jobs (DNS links, AAD groups, app registrations, route tables, NSGs) all start together. Network jobs are self-contained (set-resource-names → resolve contributor → create RGs → deploy) so they are not gated behind a separate `init` job. `landing_zone` deploys the spoke VNet only, then parallel **Deploy Azure Services** jobs (`azure_document_intelligence`, `azure_container_apps`, `azure_postgres`, …) each depend on `landing_zone`. Add future Azure services the same way. `Create-PlatformResourceGroups` retries transient conflicts when RT/NSG jobs ensure RGs concurrently.
+- Parallel pre-req and Deploy Azure Services jobs after `landing_zone`.
 
 ### Fixed
 
-- **App registration create race** — After creating a new Entra app, owner list/add and admin-consent grant reads can briefly return `Request_ResourceNotFound` while Graph replicates. Those calls now retry with backoff; consent also waits for a resolvable service principal id and URL-encodes the `oauth2PermissionGrants` filter.
-
-## [1.4.0] - 2026-09-25
-
-### Added
-
-- **Internal Container Apps Environment** — Optional. Set `containerAppsEnvironment` to a subnet key (e.g. `subnet4`) in instance `core.yaml` to deploy an internal-only Azure Container Apps environment into the APP resource group (requires `APP` in `platformResourceGroups`). The value selects which VNet subnet hosts the environment (must be delegated to `Microsoft.App/environments`). Creates a dedicated Log Analytics workspace, private DNS zone for the environment default domain (spoke VNet linked), and triggers hub private DNS linking. The environment is deployed with a **system-assigned managed identity** (required for `registryIdentity: system-environment` ACR pulls). Set to `none` or omit to skip.
-- **Container Apps storage account** — Optional companion to the CAE. Set `containerAppsStorage: true` to provision a hardened StorageV2 account (STO naming, **public network disabled**, file private endpoint on the PEP subnet, DNS A record in `privatelink.file.core.windows.net` via the same SetDnsRecords path as Document Intelligence) in the APP RG for apps to create Azure Files shares against later. Does **not** create file shares or CAE storage registrations — those stay with product-deploy so new apps do not require a platform re-run. Omit or set `false` to skip.
-
-### Fixed
-
-- **CAE system-assigned identity** — Container Apps Environment is now deployed as a native `Microsoft.App/managedEnvironments` resource with `identity.type: SystemAssigned` (SharedDefra `app.managed-environment` has no managed-identity parameter, so platform redeploys cleared identity and broke `registryIdentity: system-environment` ACR pulls). Outputs `systemAssignedIdentityPrincipalId` for AcrPull grants.
-- **Arm-ttk 409 during lint** — PipelineCommon pin moved from `refs/tags/1.2.0` (arm-ttk download from a public Azure blob that now returns `409 Public access is not permitted`) to `refs/tags/1.2.1` on main, which pulls arm-ttk from GitHub releases (#159).
+- CAE system-assigned identity retained across redeploys; app-registration Graph race retries; arm-ttk pin for lint.
 
 ## [1.3.1] - 2026-09-24
 

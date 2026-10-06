@@ -153,7 +153,7 @@ resources:
       name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      ref: refs/heads/ml/container-app-env
+      ref: refs/heads/main
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
@@ -176,7 +176,6 @@ extends:
         serviceConnection: $(subscriptionName)
         deploymentBranches:
           - 'refs/heads/main'
-          - 'refs/heads/ml/container-app-env'
         developmentEnvironment: true
         privateAgentName: 'DEFRA-COMMON-UBUNTU-SSV3'
         # primary must be compile-time (parameters) so job names are valid; config $(location) is still used at runtime via variables
