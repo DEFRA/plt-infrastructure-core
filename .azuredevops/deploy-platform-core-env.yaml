@@ -131,6 +131,12 @@ variables:
   # subnetN (e.g. subnet4) = deploy internal-only Container Apps Environment on that subnet; empty/none = skip.
   - name: containerAppsEnvironment
     value: ''
+  # Entra group (from aad-group.json) the CAE system-assigned MI joins as a member; empty = skip.
+  - name: containerAppsEnvironmentIdentityGroupName
+    value: ''
+  # CAE system-assigned MI object id (set by Output-ContainerAppsEnvironment.ps1).
+  - name: containerAppsEnvironmentPrincipalId
+    value: ''
   # Optional JSON array for extra private DNS A records when DI is enabled. Default empty; instance core.yaml may override.
   - name: additionalDnsConfig
     value: ''
@@ -541,6 +547,16 @@ extends:
                         scriptPath: scripts/pipeline/Output-ContainerAppsEnvironment.ps1
                         scriptArguments: >
                           -ResourceGroupName "$(servicesResourceGroup)"
+                      - displayName: 'Add Container Apps Environment identity to Entra group'
+                        type: AzurePowerShell
+                        serviceConnectionVariableName: 'ssvServiceConnection'
+                        scriptPath: scripts/pipeline/Add-IdentityToEntraGroup.ps1
+                        scriptArguments: >
+                          -GroupName "$(containerAppsEnvironmentIdentityGroupName)"
+                          -PrincipalId "$(containerAppsEnvironmentPrincipalId)"
+                          -ClientId "$(entraSPClientId)"
+                          -TenantId "$(tenantId)"
+                          -ClientSecret "$(entraSPToken)"
                       - displayName: 'Link Container Apps Environment private DNS zone to hub networks'
                         type: AzurePowerShell
                         azurePowerShellVersion: LatestVersion

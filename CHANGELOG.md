@@ -2,6 +2,12 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.4.1] - 2026-11-03
+
+### Added
+
+- **Entra group membership for deployed identities** — `Add-IdentityToEntraGroup.ps1` adds any managed identity or service principal to an existing Entra group as a post-deploy step. First use is the optional `containerAppsEnvironmentIdentityGroupName`: when set, the Container Apps Environment system-assigned MI joins that group after the CAE deploys. The object id comes from the deployment output, so nothing is hard coded; the group itself must be defined in the instance `aad-group.json`. Omit the variable to skip the step.
+
 ## [1.4.0] - 2026-10-06
 
 ### Added
