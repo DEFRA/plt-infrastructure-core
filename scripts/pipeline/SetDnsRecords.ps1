@@ -14,7 +14,8 @@ param(
   [Parameter(Mandatory = $false)][string]$IpAddress = '',
   [Parameter(Mandatory = $true)][string]$RegionToDnsResourcegroupMappingTable,
   [Parameter(Mandatory = $true)][string]$PipelineWorkspace,
-  [Parameter(Mandatory = $true)][string]$BuildSourcesDirectory
+  [Parameter(Mandatory = $true)][string]$BuildSourcesDirectory,
+  [Parameter(Mandatory = $false)][int]$Ttl = 300
 )
 
 $region = $Location.ToLowerInvariant()
@@ -61,4 +62,4 @@ $env:REGION_TO_DNS_RESOURCEGROUP_MAPPING_TABLE = $RegionToDnsResourcegroupMappin
 $scriptPath = Join-Path $PipelineWorkspace "s/self/scripts/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1"
 if (-not (Test-Path $scriptPath)) { $scriptPath = Join-Path $BuildSourcesDirectory "self/scripts/common-scripts/PowerShellLibrary/Set-PrivateDnsRecordSet.ps1" }
 if (-not (Test-Path $scriptPath)) { throw "Set-PrivateDnsRecordSet.ps1 not found" }
-& $scriptPath -Ttl 300
+& $scriptPath -Ttl $Ttl

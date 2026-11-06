@@ -17,11 +17,15 @@ parameters:
   - name: ipAddress
     displayName: Ip address
     type: string
-    default: 192.0.2.10
+    default: 10.179.128.73
   - name: location
     displayName: Region key (uksouth, ukwest, northeurope, westeurope)
     type: string
     default: uksouth
+  - name: ttl
+    displayName: TTL seconds
+    type: number
+    default: 60
 
 resources:
   repositories:
@@ -53,6 +57,7 @@ steps:
         -Fqdn "${{ parameters.fqdn }}"
         -IpAddress "${{ parameters.ipAddress }}"
         -Location "${{ parameters.location }}"
+        -Ttl ${{ parameters.ttl }}
         -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
         -PipelineWorkspace "$(Pipeline.Workspace)"
         -BuildSourcesDirectory "$(Build.SourcesDirectory)"
