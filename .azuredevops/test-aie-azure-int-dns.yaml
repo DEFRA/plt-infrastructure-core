@@ -1,0 +1,61 @@
+# Throwaway. Proves SetDnsRecords.ps1 can write an A record in
+# aie.azure-int.defra.cloud. Not part of deploy-platform-core-env.yaml.
+# Register this file as its own pipeline, queue it, then delete it once the
+# write works and the same call is folded back into the platform deploy.
+#
+# Record: mat.aie.azure-int.defra.cloud (name "mat" in that zone).
+# Default address is TEST-NET (192.0.2.10). Change Ip address when you queue.
+
+trigger: none
+pr: none
+
+parameters:
+  - name: fqdn
+    displayName: FQDN
+    type: string
+    default: mat.aie.azure-int.defra.cloud
+  - name: ipAddress
+    displayName: Ip address
+    type: string
+    default: 192.0.2.10
+  - name: location
+    displayName: Region key (uksouth, ukwest, northeurope, westeurope)
+    type: string
+    default: uksouth
+
+resources:
+  repositories:
+    - repository: PltConfig
+      name: DEFRA/plt-config
+      endpoint: DEFRA
+      type: github
+      ref: refs/heads/main
+
+variables:
+  - template: /config/common.yaml@PltConfig
+
+pool:
+  name: DEFRA-COMMON-UBUNTU-SSV3
+
+steps:
+  - checkout: self
+    path: s/self
+  - checkout: PltConfig
+    path: s/PltConfig
+
+  - task: AzurePowerShell@5
+    displayName: Set DNS A record ${{ parameters.fqdn }}
+    inputs:
+      azureSubscription: $(privateDnsServiceConnection)
+      ScriptType: FilePath
+      ScriptPath: $(Pipeline.Workspace)/s/self/scripts/pipeline/SetDnsRecords.ps1
+      ScriptArguments: >
+        -Fqdn "${{ parameters.fqdn }}"
+        -IpAddress "${{ parameters.ipAddress }}"
+        -Location "${{ parameters.location }}"
+        -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+        -PipelineWorkspace "$(Pipeline.Workspace)"
+        -BuildSourcesDirectory "$(Build.SourcesDirectory)"
+      azurePowerShellVersion: LatestVersion
+      pwsh: true
+      workingDirectory: $(Pipeline.Workspace)/s/self
