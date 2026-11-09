@@ -13,11 +13,11 @@ parameters:
   - name: fqdn
     displayName: FQDN
     type: string
-    default: mat.aie.azure-int.defra.cloud
+    default: factory.aie.azure-int.defra.cloud
   - name: ipAddress
     displayName: Ip address
     type: string
-    default: 10.179.128.73
+    default: 10.179.128.107
   - name: location
     displayName: Region key (uksouth, ukwest, northeurope, westeurope)
     type: string
