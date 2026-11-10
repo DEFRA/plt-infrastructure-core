@@ -29,8 +29,16 @@ The deployment provides clear access boundaries as follows:
 - **Config source**: `DEFRA/plt-config` (pulled in as a pipeline repository resource)
 - **Config selection**:
   - `applicationID` (e.g. `aie`)
-  - `instance` (e.g. `01`)
+  - `instance` (e.g. `01` for SND1, `02` for SND4)
+  - `environmentName` (e.g. `snd1` or `snd4`)
+  - `location` (e.g. `uksouth`)
 
+Known AIE sandboxes when you queue a run:
+
+| Target | `environmentName` | `instance` | Config |
+| --- | --- | --- | --- |
+| SND1 (`AZR-AIE-SND1`) | `snd1` | `01` | `config/aie/01/core.yaml` |
+| SND4 (`AZR-AIE-SND4`) | `snd4` | `02` | `config/aie/02/core.yaml` |
 
 ## Environment/Location
 

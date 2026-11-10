@@ -9,19 +9,29 @@ parameters:
     displayName: "Application ID (config folder name, e.g. aie)"
     type: string
     default: 'aie'
+  # Pair with environmentName: 01 → snd1 (AZR-AIE-SND1), 02 → snd4 (AZR-AIE-SND4).
+  # Validation fails if instance and environmentName disagree with core.yaml.
   - name: instance
-    displayName: "Instance (config folder name, e.g. 01)"
+    displayName: "Instance (01 = SND1, 02 = SND4)"
     type: string
     default: '01'
+    values:
+      - '01'
+      - '02'
   # Derived in config, however has to be supplied to allow the regional config to work. Validation step confirms config matches supplied values.
   - name: environmentName
-    displayName: "Environment name for config path (e.g. snd1). Must match config/regional/{environment}-{region}.yaml and config."
+    displayName: "Environment (snd1 with instance 01, snd4 with instance 02)"
     type: string
     default: 'snd1'
+    values:
+      - snd1
+      - snd4
   - name: location
     displayName: "Primary region key for config path (e.g. uksouth). Must match config and config/regional/{environment}-{region}.yaml."
     type: string
     default: 'uksouth'
+    values:
+      - uksouth
 pr:
   branches:
     include:
