@@ -10,7 +10,8 @@
     4 expected location (pipeline parameter)
     5 actual location (resolved from config variables)
     6 expected coreVersion (from config variables)
-    7 actual pipeline branch/tag name (Build.SourceBranchName)
+    7 actual pipeline branch/tag ref (Build.SourceBranch), e.g.
+       refs/heads/ml/entra-id-spike or refs/tags/1.4.1
 #>
 param(
   [string]$ExpectedEnvironment = '',
@@ -19,7 +20,7 @@ param(
   [string]$ExpectedLocation = '',
   [string]$ActualLocation = '',
   [string]$ExpectedCoreVersion = '',
-  [string]$ActualSourceBranchName = ''
+  [string]$ActualSourceBranch = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,9 +48,17 @@ if (-not [string]::IsNullOrWhiteSpace($expLoc) -and $actLoc -ne $expLoc) {
 if ($hasError) { exit 1 }
 
 $expCoreVer = $ExpectedCoreVersion.ToString().Trim()
-$actBranchName = $ActualSourceBranchName.ToString().Trim()
+# Prefer the full path after refs/heads/ or refs/tags/ so feature branches with
+# slashes (ml/entra-id-spike) match coreVersion. Fall back to the raw value.
+$actRef = $ActualSourceBranch.ToString().Trim()
+$actBranchName = $actRef
+if ($actRef -match '^refs/heads/(.+)$') {
+  $actBranchName = $Matches[1]
+} elseif ($actRef -match '^refs/tags/(.+)$') {
+  $actBranchName = $Matches[1]
+}
 if (-not [string]::IsNullOrWhiteSpace($expCoreVer) -and -not [string]::IsNullOrWhiteSpace($actBranchName) -and $expCoreVer -ne $actBranchName) {
-  Write-Host "##vso[task.logissue type=error]coreVersion mismatch: config (coreVersion=$expCoreVer) does not match pipeline run (Build.SourceBranchName=$actBranchName)."
+  Write-Host "##vso[task.logissue type=error]coreVersion mismatch: config (coreVersion=$expCoreVer) does not match pipeline run (Build.SourceBranch=$actRef → $actBranchName)."
   $hasError = $true
 }
 

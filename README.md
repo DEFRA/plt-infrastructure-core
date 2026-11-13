@@ -55,6 +55,12 @@ Optional instance manifests (skipped when the file is absent):
 
 See [plt-config](https://github.com/DEFRA/plt-config) for the configuration file format and supported variables.
 
+### Running from a feature branch
+
+1. Set instance `coreVersion` in `plt-config` to the full branch path (e.g. `ml/entra-id-spike`).
+2. Run this pipeline from that same branch with **Deploy from Feature Branch** checked.
+3. Set **plt-config git ref** to `refs/heads/<same-branch>` so Entra manifests and `core.yaml` come from your config branch (default is `refs/heads/main`).
+
 ## Key scripts
 
 Located under `scripts/pipeline/`:
@@ -70,7 +76,7 @@ Located under `scripts/pipeline/`:
 - `Add-IdentityToEntraGroup.ps1`: Adds a managed identity or service principal to an Entra group that already exists in the manifest. Reusable post-deploy step; today it adds the Container Apps Environment system-assigned MI to the group named by `containerAppsEnvironmentIdentityGroupName`. Skips when the group name or principal id is empty.
 - `Output-KeyVaultPrivateEndpointIp.ps1`: Resolves the platform Key Vault private-endpoint IP for `*.vault.azure.net` DNS (zone `privatelink.vaultcore.azure.net`).
 - `Set-PostgresEntraAdminFromCae.ps1`: Resolves an optional Container Apps Environment system-assigned MI for PostgreSQL Entra admin (falls back to platform UAMI only).
-- `Validate-Params-Match-Config.ps1`: Validates pipeline `environmentName` matches config (`subType + deploymentEnvInstance`) and validates `location`.
+- `Validate-Params-Match-Config.ps1`: Validates pipeline `environmentName` matches config (`subType + deploymentEnvInstance`), `location`, and `coreVersion` against the full path after `refs/heads/` or `refs/tags/` in `Build.SourceBranch` (so feature branches with slashes work).
 - `Validate-AdditionalDnsConfigJson.ps1`: Validates `additionalDnsConfig` JSON when Document Intelligence is enabled.
 
 Shared helper scripts live under:

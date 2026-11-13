@@ -5,6 +5,10 @@ parameters:
     displayName: "Deploy from Feature Branch"
     type: boolean
     default: false
+  - name: pltConfigRef
+    displayName: "plt-config git ref (branch or tag). Use refs/heads/<branch> to pick up unmerged config."
+    type: string
+    default: 'refs/heads/main'
   - name: applicationID
     displayName: "Application ID (config folder name, e.g. aie)"
     type: string
@@ -159,7 +163,7 @@ resources:
       name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      ref: refs/heads/main
+      ref: ${{ parameters.pltConfigRef }}
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
@@ -201,7 +205,7 @@ extends:
                 scriptType: AzureCLI
                 azureCLIScriptType: pscore
                 inlineScript: |
-                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.ps1" "$(expectedEnvironment)" "$(subType)" "$(deploymentEnvInstance)" "$(expectedLocation)" "$(location)" "$(coreVersion)" "$(Build.SourceBranchName)"
+                  & "$(Pipeline.Workspace)/s/self/scripts/pipeline/Validate-Params-Match-Config.ps1" "$(expectedEnvironment)" "$(subType)" "$(deploymentEnvInstance)" "$(expectedLocation)" "$(location)" "$(coreVersion)" "$(Build.SourceBranch)"
               - name: validate-additional-dns-config-json
                 type: 'script'
                 scriptType: AzureCLI
