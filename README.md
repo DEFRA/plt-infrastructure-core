@@ -55,12 +55,6 @@ Optional instance manifests (skipped when the file is absent):
 
 See [plt-config](https://github.com/DEFRA/plt-config) for the configuration file format and supported variables.
 
-### Running from a feature branch
-
-1. Set instance `coreVersion` in `plt-config` to the full branch path (e.g. `ml/entra-id-spike`).
-2. Run this pipeline from that same branch with **Deploy from Feature Branch** checked.
-3. Set **plt-config git ref** to `refs/heads/<same-branch>` so Entra manifests and `core.yaml` come from your config branch (default is `refs/heads/main`).
-
 ## Key scripts
 
 Located under `scripts/pipeline/`:

@@ -6,7 +6,7 @@ All notable changes to this repository should be documented in this file.
 
 ### Changed
 
-- **Branch runs** — `coreVersion` validation compares against the full path after `refs/heads/` or `refs/tags/` (from `Build.SourceBranch`), so feature branches with slashes (e.g. `ml/entra-id-spike`) match. New pipeline parameter `pltConfigRef` selects the `plt-config` checkout (default `refs/heads/main`).
+- **Branch runs** — `coreVersion` validation compares against the full path after `refs/heads/` or `refs/tags/` (from `Build.SourceBranch`), so feature branches with slashes (e.g. `ml/entra-id-spike`) match.
 
 ## [1.4.1] - 2026-11-03
 

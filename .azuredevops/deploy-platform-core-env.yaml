@@ -5,10 +5,6 @@ parameters:
     displayName: "Deploy from Feature Branch"
     type: boolean
     default: false
-  - name: pltConfigRef
-    displayName: "plt-config git ref (branch or tag). Use refs/heads/<branch> to pick up unmerged config."
-    type: string
-    default: 'refs/heads/main'
   - name: applicationID
     displayName: "Application ID (config folder name, e.g. aie)"
     type: string
@@ -163,7 +159,8 @@ resources:
       name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      ref: ${{ parameters.pltConfigRef }}
+      # Temporary: pin to the spike branch; revert to refs/heads/main before merge.
+      ref: refs/heads/ml/entra-id-spike
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
@@ -185,7 +182,9 @@ extends:
       - name: ${{ parameters.environmentName }}
         serviceConnection: $(subscriptionName)
         deploymentBranches:
+          # Temporary: allow this spike branch; revert to main-only before merge.
           - 'refs/heads/main'
+          - 'refs/heads/ml/entra-id-spike'
         developmentEnvironment: true
         privateAgentName: 'DEFRA-COMMON-UBUNTU-SSV3'
         # primary must be compile-time (parameters) so job names are valid; config $(location) is still used at runtime via variables
