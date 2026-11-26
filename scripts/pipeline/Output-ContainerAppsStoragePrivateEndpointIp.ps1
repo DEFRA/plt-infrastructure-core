@@ -1,6 +1,8 @@
 <#
 .SYNOPSIS
-  Resolves the Container Apps storage file private-endpoint IP for DNS (privatelink.file.core.windows.net).
+  Resolves a Container Apps storage private-endpoint IP for DNS. Defaults to the file PE
+  (pep01, privatelink.file.core.windows.net); the blob PE (pep02, privatelink.blob.core.windows.net)
+  uses -DeploymentPrivateEndpointOutput storageBlobPrivateEndpointName -PrivateEndpointSuffix pep02.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$ResourceGroupName,
@@ -12,7 +14,9 @@ param(
   # When set, read this deployment output for the account name if -StorageAccountName is empty
   # (default: storageAccountName; NFS uses storageNfsAccountName).
   [Parameter(Mandatory = $false)][string]$DeploymentAccountOutput = 'storageAccountName',
-  [Parameter(Mandatory = $false)][string]$DeploymentPrivateEndpointOutput = 'storagePrivateEndpointName'
+  [Parameter(Mandatory = $false)][string]$DeploymentPrivateEndpointOutput = 'storagePrivateEndpointName',
+  # Fallback PE name suffix when neither -PrivateEndpointName nor the deployment output is available.
+  [Parameter(Mandatory = $false)][string]$PrivateEndpointSuffix = 'pep01'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,7 +42,7 @@ if ([string]::IsNullOrWhiteSpace($StorageAccountName)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($PrivateEndpointName)) {
-  $PrivateEndpointName = "${StorageAccountName}pep01"
+  $PrivateEndpointName = "${StorageAccountName}${PrivateEndpointSuffix}"
 }
 
 $ip = az network private-endpoint show -g $rg -n $PrivateEndpointName --query "customDnsConfigs[0].ipAddresses[0]" -o tsv

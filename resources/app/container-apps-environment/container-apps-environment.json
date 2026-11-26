@@ -5,8 +5,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.39.26.7824",
-      "templateHash": "10562590870634412436"
+      "version": "0.43.1.21952",
+      "templateHash": "14848910484644349302"
     }
   },
   "parameters": {
@@ -36,7 +36,7 @@
         "enabled": false
       },
       "metadata": {
-        "description": "Optional. Azure Files storage account for the environment. Set enabled to true (with accountName) to provision a hardened StorageV2 account for apps to create shares against later. Does not create file shares or CAE storage registrations."
+        "description": "Optional. Azure Files storage account for the environment. Set enabled to true (with accountName) to provision a hardened StorageV2 account (file + blob private endpoints) for apps to create shares/containers against later. Does not create file shares or CAE storage registrations."
       }
     },
     "storageNfs": {
@@ -80,6 +80,20 @@
         "description": "Optional. Boolean value to enable or disable resource lock."
       }
     },
+    "certificateName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional. Name of a managedEnvironments/certificates resource to import from Key Vault. Empty with certificateKeyVaultUrl empty = skip."
+      }
+    },
+    "certificateKeyVaultUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional. Key Vault secret URI for the certificate (e.g. https://vault.vault.azure.net/secrets/name). Uses the CAE system-assigned MI (identity: system)."
+      }
+    },
     "deploymentDate": {
       "type": "string",
       "defaultValue": "[utcNow('yyyyMMdd-HHmmss')]",
@@ -118,12 +132,14 @@
     "storageAccountName": "[toLower(parameters('storage').accountName)]",
     "storageSkuName": "[if(and(contains(parameters('storage'), 'skuName'), not(empty(parameters('storage').skuName))), parameters('storage').skuName, 'Standard_LRS')]",
     "storagePrivateEndpointName": "[take(format('{0}pep01', variables('storageAccountName')), 64)]",
+    "storageBlobPrivateEndpointName": "[take(format('{0}pep02', variables('storageAccountName')), 64)]",
     "storageNfsEnabledRaw": "[if(contains(parameters('storageNfs'), 'enabled'), parameters('storageNfs').enabled, false())]",
     "storageNfsEnabled": "[or(equals(variables('storageNfsEnabledRaw'), true()), contains(createArray('true', '1', 'yes'), toLower(format('{0}', variables('storageNfsEnabledRaw')))))]",
     "enableStorageNfs": "[and(variables('storageNfsEnabled'), not(empty(parameters('storageNfs').accountName)))]",
     "storageNfsAccountName": "[toLower(parameters('storageNfs').accountName)]",
     "storageNfsSkuName": "[if(and(contains(parameters('storageNfs'), 'skuName'), not(empty(parameters('storageNfs').skuName))), parameters('storageNfs').skuName, 'Premium_LRS')]",
-    "storageNfsPrivateEndpointName": "[take(format('{0}pep01', variables('storageNfsAccountName')), 64)]"
+    "storageNfsPrivateEndpointName": "[take(format('{0}pep01', variables('storageNfsAccountName')), 64)]",
+    "enableCertificate": "[and(not(empty(parameters('certificateName'))), not(empty(parameters('certificateKeyVaultUrl'))))]"
   },
   "resources": {
     "logAnalyticsWorkspaceResource": {
@@ -163,6 +179,23 @@
       },
       "dependsOn": [
         "logAnalyticsWorkspace"
+      ]
+    },
+    "environmentCertificate": {
+      "condition": "[variables('enableCertificate')]",
+      "type": "Microsoft.App/managedEnvironments/certificates",
+      "apiVersion": "2025-01-01",
+      "name": "[format('{0}/{1}', parameters('containerAppsEnvironment').name, parameters('certificateName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[union(variables('defaultTags'), createObject('Name', parameters('certificateName'), 'Purpose', 'Container Apps Environment certificate'))]",
+      "properties": {
+        "certificateKeyVaultProperties": {
+          "identity": "system",
+          "keyVaultUrl": "[parameters('certificateKeyVaultUrl')]"
+        }
+      },
+      "dependsOn": [
+        "managedEnvironmentResource"
       ]
     },
     "logAnalyticsWorkspace": {
@@ -5257,6 +5290,12 @@
                 "service": "file",
                 "subnetResourceId": "[resourceId(parameters('vnet').resourceGroup, 'Microsoft.Network/virtualNetworks/subnets', parameters('vnet').name, parameters('vnet').subnetPrivateEndpoints)]",
                 "tags": "[union(variables('defaultTags'), createObject('Name', variables('storagePrivateEndpointName'), 'Purpose', 'Container Apps Azure Files private endpoint'))]"
+              },
+              {
+                "name": "[variables('storageBlobPrivateEndpointName')]",
+                "service": "blob",
+                "subnetResourceId": "[resourceId(parameters('vnet').resourceGroup, 'Microsoft.Network/virtualNetworks/subnets', parameters('vnet').name, parameters('vnet').subnetPrivateEndpoints)]",
+                "tags": "[union(variables('defaultTags'), createObject('Name', variables('storageBlobPrivateEndpointName'), 'Purpose', 'Container Apps Blob private endpoint'))]"
               }
             ]
           },
@@ -13241,6 +13280,10 @@
       "type": "string",
       "value": "[if(variables('enableStorage'), variables('storagePrivateEndpointName'), '')]"
     },
+    "storageBlobPrivateEndpointName": {
+      "type": "string",
+      "value": "[if(variables('enableStorage'), variables('storageBlobPrivateEndpointName'), '')]"
+    },
     "storageNfsAccountName": {
       "type": "string",
       "value": "[if(variables('enableStorageNfs'), variables('storageNfsAccountName'), '')]"
@@ -13248,6 +13291,10 @@
     "storageNfsPrivateEndpointName": {
       "type": "string",
       "value": "[if(variables('enableStorageNfs'), variables('storageNfsPrivateEndpointName'), '')]"
+    },
+    "certificateName": {
+      "type": "string",
+      "value": "[if(variables('enableCertificate'), parameters('certificateName'), '')]"
     }
   }
 }
