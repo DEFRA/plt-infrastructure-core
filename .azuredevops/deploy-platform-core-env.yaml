@@ -596,6 +596,30 @@ extends:
                             -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
                             -PipelineWorkspace "$(Pipeline.Workspace)"
                             -BuildSourcesDirectory "$(Build.SourcesDirectory)"
+                        - displayName: 'Output Container Apps storage blob private endpoint IP for DNS'
+                          type: AzureCLI
+                          azureCLIScriptType: pscore
+                          serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                          scriptPath: scripts/pipeline/Output-ContainerAppsStoragePrivateEndpointIp.ps1
+                          scriptArguments: >
+                            -ResourceGroupName "$(servicesResourceGroup)"
+                            -StorageAccountName "$(containerAppsStorageAccountName)"
+                            -DeploymentPrivateEndpointOutput storageBlobPrivateEndpointName
+                            -PrivateEndpointSuffix pep02
+                            -OutputIpVariable containerAppsStorageBlobPrivateEndpointIp
+                        - displayName: 'Set Container Apps storage blob private endpoint DNS A record'
+                          type: AzurePowerShell
+                          azurePowerShellVersion: LatestVersion
+                          azurePowerShellUseCore: true
+                          serviceConnectionVariableName: 'privateDnsServiceConnection'
+                          scriptPath: scripts/pipeline/SetDnsRecords.ps1
+                          scriptArguments: >
+                            -Fqdn "$(containerAppsStorageAccountName).blob.core.windows.net"
+                            -IpAddress "$(containerAppsStorageBlobPrivateEndpointIp)"
+                            -Location "$(location)"
+                            -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+                            -PipelineWorkspace "$(Pipeline.Workspace)"
+                            -BuildSourcesDirectory "$(Build.SourcesDirectory)"
                       - ${{ if eq(lower(coalesce(variables.containerAppsNfsStorage, 'false')), 'true') }}:
                         - displayName: 'Output Container Apps NFS storage private endpoint IP for DNS'
                           type: AzureCLI

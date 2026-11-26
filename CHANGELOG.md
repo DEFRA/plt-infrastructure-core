@@ -2,6 +2,12 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **CAE storage Blob private endpoint** — When `containerAppsStorage` provisions the StorageV2 account, a Blob private endpoint (`<account>pep02`) is now created alongside the existing Azure Files endpoint (`pep01`) in the same subnet, with an A record for `<account>.blob.core.windows.net`. No new flag. The Premium NFS account is unchanged (file only).
+
 ## [1.5.0] - 2026-11-26
 
 ### Added
