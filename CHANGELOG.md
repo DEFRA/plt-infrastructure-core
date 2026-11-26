@@ -2,6 +2,12 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.5.0] - 2026-11-26
+
+### Added
+
+- **Optional CAE certificate from Key Vault** — When both `containerAppsEnvironmentCertificateName` and `containerAppsEnvironmentCertificateKeyVaultUrl` are set, the Container Apps Environment imports that certificate via the CAE system-assigned MI (`certificateKeyVaultProperties`, `identity: system`). Omit either variable (or leave both empty) to skip; the rest of the CAE deploy is unchanged. The MI typically needs Key Vault access via a group such as `AG-Azure-AIE-Certificate-Accounts` (`containerAppsEnvironmentIdentityGroupName`).
+
 ## [1.4.1] - 2026-11-03
 
 ### Added
