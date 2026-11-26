@@ -137,6 +137,11 @@ variables:
   # CAE system-assigned MI object id (set by Output-ContainerAppsEnvironment.ps1).
   - name: containerAppsEnvironmentPrincipalId
     value: ''
+  # Optional CAE certificate from corporate Key Vault. Both must be set; empty = skip.
+  - name: containerAppsEnvironmentCertificateName
+    value: ''
+  - name: containerAppsEnvironmentCertificateKeyVaultUrl
+    value: ''
   # Optional JSON array for extra private DNS A records when DI is enabled. Default empty; instance core.yaml may override.
   - name: additionalDnsConfig
     value: ''
@@ -159,7 +164,8 @@ resources:
       name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      ref: refs/heads/main
+      # TEMP: test from branch — revert to refs/heads/main before merge
+      ref: refs/heads/ml/add-certificate-logic
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml

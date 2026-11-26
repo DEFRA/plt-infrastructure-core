@@ -43,6 +43,12 @@
     },
     "resourceLockEnabled": {
       "value": #{{ resourceLockEnabled }}
+    },
+    "certificateName": {
+      "value": "#{{ containerAppsEnvironmentCertificateName }}"
+    },
+    "certificateKeyVaultUrl": {
+      "value": "#{{ containerAppsEnvironmentCertificateKeyVaultUrl }}"
     }
   }
 }
