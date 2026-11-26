@@ -10,6 +10,7 @@ The following non-network resources may also be deployed according to Defra patt
 - Entra ID App Registrations (API permissions, optional Key Vault secrets).
 - Document Intelligence
 - Internal Container Apps Environment (system-assigned MI, Log Analytics, private DNS)
+- Optional CAE certificate import from a corporate Key Vault (via the CAE system-assigned MI)
 - Optional CAE storage accounts (Standard SMB and/or Premium NFS) — shares/mounts via product-deploy
 - Private PostgreSQL Flexible Server (VNet-injected; Entra + password auth)
 - Private platform Key Vault (vault PE + DNS)
@@ -70,7 +71,7 @@ Located under `scripts/pipeline/`:
 - `Add-IdentityToEntraGroup.ps1`: Adds a managed identity or service principal to an Entra group that already exists in the manifest. Reusable post-deploy step; today it adds the Container Apps Environment system-assigned MI to the group named by `containerAppsEnvironmentIdentityGroupName`. Skips when the group name or principal id is empty.
 - `Output-KeyVaultPrivateEndpointIp.ps1`: Resolves the platform Key Vault private-endpoint IP for `*.vault.azure.net` DNS (zone `privatelink.vaultcore.azure.net`).
 - `Set-PostgresEntraAdminFromCae.ps1`: Resolves an optional Container Apps Environment system-assigned MI for PostgreSQL Entra admin (falls back to platform UAMI only).
-- `Validate-Params-Match-Config.ps1`: Validates pipeline `environmentName` matches config (`subType + deploymentEnvInstance`) and validates `location`.
+- `Validate-Params-Match-Config.ps1`: Validates pipeline `environmentName` matches config (`subType + deploymentEnvInstance`), validates `location`, and checks `coreVersion` against `Build.SourceBranchName` (tag or last branch path segment).
 - `Validate-AdditionalDnsConfigJson.ps1`: Validates `additionalDnsConfig` JSON when Document Intelligence is enabled.
 
 Shared helper scripts live under:

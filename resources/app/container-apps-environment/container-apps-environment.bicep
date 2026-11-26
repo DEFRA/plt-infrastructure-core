@@ -36,6 +36,12 @@ param internal bool = true
 @description('Optional. Boolean value to enable or disable resource lock.')
 param resourceLockEnabled bool = false
 
+@description('Optional. Name of a managedEnvironments/certificates resource to import from Key Vault. Empty with certificateKeyVaultUrl empty = skip.')
+param certificateName string = ''
+
+@description('Optional. Key Vault secret URI for the certificate (e.g. https://vault.vault.azure.net/secrets/name). Uses the CAE system-assigned MI (identity: system).')
+param certificateKeyVaultUrl string = ''
+
 @description('Optional. Date in the format yyyyMMdd-HHmmss.')
 param deploymentDate string = utcNow('yyyyMMdd-HHmmss')
 
@@ -138,6 +144,26 @@ resource managedEnvironmentResource 'Microsoft.App/managedEnvironments@2025-01-0
 
 var defaultDomain = toLower(managedEnvironmentResource.properties.defaultDomain)
 var staticIp = managedEnvironmentResource.properties.staticIp
+
+var enableCertificate = !empty(certificateName) && !empty(certificateKeyVaultUrl)
+
+// Corporate / external Key Vault certificate on the CAE. The CAE system-assigned MI must
+// already be able to get the secret (e.g. via AG-Azure-AIE-Certificate-Accounts).
+resource environmentCertificate 'Microsoft.App/managedEnvironments/certificates@2025-01-01' = if (enableCertificate) {
+  parent: managedEnvironmentResource
+  name: certificateName
+  location: location
+  tags: union(defaultTags, {
+    Name: certificateName
+    Purpose: 'Container Apps Environment certificate'
+  })
+  properties: {
+    certificateKeyVaultProperties: {
+      identity: 'system'
+      keyVaultUrl: certificateKeyVaultUrl
+    }
+  }
+}
 
 module privateDnsZone 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = {
   name: 'container-apps-environment-dns-${deploymentDate}'
@@ -258,3 +284,4 @@ output storageAccountName string = enableStorage ? storageAccountName : ''
 output storagePrivateEndpointName string = enableStorage ? storagePrivateEndpointName : ''
 output storageNfsAccountName string = enableStorageNfs ? storageNfsAccountName : ''
 output storageNfsPrivateEndpointName string = enableStorageNfs ? storageNfsPrivateEndpointName : ''
+output certificateName string = enableCertificate ? certificateName : ''

@@ -137,6 +137,11 @@ variables:
   # CAE system-assigned MI object id (set by Output-ContainerAppsEnvironment.ps1).
   - name: containerAppsEnvironmentPrincipalId
     value: ''
+  # Optional CAE certificate from corporate Key Vault. Both must be set; empty = skip.
+  - name: containerAppsEnvironmentCertificateName
+    value: ''
+  - name: containerAppsEnvironmentCertificateKeyVaultUrl
+    value: ''
   # Optional JSON array for extra private DNS A records when DI is enabled. Default empty; instance core.yaml may override.
   - name: additionalDnsConfig
     value: ''
