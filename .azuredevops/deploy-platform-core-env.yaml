@@ -164,8 +164,7 @@ resources:
       name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      # TEMP: test from branch — revert to refs/heads/main before merge
-      ref: refs/heads/ml/blob-pep
+      ref: refs/heads/main
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
