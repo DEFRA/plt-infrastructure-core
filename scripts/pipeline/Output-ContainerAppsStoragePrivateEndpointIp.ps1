@@ -1,6 +1,9 @@
 <#
 .SYNOPSIS
-  Resolves the Container Apps storage file private-endpoint IP for DNS (privatelink.file.core.windows.net).
+  Resolves a Container Apps storage private-endpoint IP for DNS
+  (file: privatelink.file.core.windows.net, blob: privatelink.blob.core.windows.net).
+
+  Standard STO uses pep01 (file) and pep02 (blob). Premium NFS STO uses file only.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$ResourceGroupName,
