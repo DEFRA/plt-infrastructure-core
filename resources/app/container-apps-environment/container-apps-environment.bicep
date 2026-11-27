@@ -4,10 +4,10 @@ param containerAppsEnvironment object
 @description('Required. Log Analytics workspace settings. Must contain name. Optional skuName (defaults to PerGB2018).')
 param logAnalytics object
 
-@description('Required. Virtual network for internal integration. Must contain name, resourceGroup and subnetContainerApps. Optional subnetPrivateEndpoints when provisioning Azure Files private endpoint.')
+@description('Required. Virtual network for internal integration. Must contain name, resourceGroup and subnetContainerApps. Optional subnetPrivateEndpoints when provisioning Standard STO file+blob (and NFS file) private endpoints.')
 param vnet object
 
-@description('Optional. Azure Files storage account for the environment. Set enabled to true (with accountName) to provision a hardened StorageV2 account for apps to create shares against later. Does not create file shares or CAE storage registrations.')
+@description('Optional. Standard StorageV2 for the environment (Azure Files SMB + blob). Set enabled to true (with accountName) to provision a hardened account with file and blob private endpoints. Does not create file shares, blob containers, or CAE storage registrations.')
 param storage object = {
   accountName: ''
   skuName: 'Standard_LRS'
@@ -82,6 +82,7 @@ var enableStorage = storageEnabled && !empty(storage.accountName)
 var storageAccountName = toLower(storage.accountName)
 var storageSkuName = contains(storage, 'skuName') && !empty(storage.skuName) ? storage.skuName : 'Standard_LRS'
 var storagePrivateEndpointName = take('${storageAccountName}pep01', 64)
+var storageBlobPrivateEndpointName = take('${storageAccountName}pep02', 64)
 
 var storageNfsEnabledRaw = contains(storageNfs, 'enabled') ? storageNfs.enabled : false
 var storageNfsEnabled = storageNfsEnabledRaw == true || contains(['true', '1', 'yes'], toLower('${storageNfsEnabledRaw}'))
@@ -198,8 +199,9 @@ module privateDnsZone 'br/SharedDefraRegistry:network.private-dns-zone:0.5.2' = 
   }
 }
 
-// --- Optional hardened storage account for Container Apps (shares/mounts are product-deploy concern) ---
-// Public access disabled (policy); private endpoint + DNS A record (same pattern as Document Intelligence).
+// --- Optional hardened Standard StorageV2 for Container Apps (shares/blobs are product-deploy concern) ---
+// Public access disabled (policy); file + blob private endpoints + DNS A records (same pattern as Document Intelligence).
+// Premium FileStorage (NFS) keeps file-only PE — blob PE is not used on that account.
 module storageAccountModule 'br/SharedDefraRegistry:storage.storage-account:0.5.3' = if (enableStorage) {
   name: 'container-apps-storage-${deploymentDate}'
   params: {
@@ -223,10 +225,19 @@ module storageAccountModule 'br/SharedDefraRegistry:storage.storage-account:0.5.
           Purpose: 'Container Apps Azure Files private endpoint'
         })
       }
+      {
+        name: storageBlobPrivateEndpointName
+        service: 'blob'
+        subnetResourceId: resourceId(vnet.resourceGroup, 'Microsoft.Network/virtualNetworks/subnets', vnet.name, vnet.subnetPrivateEndpoints)
+        tags: union(defaultTags, {
+          Name: storageBlobPrivateEndpointName
+          Purpose: 'Container Apps blob private endpoint'
+        })
+      }
     ]
     tags: union(defaultTags, {
       Name: storageAccountName
-      Purpose: 'Container Apps Environment Azure Files'
+      Purpose: 'Container Apps Environment Standard storage (Files SMB + blob)'
     })
   }
 }
@@ -282,6 +293,7 @@ output privateDnsZoneName string = defaultDomain
 output systemAssignedIdentityPrincipalId string = managedEnvironmentResource.identity.principalId
 output storageAccountName string = enableStorage ? storageAccountName : ''
 output storagePrivateEndpointName string = enableStorage ? storagePrivateEndpointName : ''
+output storageBlobPrivateEndpointName string = enableStorage ? storageBlobPrivateEndpointName : ''
 output storageNfsAccountName string = enableStorageNfs ? storageNfsAccountName : ''
 output storageNfsPrivateEndpointName string = enableStorageNfs ? storageNfsPrivateEndpointName : ''
 output certificateName string = enableCertificate ? certificateName : ''

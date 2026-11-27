@@ -11,7 +11,7 @@ The following non-network resources may also be deployed according to Defra patt
 - Document Intelligence
 - Internal Container Apps Environment (system-assigned MI, Log Analytics, private DNS)
 - Optional CAE certificate import from a corporate Key Vault (via the CAE system-assigned MI)
-- Optional CAE storage accounts (Standard SMB and/or Premium NFS) — shares/mounts via product-deploy
+- Optional CAE storage accounts (Standard StorageV2 with file + blob PE/DNS, and/or Premium NFS with file PE) — shares/mounts via product-deploy
 - Private PostgreSQL Flexible Server (VNet-injected; Entra + password auth)
 - Private platform Key Vault (vault PE + DNS)
 - DNS
@@ -65,7 +65,8 @@ Located under `scripts/pipeline/`:
 - `Invoke-AddAdAppRegistrations.ps1` / `Add-AdAppRegistrations.ps1`: Creates or updates Entra app registrations from `app-registration.json`. Skips the step when that file is not present.
 - `Resolve-NetworkJoinGroup.ps1`: Resolves `networkJoinGroupName` to object id for VNet role assignment.
 - `Resolve-EntraGroupByDisplayName.ps1`: Shared helper to resolve Entra group display names to object ids (used where directory lookups are needed).
-- `SetDnsRecords.ps1`: Unified DNS record updater for `additionalDnsConfig`, Document Intelligence, Container Apps Storage, and Key Vault private endpoint DNS.
+- `SetDnsRecords.ps1`: Unified DNS record updater for `additionalDnsConfig`, Document Intelligence, Container Apps Storage (file + blob on Standard STO), and Key Vault private endpoint DNS.
+- `Output-ContainerAppsStoragePrivateEndpointIp.ps1`: Resolves a Standard/NFS storage PE IP (file or blob via `-DeploymentPrivateEndpointOutput`) for private DNS.
 - `Set-ResourceNames.ps1`: Derives INF/APP RG, VNet, subnet, and optional resource names from `get-names.bicep` and exports them as pipeline variables (safe to re-run per job for parallel grouped deployments).
 - `Output-ContainerAppsEnvironment.ps1`: Reads Container Apps Environment deployment outputs (default domain / static IP / system-assigned MI object id) for hub DNS linking and group membership.
 - `Add-IdentityToEntraGroup.ps1`: Adds a managed identity or service principal to an Entra group that already exists in the manifest. Reusable post-deploy step; today it adds the Container Apps Environment system-assigned MI to the group named by `containerAppsEnvironmentIdentityGroupName`. Skips when the group name or principal id is empty.

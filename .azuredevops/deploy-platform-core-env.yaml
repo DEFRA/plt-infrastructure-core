@@ -80,10 +80,10 @@ variables:
     value: 'ValidationPlaceholderSUB'
   - name: containerAppsStorageAccountName
     value: 'validationplaceholdersto'
-  # true = provision hardened StorageV2 for the CAE; false/omit = skip. Shares/mounts are product-deploy concern.
+  # true = provision hardened StorageV2 (file + blob PE/DNS) for the CAE; false/omit = skip. Shares/mounts are product-deploy concern.
   - name: containerAppsStorage
     value: false
-  # Premium FileStorage (SSD LRS) for NFSv4.1 mounts; false/omit = skip. Shares/mounts are product-deploy concern.
+  # Premium FileStorage (SSD LRS) for NFSv4.1 mounts (file PE only); false/omit = skip. Shares/mounts are product-deploy concern.
   - name: containerAppsNfsStorageAccountName
     value: 'validationplaceholderstonfs'
   - name: containerAppsNfsStorage
@@ -164,7 +164,8 @@ resources:
       name: DEFRA/plt-config
       endpoint: DEFRA
       type: github
-      ref: refs/heads/main
+      # TEMP: test from branch — revert to refs/heads/main before merge
+      ref: refs/heads/ml/blob-pep
 
 extends:
   template: /.azuredevops/common/common-infra-deploy.yaml
@@ -575,7 +576,7 @@ extends:
                           -SubscriptionName "$(subscriptionName)"
                           -TenantId "$(tenantId)"
                       - ${{ if eq(lower(coalesce(variables.containerAppsStorage, 'false')), 'true') }}:
-                        - displayName: 'Output Container Apps storage private endpoint IP for DNS'
+                        - displayName: 'Output Container Apps storage file private endpoint IP for DNS'
                           type: AzureCLI
                           azureCLIScriptType: pscore
                           serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
@@ -583,7 +584,9 @@ extends:
                           scriptArguments: >
                             -ResourceGroupName "$(servicesResourceGroup)"
                             -StorageAccountName "$(containerAppsStorageAccountName)"
-                        - displayName: 'Set Container Apps storage private endpoint DNS A record'
+                            -DeploymentPrivateEndpointOutput storagePrivateEndpointName
+                            -OutputIpVariable containerAppsStoragePrivateEndpointIp
+                        - displayName: 'Set Container Apps storage file private endpoint DNS A record'
                           type: AzurePowerShell
                           azurePowerShellVersion: LatestVersion
                           azurePowerShellUseCore: true
@@ -592,6 +595,29 @@ extends:
                           scriptArguments: >
                             -Fqdn "$(containerAppsStorageAccountName).file.core.windows.net"
                             -IpAddress "$(containerAppsStoragePrivateEndpointIp)"
+                            -Location "$(location)"
+                            -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
+                            -PipelineWorkspace "$(Pipeline.Workspace)"
+                            -BuildSourcesDirectory "$(Build.SourcesDirectory)"
+                        - displayName: 'Output Container Apps storage blob private endpoint IP for DNS'
+                          type: AzureCLI
+                          azureCLIScriptType: pscore
+                          serviceConnectionVariableName: 'mstAzureResourceManagerConnection'
+                          scriptPath: scripts/pipeline/Output-ContainerAppsStoragePrivateEndpointIp.ps1
+                          scriptArguments: >
+                            -ResourceGroupName "$(servicesResourceGroup)"
+                            -StorageAccountName "$(containerAppsStorageAccountName)"
+                            -DeploymentPrivateEndpointOutput storageBlobPrivateEndpointName
+                            -OutputIpVariable containerAppsStorageBlobPrivateEndpointIp
+                        - displayName: 'Set Container Apps storage blob private endpoint DNS A record'
+                          type: AzurePowerShell
+                          azurePowerShellVersion: LatestVersion
+                          azurePowerShellUseCore: true
+                          serviceConnectionVariableName: 'privateDnsServiceConnection'
+                          scriptPath: scripts/pipeline/SetDnsRecords.ps1
+                          scriptArguments: >
+                            -Fqdn "$(containerAppsStorageAccountName).blob.core.windows.net"
+                            -IpAddress "$(containerAppsStorageBlobPrivateEndpointIp)"
                             -Location "$(location)"
                             -RegionToDnsResourcegroupMappingTable '$(regionToDnsResourcegroupMappingTable)'
                             -PipelineWorkspace "$(Pipeline.Workspace)"

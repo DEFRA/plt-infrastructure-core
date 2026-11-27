@@ -2,6 +2,12 @@
 
 All notable changes to this repository should be documented in this file.
 
+## [1.6.0] - 2026-11-27
+
+### Added
+
+- **Standard CAE storage blob private endpoint** — When `containerAppsStorage` is enabled, the Standard StorageV2 account now gets a blob PE (`{account}pep02`) alongside the existing file PE (`{account}pep01`), plus a private DNS A record for `*.blob.core.windows.net`. Premium NFS storage (`containerAppsNfsStorage`) remains file-only.
+
 ## [1.5.0] - 2026-11-26
 
 ### Added
